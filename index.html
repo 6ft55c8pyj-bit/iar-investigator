@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f2342" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="IAR" />
+  <title>IAR — Investigator's Automated Room</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230f2342'/%3E%3Cpath d='M256 66 L414 124 V254 C414 352 346 422 256 452 C166 422 98 352 98 254 V124 Z' fill='none' stroke='%23ffffff' stroke-width='22' stroke-linejoin='round'/%3E%3Cpath d='M162 296 L248 210 L292 254 L366 176' fill='none' stroke='%233b82f6' stroke-width='24' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M322 174 H368 V220' fill='none' stroke='%233b82f6' stroke-width='24' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='256' y='356' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-weight='800' font-size='88' letter-spacing='4' fill='%23ffffff'%3EIAR%3C/text%3E%3C/svg%3E" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      window.supabase = {
+        createClient: function(url) {
+          const projectRef = (url || '').replace(/^https?:\/\//, '').split('.')[0] || 'local';
+          const sessionKey = 'sb-' + projectRef + '-auth-token';
+
+          function readSession() {
+            try {
+              const raw = localStorage.getItem(sessionKey);
+              if (!raw) return null;
+              const parsed = JSON.parse(raw);
+              const s = parsed && parsed.currentSession ? parsed.currentSession : parsed;
+              if (s && s.user) return s;
+              return null;
+            } catch (e) {
+              return null;
+            }
+          }
+
+          function writeSession(user) {
+            const session = {
+              access_token: 'offline_token',
+              token_type: 'bearer',
+              user: user
+            };
+            try {
+              localStorage.setItem(sessionKey, JSON.stringify(session));
+            } catch (e) {}
+            return session;
+          }
+
+          return {
+            auth: {
+              async getSession() {
+                return { data: { session: readSession() }, error: null };
+              },
+              async signInWithPassword({ email }) {
+                if (!navigator.onLine) {
+                  const existing = readSession();
+                  if (existing && existing.user && existing.user.email === email) {
+                    return { data: { session: existing, user: existing.user }, error: null };
+                  }
+                  const offlineUser = {
+                    id: 'offline_' + btoa(unescape(encodeURIComponent(email))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24),
+                    email: email
+                  };
+                  const s = writeSession(offlineUser);
+                  return { data: { session: s, user: offlineUser }, error: null };
+                }
+                return { data: { session: null, user: null }, error: { message: 'Нет соединения с сервером авторизации' } };
+              },
+              async signUp() {
+                return { data: { session: null, user: null }, error: { message: 'Регистрация требует подключения к сети' } };
+              },
+              async signOut() {
+                try { localStorage.removeItem(sessionKey); } catch (e) {}
+                return { error: null };
+              }
+            },
+            from() {
+              return {
+                select() {
+                  return {
+                    eq() {
+                      return {
+                        async maybeSingle() {
+                          return { data: null, error: { code: 'OFFLINE', message: 'Офлайн-режим' } };
+                        }
+                      };
+                    }
+                  };
+                },
+                async upsert() {
+                  return { error: { code: 'OFFLINE', message: 'Офлайн-режим' } };
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  </script>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --primary: #0f2342;
+      --primary-light: #1a3668;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+      --warning: #d97706;
+      --warning-soft: #fef3c7;
+      --success: #059669;
+      --success-soft: #d1fae5;
+      --radius: 14px;
+      --shadow: 0 4px 20px rgba(15, 35, 66, 0.06);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      padding-bottom: 84px;
+    }
+
+    .auth-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: linear-gradient(160deg, #0b1526 0%, #0f2342 55%, #163261 100%);
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 410px;
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28);
+    }
+
+    .auth-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    .auth-brand svg {
+      width: 68px;
+      height: 68px;
+      margin-bottom: 12px;
+    }
+
+    .auth-brand h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 0.2px;
+    }
+
+    .auth-brand p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg);
+      padding: 4px;
+      border-radius: 11px;
+      margin-bottom: 18px;
+    }
+
+    .auth-tab {
+      border: none;
+      background: transparent;
+      padding: 9px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .auth-tab.active {
+      background: #ffffff;
+      color: var(--primary);
+      box-shadow: 0 2px 6px rgba(15, 35, 66, 0.08);
+    }
+
+    .auth-msg {
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .auth-msg.error { display: block; background: var(--danger-soft); color: var(--danger); }
+    .auth-msg.success { display: block; background: var(--success-soft); color: var(--success); }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: var(--primary);
+      color: #ffffff;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 2px 12px rgba(11, 21, 38, 0.2);
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+    }
+
+    .brand-titles { min-width: 0; }
+
+    .brand-title {
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: #93c5fd;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .sync-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #34d399;
+    }
+
+    .sync-dot.offline { background: #fbbf24; }
+    .sync-dot.syncing { background: #60a5fa; }
+
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-num {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .stat-num.danger { color: var(--danger); }
+    .stat-num.accent { color: var(--accent); }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .form-group { margin-bottom: 12px; }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    textarea { min-height: 90px; resize: vertical; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 15px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: 0.15s ease;
+    }
+
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--primary); color: #ffffff; }
+    .btn-accent { background: var(--accent); color: #ffffff; }
+    .btn-outline { background: var(--surface); border-color: var(--border); color: var(--text); }
+    .btn-danger { background: var(--danger-soft); color: var(--danger); }
+    .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+    .btn-block { width: 100%; }
+
+    .list-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: var(--surface-alt);
+    }
+
+    .list-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .item-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--primary);
+    }
+
+    .item-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge-ok { background: var(--success-soft); color: var(--success); }
+    .badge-warn { background: var(--warning-soft); color: var(--warning); }
+    .badge-danger { background: var(--danger-soft); color: var(--danger); }
+    .badge-info { background: var(--accent-soft); color: var(--accent); }
+
+    .item-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .doc-preview {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 14px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      color: #111827;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 45;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+      box-shadow: 0 -2px 12px rgba(15, 35, 66, 0.05);
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 4px 2px;
+      cursor: pointer;
+    }
+
+    .nav-btn.active { color: var(--accent); }
+    .nav-icon { font-size: 17px; line-height: 1; }
+
+    .toast {
+      position: fixed;
+      bottom: 76px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--primary);
+      color: #fff;
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 60;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .toast.show { opacity: 1; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 540px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <rect width="120" height="120" rx="26" fill="#0f2342"/>
+          <path d="M60 16 L96 30 V60 C96 83 80 99 60 106 C40 99 24 83 24 60 V30 Z" fill="none" stroke="#ffffff" stroke-width="5" stroke-linejoin="round"/>
+          <path d="M38 69 L58 49 L68 59 L86 41" fill="none" stroke="#3b82f6" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M75 40 H87 V52" fill="none" stroke="#3b82f6" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="60" y="84" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="21" letter-spacing="1" fill="#ffffff">IAR</text>
+        </svg>
+        <h1>IAR — Investigator's Automated Room</h1>
+        <p>Облачная синхронизация дел, сроков и процессуальных бланков</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button type="button" id="tabLogin" class="auth-tab active">Вход</button>
+        <button type="button" id="tabRegister" class="auth-tab">Регистрация</button>
+      </div>
+
+      <div id="authMsg" class="auth-msg"></div>
+
+      <form id="authForm">
+        <div class="form-group">
+          <label for="authEmail">Электронная почта (логин)</label>
+          <input type="email" id="authEmail" placeholder="name@example.com" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label for="authPassword">Пароль (минимум 6 символов)</label>
+          <input type="password" id="authPassword" placeholder="••••••••" minlength="6" required autocomplete="current-password" />
+        </div>
+        <button type="submit" id="authSubmitBtn" class="btn btn-primary btn-block">Войти в рабочее место</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="appShell" class="hidden">
+    <header class="topbar">
+      <div class="brand-row">
+        <svg class="brand-logo" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <rect width="120" height="120" rx="26" fill="#163261" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
+          <path d="M60 16 L96 30 V60 C96 83 80 99 60 106 C40 99 24 83 24 60 V30 Z" fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linejoin="round"/>
+          <path d="M38 69 L58 49 L68 59 L86 41" fill="none" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M75 40 H87 V52" fill="none" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="60" y="84" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="21" letter-spacing="1" fill="#ffffff">IAR</text>
+        </svg>
+        <div class="brand-titles">
+          <div class="brand-title">IAR — Investigator's Automated Room</div>
+          <div class="brand-sub" id="userEmailLabel">Аккаунт подключён</div>
+        </div>
+      </div>
+
+      <button type="button" id="syncNowBtn" class="sync-pill" title="Синхронизировать с облаком">
+        <span id="syncDot" class="sync-dot"></span>
+        <span id="syncStatusText">Облако</span>
+      </button>
+    </header>
+
+    <main class="container">
+      <section id="sec-dashboard" class="section active">
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-num" id="statTotalCases">0</div>
+            <div class="stat-label">В производстве</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num danger" id="statUrgentCases">0</div>
+            <div class="stat-label">Срок ≤ 10 дн.</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num accent" id="statUpcomingEvents">0</div>
+            <div class="stat-label">Вызовы / План</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Контроль процессуальных сроков</h2>
+            <button type="button" class="btn btn-sm btn-accent" data-nav="sec-cases">+ Дело</button>
+          </div>
+          <div id="dashboardDeadlines"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Ближайшие следственные действия и вызовы</h2>
+            <button type="button" class="btn btn-sm btn-outline" data-nav="sec-calendar">+ Вызов</button>
+          </div>
+          <div id="dashboardEvents"></div>
+        </div>
+      </section>
+
+      <section id="sec-cases" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title" id="caseFormTitle">Новое уголовное дело / материал</h2>
+            <button type="button" id="cancelEditCaseBtn" class="btn btn-sm btn-outline hidden">Отмена</button>
+          </div>
+          <form id="caseForm">
+            <input type="hidden" id="caseEditId" />
+            <div class="form-row">
+              <div class="form-group">
+                <label>Номер УД / КУСП</label>
+                <input type="text" id="caseNumber" placeholder="№ 12601180001000123" required />
+              </div>
+              <div class="form-group">
+                <label>Квалификация (ст. УК РФ)</label>
+                <input type="text" id="caseArticle" placeholder="ч. 2 ст. 158 УК РФ" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Дата возбуждения / принятия</label>
+                <input type="date" id="caseStartDate" required />
+              </div>
+              <div class="form-group">
+                <label>Окончание срока следствия</label>
+                <input type="date" id="caseDeadlineDate" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Фигуранты (подозреваемый / обвиняемый)</label>
+                <input type="text" id="caseSuspect" placeholder="Иванов И.И. (подписка о невыезде)" />
+              </div>
+              <div class="form-group">
+                <label>Статус производства</label>
+                <select id="caseStatus">
+                  <option value="В производстве">В производстве</option>
+                  <option value="Продлён срок">Продлён срок</option>
+                  <option value="Приостановлено">Приостановлено</option>
+                  <option value="Направлено прокурору">Направлено прокурору</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Краткая фабула и запланированные действия</label>
+              <textarea id="caseNotes" placeholder="Обстоятельства, назначенные экспертизы, запланированные допросы..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Сохранить дело в облаке</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Реестр дел в производстве</h2>
+          </div>
+          <div class="form-group">
+            <input type="text" id="caseSearch" placeholder="Поиск по номеру дела, статье или фамилии..." />
+          </div>
+          <div id="casesList"></div>
+        </div>
+      </section>
+
+      <section id="sec-calendar" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Запланировать вызов / следственное действие</h2>
+          </div>
+          <form id="eventForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Дата и время</label>
+                <input type="datetime-local" id="eventDateTime" required />
+              </div>
+              <div class="form-group">
+                <label>Следственное действие</label>
+                <select id="eventType">
+                  <option value="Допрос свидетеля">Допрос свидетеля</option>
+                  <option value="Допрос подозреваемого / обвиняемого">Допрос подозреваемого / обвиняемого</option>
+                  <option value="Очная ставка">Очная ставка</option>
+                  <option value="Осмотр места происшествия / предметов">Осмотр места происшествия / предметов</option>
+                  <option value="Проверка показаний на месте">Проверка показаний на месте</option>
+                  <option value="Ознакомление с материалами (ст. 217 УПК)">Ознакомление с материалами (ст. 217 УПК)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Участник (ФИО, процессуальный статус)</label>
+                <input type="text" id="eventPerson" placeholder="Петров П.П., свидетель" required />
+              </div>
+              <div class="form-group">
+                <label>По уголовному делу</label>
+                <select id="eventCaseRef"></select>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Добавить в план</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">График вызовов и действий</h2>
+          </div>
+          <div id="eventsList"></div>
+        </div>
+      </section>
+
+      <section id="sec-docs" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Генератор процессуальных бланков (УПК РФ)</h2>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Тип документа</label>
+              <select id="docTemplateSelect">
+                <option value="summons">Повестка о вызове на допрос (ст. 188 УПК РФ)</option>
+                <option value="interrogation">Шапка протокола допроса (ст. 189–190 УПК РФ)</option>
+                <option value="request">Запрос в порядке ч. 4 ст. 21 УПК РФ</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Дело из базы</label>
+              <select id="docCaseSelect"></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Адресат / Допрашиваемое лицо</label>
+              <input type="text" id="docTargetPerson" placeholder="Сидорову С.С., г. Волгоград..." />
+            </div>
+            <div class="form-group">
+              <label>Дата и время явки / составления</label>
+              <input type="text" id="docDateText" placeholder="«26» ноября 2026 г. в 10 ч. 00 мин." />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Дополнительный текст / перечень запрашиваемых сведений</label>
+            <textarea id="docCustomBody" placeholder="Укажите кабинет, обстоятельства или перечень запрашиваемых документов..."></textarea>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <button type="button" id="generateDocBtn" class="btn btn-primary">Сформировать текст</button>
+            <button type="button" id="copyDocBtn" class="btn btn-outline">Копировать текст</button>
+          </div>
+          <div id="docPreview" class="doc-preview">Выберите шаблон и нажмите «Сформировать текст».</div>
+        </div>
+      </section>
+
+      <section id="sec-settings" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Реквизиты следователя (для шапок бланков)</h2>
+          </div>
+          <form id="profileForm">
+            <div class="form-group">
+              <label>Следственный орган</label>
+              <input type="text" id="cfgDepartment" placeholder="СО ОП № ... Управления МВД России по г. Волгограду" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Должность и звание</label>
+                <input type="text" id="cfgRank" placeholder="следователь лейтенант юстиции" />
+              </div>
+              <div class="form-group">
+                <label>Фамилия и инициалы</label>
+                <input type="text" id="cfgName" placeholder="Иванова И.А." />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Адрес и кабинет / телефон</label>
+              <input type="text" id="cfgAddress" placeholder="г. Волгоград, каб. 214, тел. ..." />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Сохранить реквизиты</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Облако и резервное копирование</h2>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin-top:0;">
+            Текущий аккаунт: <strong id="settingsEmail">-</strong><br/>
+            Последняя синхронизация с Supabase: <strong id="lastSyncTime">ожидание...</strong>
+          </p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" id="forcePullBtn" class="btn btn-outline">Загрузить из облака</button>
+            <button type="button" id="exportJsonBtn" class="btn btn-outline">Экспорт .JSON</button>
+            <button type="button" id="logoutBtn" class="btn btn-danger">Выйти из аккаунта</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button type="button" class="nav-btn active" data-target="sec-dashboard">
+        <span class="nav-icon">📊</span>
+        <span>Сводка</span>
+      </button>
+      <button type="button" class="nav-btn" data-target="sec-cases">
+        <span class="nav-icon">📁</span>
+        <span>Дела</span>
+      </button>
+      <button type="button" class="nav-btn" data-target="sec-calendar">
+        <span class="nav-icon">📅</span>
+        <span>Вызовы</span>
+      </button>
+      <button type="button" class="nav-btn" data-target="sec-docs">
+        <span class="nav-icon">📄</span>
+        <span>Бланки</span>
+      </button>
+      <button type="button" class="nav-btn" data-target="sec-settings">
+        <span class="nav-icon">⚙️</span>
+        <span>Профиль</span>
+      </button>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://xazxltujkizmnpkbqfgr.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_UssySBK5fWV_MZa2_RDmHA_Ksrwfvxz';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = null;
+    let authMode = 'login';
+    let syncTimer = null;
+
+    const defaultState = () => ({
+      cases: [],
+      events: [],
+      docConfig: {
+        department: 'Следственный отдел УМВД России',
+        rank: 'следователь лейтенант юстиции',
+        name: '',
+        address: 'каб. 101'
+      },
+      updatedAt: new Date().toISOString()
+    });
+
+    let appState = defaultState();
+
+    function showToast(text) {
+      const el = document.getElementById('toast');
+      el.textContent = text;
+      el.classList.add('show');
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 2600);
+    }
+
+    function setSyncUI(state, label) {
+      const dot = document.getElementById('syncDot');
+      const txt = document.getElementById('syncStatusText');
+      dot.className = 'sync-dot' + (state === 'offline' ? ' offline' : state === 'syncing' ? ' syncing' : '');
+      txt.textContent = label;
+    }
+
+    function localStorageKey() {
+      return currentUser ? `iar_workspace_cache_${currentUser.id}` : 'iar_workspace_guest';
+    }
+
+    function saveLocalCache() {
+      try {
+        localStorage.setItem(localStorageKey(), JSON.stringify(appState));
+      } catch (e) {
+        console.warn('Local cache error:', e);
+      }
+    }
+
+    function loadLocalCache() {
+      try {
+        const raw = localStorage.getItem(localStorageKey());
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          appState = { ...defaultState(), ...parsed };
+        }
+      } catch (e) {
+        console.warn('Read cache error:', e);
+      }
+    }
+
+    async function pullFromCloud() {
+      if (!currentUser) return;
+      if (!navigator.onLine) {
+        setSyncUI('offline', 'Офлайн');
+        return;
+      }
+
+      setSyncUI('syncing', 'Загрузка...');
+      let data, error;
+      try {
+        const res = await supabaseClient
+          .from('iar_user_workspaces')
+          .select('workspace_data, updated_at')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+        data = res.data;
+        error = res.error;
+      } catch (fetchErr) {
+        console.error('Network/SDK pull exception:', fetchErr);
+        setSyncUI('offline', 'Блок/Сеть');
+        showToast('Нет доступа к ' + SUPABASE_URL.replace('https://', ''));
+        return;
+      }
+
+      if (error) {
+        console.error('Supabase pull error:', error);
+        const msg = (error.message || '').toLowerCase().includes('fetch') || (error.message || '').toLowerCase().includes('network')
+          ? 'Блок/Сеть'
+          : (error.code || 'Ошибка БД');
+        setSyncUI('offline', msg);
+        showToast('Supabase: ' + (error.message || error.code || 'ошибка'));
+        return;
+      }
+
+      if (data && data.workspace_data) {
+        const cloudState = { ...defaultState(), ...data.workspace_data };
+        const localTime = new Date(appState.updatedAt || 0).getTime();
+        const cloudTime = new Date(data.updated_at || cloudState.updatedAt || 0).getTime();
+
+        if (cloudTime >= localTime || appState.cases.length === 0) {
+          appState = cloudState;
+          saveLocalCache();
+        } else {
+          await pushToCloud();
+        }
+      } else {
+        await pushToCloud();
+      }
+
+      setSyncUI('online', 'Облако');
+      document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
+      renderAll();
+    }
+
+    async function pushToCloud() {
+      if (!currentUser) return;
+      appState.updatedAt = new Date().toISOString();
+      saveLocalCache();
+
+      if (!navigator.onLine) {
+        setSyncUI('offline', 'Офлайн (в очереди)');
+        return;
+      }
+
+      setSyncUI('syncing', 'Сохранение...');
+      let error;
+      try {
+        const res = await supabaseClient
+          .from('iar_user_workspaces')
+          .upsert({
+            user_id: currentUser.id,
+            workspace_data: appState,
+            updated_at: appState.updatedAt
+          }, { onConflict: 'user_id' });
+        error = res.error;
+      } catch (fetchErr) {
+        console.error('Network/SDK push exception:', fetchErr);
+        setSyncUI('offline', 'Блок/Сеть');
+        showToast('Сохранено локально (недоступен supabase.co)');
+        return;
+      }
+
+      if (error) {
+        console.error('Supabase push error:', error);
+        const msg = (error.message || '').toLowerCase().includes('fetch') || (error.message || '').toLowerCase().includes('network')
+          ? 'Блок/Сеть'
+          : (error.code || 'Ошибка БД');
+        setSyncUI('offline', msg);
+        showToast('Сохранено локально: ' + (error.message || error.code || 'ошибка'));
+        return;
+      }
+
+      setSyncUI('online', 'Облако');
+      document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
+    }
+
+    function scheduleSave() {
+      saveLocalCache();
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => {
+        pushToCloud();
+      }, 450);
+    }
+
+    const tabLogin = document.getElementById('tabLogin');
+    const tabRegister = document.getElementById('tabRegister');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const authMsg = document.getElementById('authMsg');
+
+    function showAuthMsg(text, type) {
+      authMsg.textContent = text;
+      authMsg.className = 'auth-msg ' + type;
+    }
+
+    tabLogin.addEventListener('click', () => {
+      authMode = 'login';
+      tabLogin.classList.add('active');
+      tabRegister.classList.remove('active');
+      authSubmitBtn.textContent = 'Войти в рабочее место';
+      authMsg.className = 'auth-msg';
+    });
+
+    tabRegister.addEventListener('click', () => {
+      authMode = 'register';
+      tabRegister.classList.add('active');
+      tabLogin.classList.remove('active');
+      authSubmitBtn.textContent = 'Создать облачный аккаунт';
+      authMsg.className = 'auth-msg';
+    });
+
+    document.getElementById('authForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      authSubmitBtn.disabled = true;
+      authMsg.className = 'auth-msg';
+
+      try {
+        if (authMode === 'login') {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          await enterWorkspace(data.user);
+        } else {
+          const { data, error } = await supabaseClient.auth.signUp({ email, password });
+          if (error) throw error;
+          if (data.session && data.user) {
+            await enterWorkspace(data.user);
+            showToast('Аккаунт создан и подключён');
+          } else {
+            showAuthMsg('Аккаунт создан! Если включено подтверждение почты в Supabase, проверьте письмо или отключите Confirm email в настройках Supabase.', 'success');
+          }
+        }
+      } catch (err) {
+        showAuthMsg(err.message || 'Ошибка авторизации', 'error');
+      } finally {
+        authSubmitBtn.disabled = false;
+      }
+    });
+
+    async function enterWorkspace(user) {
+      currentUser = user;
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appShell').classList.remove('hidden');
+      document.getElementById('userEmailLabel').textContent = user.email;
+      document.getElementById('settingsEmail').textContent = user.email;
+
+      appState = defaultState();
+      loadLocalCache();
+      renderAll();
+      if (!navigator.onLine) {
+        setSyncUI('offline', 'Офлайн');
+        return;
+      }
+      await pullFromCloud();
+    }
+
+    function switchSection(targetId) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      const sec = document.getElementById(targetId);
+      if (sec) sec.classList.add('active');
+      const btn = document.querySelector(`.nav-btn[data-target="${targetId}"]`);
+      if (btn) btn.classList.add('active');
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchSection(btn.dataset.target));
+    });
+
+    document.querySelectorAll('[data-nav]').forEach(btn => {
+      btn.addEventListener('click', () => switchSection(btn.dataset.nav));
+    });
+
+    function daysLeft(dateStr) {
+      if (!dateStr) return null;
+      const target = new Date(dateStr + 'T23:59:59');
+      const now = new Date();
+      return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    document.getElementById('caseForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('caseEditId').value;
+      const item = {
+        id: editId || ('case_' + Date.now()),
+        number: document.getElementById('caseNumber').value.trim(),
+        article: document.getElementById('caseArticle').value.trim(),
+        startDate: document.getElementById('caseStartDate').value,
+        deadlineDate: document.getElementById('caseDeadlineDate').value,
+        suspect: document.getElementById('caseSuspect').value.trim(),
+        status: document.getElementById('caseStatus').value,
+        notes: document.getElementById('caseNotes').value.trim()
+      };
+
+      if (editId) {
+        const idx = appState.cases.findIndex(c => c.id === editId);
+        if (idx !== -1) appState.cases[idx] = item;
+        showToast('Дело обновлено');
+      } else {
+        appState.cases.unshift(item);
+        showToast('Дело добавлено');
+      }
+
+      resetCaseForm();
+      renderAll();
+      scheduleSave();
+    });
+
+    function resetCaseForm() {
+      document.getElementById('caseForm').reset();
+      document.getElementById('caseEditId').value = '';
+      document.getElementById('caseFormTitle').textContent = 'Новое уголовное дело / материал';
+      document.getElementById('cancelEditCaseBtn').classList.add('hidden');
+    }
+
+    document.getElementById('cancelEditCaseBtn').addEventListener('click', resetCaseForm);
+    document.getElementById('caseSearch').addEventListener('input', renderCases);
+
+    window.editCase = function(id) {
+      const c = appState.cases.find(x => x.id === id);
+      if (!c) return;
+      document.getElementById('caseEditId').value = c.id;
+      document.getElementById('caseNumber').value = c.number;
+      document.getElementById('caseArticle').value = c.article;
+      document.getElementById('caseStartDate').value = c.startDate;
+      document.getElementById('caseDeadlineDate').value = c.deadlineDate;
+      document.getElementById('caseSuspect').value = c.suspect;
+      document.getElementById('caseStatus').value = c.status;
+      document.getElementById('caseNotes').value = c.notes;
+      document.getElementById('caseFormTitle').textContent = 'Редактирование дела ' + c.number;
+      document.getElementById('cancelEditCaseBtn').classList.remove('hidden');
+      switchSection('sec-cases');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.deleteCase = function(id) {
+      if (!confirm('Удалить это дело из базы?')) return;
+      appState.cases = appState.cases.filter(c => c.id !== id);
+      renderAll();
+      scheduleSave();
+      showToast('Дело удалено');
+    };
+
+    document.getElementById('eventForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const ev = {
+        id: 'ev_' + Date.now(),
+        dateTime: document.getElementById('eventDateTime').value,
+        type: document.getElementById('eventType').value,
+        person: document.getElementById('eventPerson').value.trim(),
+        caseRef: document.getElementById('eventCaseRef').value,
+        done: false
+      };
+      appState.events.push(ev);
+      appState.events.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+      e.target.reset();
+      renderAll();
+      scheduleSave();
+      showToast('Вызов добавлен в план');
+    });
+
+    window.toggleEventDone = function(id) {
+      const ev = appState.events.find(x => x.id === id);
+      if (ev) {
+        ev.done = !ev.done;
+        renderAll();
+        scheduleSave();
+      }
+    };
+
+    window.deleteEvent = function(id) {
+      appState.events = appState.events.filter(x => x.id !== id);
+      renderAll();
+      scheduleSave();
+      showToast('Запись удалена');
+    };
+
+    document.getElementById('generateDocBtn').addEventListener('click', () => {
+      const tpl = document.getElementById('docTemplateSelect').value;
+      const caseId = document.getElementById('docCaseSelect').value;
+      const c = appState.cases.find(x => x.id === caseId);
+      const target = document.getElementById('docTargetPerson').value.trim() || '__________________________';
+      const dateText = document.getElementById('docDateText').value.trim() || '«___» __________ 2026 г. в ___ ч. ___ мин.';
+      const body = document.getElementById('docCustomBody').value.trim();
+      const cfg = appState.docConfig;
+
+      const caseInfo = c ? `по уголовному делу № ${c.number} (${c.article})` : 'по материалу проверки / уголовному делу № ______________';
+      let text = '';
+
+      if (tpl === 'summons') {
+        text = `ПОВЕСТКА О ВЫЗОВЕ НА ДОПРОС
+
+` +
+               `Кому: ${target}
+
+` +
+               `В соответствии со ст. 188 УПК РФ Вам надлежит явиться ${dateText} ` +
+               `в ${cfg.department} (${cfg.address}) к ${cfg.rank} ${cfg.name || '________________'} ` +
+               `для производства следственного действия (допроса) ${caseInfo}.
+
+` +
+               `При себе необходимо иметь паспорт или иной документ, удостоверяющий личность.
+` +
+               `В случае неявки без уважительных причин Вы можете быть подвергнуты приводу на основании ст. 113 УПК РФ.
+
+` +
+               `${cfg.rank} ${cfg.department}
+____________________ / ${cfg.name || '____________'} /`;
+      } else if (tpl === 'interrogation') {
+        text = `ПРОТОКОЛ ДОПРОСА
+
+` +
+               `Дата и время: ${dateText}
+` +
+               `Место составления: ${cfg.department} (${cfg.address})
+
+` +
+               `${cfg.rank} ${cfg.department} ${cfg.name || '________________'} ` +
+               `в помещении ${cfg.address} в соответствии со ст. 189 и 190 УПК РФ допросил ${caseInfo}:
+` +
+               `Допрашиваемое лицо: ${target}
+
+` +
+               `По существу заданных вопросов показал следующее:
+${body || '__________________________________________________________________'}`;
+      } else {
+        text = `ЗАПРОС (в порядке ч. 4 ст. 21 УПК РФ)
+
+` +
+               `Кому: ${target}
+` +
+               `Исх. от ${dateText}
+
+` +
+               `В производстве ${cfg.department} находится уголовное дело ${c ? '№ ' + c.number + ', возбужденное по признакам преступления, предусмотренного ' + c.article : '№ ______________'}.
+` +
+               `На основании ч. 4 ст. 21 УПК РФ прошу в кратчайший срок предоставить следующие сведения и документы:
+` +
+               `${body || '1. ______________________________________________'}
+
+` +
+               `${cfg.rank} ${cfg.department}
+____________________ / ${cfg.name || '____________'} /`;
+      }
+
+      document.getElementById('docPreview').textContent = text;
+    });
+
+    document.getElementById('copyDocBtn').addEventListener('click', async () => {
+      const txt = document.getElementById('docPreview').textContent;
+      try {
+        await navigator.clipboard.writeText(txt);
+        showToast('Текст бланка скопирован');
+      } catch {
+        showToast('Выделите и скопируйте текст вручную');
+      }
+    });
+
+    document.getElementById('profileForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      appState.docConfig = {
+        department: document.getElementById('cfgDepartment').value.trim(),
+        rank: document.getElementById('cfgRank').value.trim(),
+        name: document.getElementById('cfgName').value.trim(),
+        address: document.getElementById('cfgAddress').value.trim()
+      };
+      scheduleSave();
+      showToast('Реквизиты сохранены');
+    });
+
+    document.getElementById('syncNowBtn').addEventListener('click', () => pullFromCloud());
+    document.getElementById('forcePullBtn').addEventListener('click', () => pullFromCloud());
+
+    document.getElementById('exportJsonBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `IAR_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await supabaseClient.auth.signOut();
+      currentUser = null;
+      document.getElementById('appShell').classList.add('hidden');
+      document.getElementById('authScreen').classList.remove('hidden');
+      showToast('Вы вышли из аккаунта');
+    });
+
+    function renderCases() {
+      const q = (document.getElementById('caseSearch').value || '').toLowerCase();
+      const filtered = appState.cases.filter(c =>
+        (c.number + ' ' + c.article + ' ' + c.suspect + ' ' + c.notes).toLowerCase().includes(q)
+      );
+
+      const container = document.getElementById('casesList');
+      if (!filtered.length) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Дел пока нет. Добавьте первое дело выше.</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(c => {
+        const d = daysLeft(c.deadlineDate);
+        let badge = `<span class="badge badge-ok">Осталось ${d} дн.</span>`;
+        if (d !== null && d < 0) badge = `<span class="badge badge-danger">Просрочено на ${Math.abs(d)} дн.</span>`;
+        else if (d !== null && d <= 10) badge = `<span class="badge badge-warn">Осталось ${d} дн.</span>`;
+
+        return `
+          <div class="list-item">
+            <div class="list-item-top">
+              <div class="item-title">УД № ${escapeHtml(c.number)} — ${escapeHtml(c.article)}</div>
+              ${badge}
+            </div>
+            <div class="item-meta">
+              Срок до: <strong>${escapeHtml(c.deadlineDate)}</strong> • Статус: ${escapeHtml(c.status)}<br/>
+              Фигурант: ${escapeHtml(c.suspect || 'не указан')}
+              ${c.notes ? '<br/>Заметки: ' + escapeHtml(c.notes) : ''}
+            </div>
+            <div class="item-actions">
+              <button type="button" class="btn btn-sm btn-outline" onclick="editCase('${c.id}')">Изменить</button>
+              <button type="button" class="btn btn-sm btn-danger" onclick="deleteCase('${c.id}')">Удалить</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderEvents() {
+      const container = document.getElementById('eventsList');
+      if (!appState.events.length) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Запланированных вызовов пока нет.</div>';
+        return;
+      }
+
+      container.innerHTML = appState.events.map(ev => {
+        const dt = ev.dateTime ? new Date(ev.dateTime).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        return `
+          <div class="list-item" style="${ev.done ? 'opacity:0.6;' : ''}">
+            <div class="list-item-top">
+              <div class="item-title">${escapeHtml(ev.type)} — ${escapeHtml(ev.person)}</div>
+              <span class="badge ${ev.done ? 'badge-ok' : 'badge-info'}">${ev.done ? 'Проведено' : dt}</span>
+            </div>
+            <div class="item-meta">${escapeHtml(ev.caseRef || 'Без привязки к делу')}</div>
+            <div class="item-actions">
+              <button type="button" class="btn btn-sm btn-outline" onclick="toggleEventDone('${ev.id}')">${ev.done ? 'Вернуть в план' : 'Отметить выполненным'}</button>
+              <button type="button" class="btn btn-sm btn-danger" onclick="deleteEvent('${ev.id}')">Удалить</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDashboardAndSelects() {
+      const activeCases = appState.cases.filter(c => c.status === 'В производстве' || c.status === 'Продлён срок');
+      const urgent = activeCases.filter(c => {
+        const d = daysLeft(c.deadlineDate);
+        return d !== null && d <= 10;
+      });
+      const upcoming = appState.events.filter(e => !e.done);
+
+      document.getElementById('statTotalCases').textContent = activeCases.length;
+      document.getElementById('statUrgentCases').textContent = urgent.length;
+      document.getElementById('statUpcomingEvents').textContent = upcoming.length;
+
+      const dlBox = document.getElementById('dashboardDeadlines');
+      if (!activeCases.length) {
+        dlBox.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Активных дел в производстве нет.</div>';
+      } else {
+        const sorted = [...activeCases].sort((a, b) => new Date(a.deadlineDate) - new Date(b.deadlineDate)).slice(0, 5);
+        dlBox.innerHTML = sorted.map(c => {
+          const d = daysLeft(c.deadlineDate);
+          const cls = d < 0 ? 'badge-danger' : d <= 10 ? 'badge-warn' : 'badge-ok';
+          const lbl = d < 0 ? `Просрочено (${Math.abs(d)} дн.)` : `${d} дн.`;
+          return `
+            <div class="list-item" style="margin-bottom:8px;">
+              <div class="list-item-top" style="margin-bottom:0;">
+                <div>
+                  <div class="item-title">№ ${escapeHtml(c.number)} (${escapeHtml(c.article)})</div>
+                  <div class="item-meta" style="margin-bottom:0;">Срок до ${escapeHtml(c.deadlineDate)} • ${escapeHtml(c.suspect || 'фигурант не указан')}</div>
+                </div>
+                <span class="badge ${cls}">${lbl}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const evBox = document.getElementById('dashboardEvents');
+      if (!upcoming.length) {
+        evBox.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Ближайших вызовов не запланировано.</div>';
+      } else {
+        evBox.innerHTML = upcoming.slice(0, 4).map(ev => {
+          const dt = ev.dateTime ? new Date(ev.dateTime).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '';
+          return `
+            <div class="list-item" style="margin-bottom:8px;">
+              <div class="list-item-top" style="margin-bottom:0;">
+                <div>
+                  <div class="item-title">${escapeHtml(ev.type)}</div>
+                  <div class="item-meta" style="margin-bottom:0;">${escapeHtml(ev.person)} • ${escapeHtml(ev.caseRef || '')}</div>
+                </div>
+                <span class="badge badge-info">${dt}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const caseOptions = ['<option value="">— Без привязки к делу —</option>']
+        .concat(appState.cases.map(c => `<option value="УД № ${escapeHtml(c.number)} (${escapeHtml(c.article)})">УД № ${escapeHtml(c.number)} — ${escapeHtml(c.article)}</option>`))
+        .join('');
+      document.getElementById('eventCaseRef').innerHTML = caseOptions;
+
+      const docOptions = ['<option value="">— Выберите дело —</option>']
+        .concat(appState.cases.map(c => `<option value="${c.id}">УД № ${escapeHtml(c.number)} — ${escapeHtml(c.article)}</option>`))
+        .join('');
+      document.getElementById('docCaseSelect').innerHTML = docOptions;
+
+      document.getElementById('cfgDepartment').value = appState.docConfig.department || '';
+      document.getElementById('cfgRank').value = appState.docConfig.rank || '';
+      document.getElementById('cfgName').value = appState.docConfig.name || '';
+      document.getElementById('cfgAddress').value = appState.docConfig.address || '';
+    }
+
+    function renderAll() {
+      renderDashboardAndSelects();
+      renderCases();
+      renderEvents();
+    }
+
+    window.addEventListener('online', () => {
+      showToast('Связь восстановлена — синхронизация...');
+      pushToCloud();
+    });
+    window.addEventListener('offline', () => {
+      setSyncUI('offline', 'Офлайн');
+      showToast('Офлайн-режим: данные сохраняются на устройстве');
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW error:', err));
+      });
+    }
+
+    (async function init() {
+      try {
+        if (!navigator.onLine) {
+          setSyncUI('offline', 'Офлайн');
+        }
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+          await enterWorkspace(session.user);
+        }
+      } catch (err) {
+        console.error('Init error:', err);
+        document.getElementById('authScreen').classList.remove('hidden');
+        document.getElementById('appShell').classList.add('hidden');
+      }
+    })();
+  </script>
+</body>
+</html>

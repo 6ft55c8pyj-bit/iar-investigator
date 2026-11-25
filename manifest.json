@@ -1,0 +1,25 @@
+{
+  "name": "IAR — Investigator's Automated Room",
+  "short_name": "IAR",
+  "description": "Автоматизированное рабочее место следователя (IAR — Investigator's Automated Room) с облачной синхронизацией и офлайн-режимом",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1526",
+  "theme_color": "#0f2342",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230f2342'/%3E%3Cpath d='M256 66 L414 124 V254 C414 352 346 422 256 452 C166 422 98 352 98 254 V124 Z' fill='none' stroke='%23ffffff' stroke-width='22' stroke-linejoin='round'/%3E%3Cpath d='M162 296 L248 210 L292 254 L366 176' fill='none' stroke='%233b82f6' stroke-width='24' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M322 174 H368 V220' fill='none' stroke='%233b82f6' stroke-width='24' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='256' y='356' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-weight='800' font-size='88' letter-spacing='4' fill='%23ffffff'%3EIAR%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230f2342'/%3E%3Cpath d='M256 66 L414 124 V254 C414 352 346 422 256 452 C166 422 98 352 98 254 V124 Z' fill='none' stroke='%23ffffff' stroke-width='22' stroke-linejoin='round'/%3E%3Cpath d='M162 296 L248 210 L292 254 L366 176' fill='none' stroke='%233b82f6' stroke-width='24' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M322 174 H368 V220' fill='none' stroke='%233b82f6' stroke-width='24' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='256' y='356' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-weight='800' font-size='88' letter-spacing='4' fill='%23ffffff'%3EIAR%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
