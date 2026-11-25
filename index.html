@@ -314,6 +314,25 @@
       color: var(--primary);
     }
 
+    .sub-block {
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .sub-block-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -351,6 +370,12 @@
       grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
+    .form-row-3 {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr auto;
+      gap: 8px;
+      align-items: end;
+    }
 
     label {
       display: block;
@@ -371,13 +396,18 @@
       color: var(--text);
     }
 
+    select.wheel-select {
+      max-height: 42px;
+      background-color: #ffffff;
+    }
+
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
-    textarea { min-height: 90px; resize: vertical; }
+    textarea { min-height: 82px; resize: vertical; }
 
     .btn {
       display: inline-flex;
@@ -401,6 +431,85 @@
     .btn-danger { background: var(--danger-soft); color: var(--danger); }
     .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
     .btn-block { width: 100%; }
+
+    .filter-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+    }
+
+    .chip-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .chip-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    .mini-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #ffffff;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .check-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .check-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 9px;
+      cursor: pointer;
+    }
+
+    .check-pill input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+
+    .hint-banner {
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .hint-banner.warn {
+      background: var(--warning-soft);
+      color: #92400e;
+    }
 
     .list-item {
       border: 1px solid var(--border);
@@ -472,7 +581,7 @@
       border-top: 1px solid var(--border);
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+      padding: 6px 2px calc(6px + env(safe-area-inset-bottom));
       box-shadow: 0 -2px 12px rgba(15, 35, 66, 0.05);
     }
 
@@ -483,11 +592,19 @@
       flex-direction: column;
       align-items: center;
       gap: 3px;
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 600;
       color: var(--text-muted);
-      padding: 4px 2px;
+      padding: 4px 1px;
       cursor: pointer;
+      min-width: 0;
+    }
+
+    .nav-btn span:last-child {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
     }
 
     .nav-btn.active { color: var(--accent); }
@@ -513,8 +630,8 @@
     .toast.show { opacity: 1; }
     .hidden { display: none !important; }
 
-    @media (max-width: 540px) {
-      .form-row { grid-template-columns: 1fr; }
+    @media (max-width: 640px) {
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -590,7 +707,7 @@
           </div>
           <div class="stat-box">
             <div class="stat-num accent" id="statUpcomingEvents">0</div>
-            <div class="stat-label">Вызовы / План</div>
+            <div class="stat-label">След. действия</div>
           </div>
         </div>
 
@@ -604,8 +721,8 @@
 
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Ближайшие следственные действия и вызовы</h2>
-            <button type="button" class="btn btn-sm btn-outline" data-nav="sec-calendar">+ Вызов</button>
+            <h2 class="card-title">Ближайшие следственные действия</h2>
+            <button type="button" class="btn btn-sm btn-outline" data-nav="sec-calendar">+ Действие</button>
           </div>
           <div id="dashboardEvents"></div>
         </div>
@@ -619,30 +736,11 @@
           </div>
           <form id="caseForm">
             <input type="hidden" id="caseEditId" />
+
             <div class="form-row">
               <div class="form-group">
                 <label>Номер УД / КУСП</label>
                 <input type="text" id="caseNumber" placeholder="№ 12601180001000123" required />
-              </div>
-              <div class="form-group">
-                <label>Квалификация (ст. УК РФ)</label>
-                <input type="text" id="caseArticle" placeholder="ч. 2 ст. 158 УК РФ" required />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Дата возбуждения / принятия</label>
-                <input type="date" id="caseStartDate" required />
-              </div>
-              <div class="form-group">
-                <label>Окончание срока следствия</label>
-                <input type="date" id="caseDeadlineDate" required />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Фигуранты (подозреваемый / обвиняемый)</label>
-                <input type="text" id="caseSuspect" placeholder="Иванов И.И. (подписка о невыезде)" />
               </div>
               <div class="form-group">
                 <label>Статус производства</label>
@@ -654,20 +752,195 @@
                 </select>
               </div>
             </div>
-            <div class="form-group">
-              <label>Краткая фабула и запланированные действия</label>
-              <textarea id="caseNotes" placeholder="Обстоятельства, назначенные экспертизы, запланированные допросы..."></textarea>
+
+            <!-- Квалификация: несколько статей, статья вручную, часть и пункт выбором -->
+            <div class="sub-block">
+              <div class="sub-block-title">
+                <span>Квалификация по УК РФ</span>
+                <button type="button" id="addQualificationBtn" class="btn btn-sm btn-outline">+ Добавить статью</button>
+              </div>
+              <div class="form-row-3" style="margin-bottom:8px;">
+                <div>
+                  <label>Статья УК РФ (вручную)</label>
+                  <input type="text" id="qualArticleInput" placeholder="например, 158 или 162" />
+                </div>
+                <div>
+                  <label>Часть (выбор)</label>
+                  <select id="qualPartSelect" class="wheel-select">
+                    <option value="">—</option>
+                    <option value="ч. 1">ч. 1</option>
+                    <option value="ч. 2">ч. 2</option>
+                    <option value="ч. 3">ч. 3</option>
+                    <option value="ч. 4">ч. 4</option>
+                    <option value="ч. 5">ч. 5</option>
+                    <option value="ч. 6">ч. 6</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Пункт (выбор)</label>
+                  <select id="qualPointSelect" class="wheel-select">
+                    <option value="">—</option>
+                    <option value="п. «а»">п. «а»</option>
+                    <option value="п. «б»">п. «б»</option>
+                    <option value="п. «в»">п. «в»</option>
+                    <option value="п. «г»">п. «г»</option>
+                    <option value="п. «д»">п. «д»</option>
+                    <option value="п. «е»">п. «е»</option>
+                    <option value="п. «ж»">п. «ж»</option>
+                    <option value="п. «з»">п. «з»</option>
+                    <option value="пп. «а», «б»">пп. «а», «б»</option>
+                    <option value="пп. «а», «в»">пп. «а», «в»</option>
+                    <option value="пп. «б», «в»">пп. «б», «в»</option>
+                    <option value="пп. «а», «б», «в»">пп. «а», «б», «в»</option>
+                  </select>
+                </div>
+                <button type="button" id="applyQualNowBtn" class="btn btn-sm btn-accent">Зафиксировать</button>
+              </div>
+              <div id="qualificationsList"></div>
             </div>
+
+            <!-- Сроки, продление, приостановление и напоминание о ходатайстве -->
+            <div class="sub-block">
+              <div class="sub-block-title"><span>Процессуальные сроки и контроль продления</span></div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Дата возбуждения / принятия</label>
+                  <input type="date" id="caseStartDate" required />
+                </div>
+                <div class="form-group">
+                  <label>Окончание срока (авто +2 мес., можно менять)</label>
+                  <input type="date" id="caseDeadlineDate" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Продлено до</label>
+                  <input type="date" id="caseExtendedUntil" />
+                </div>
+                <div class="form-group">
+                  <label>Напомнить о ходатайстве за (дней)</label>
+                  <input type="number" id="caseMotionLeadDays" min="1" max="60" value="10" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Приостановлено с</label>
+                  <input type="date" id="caseSuspendedFrom" />
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Приостановлено до</label>
+                  <input type="date" id="caseSuspendedTo" />
+                </div>
+              </div>
+              <div id="deadlineCalcHint" class="hint-banner" style="margin-top:10px; margin-bottom:0;">
+                Укажите дату возбуждения для расчёта срока и контрольной даты ходатайства.
+              </div>
+            </div>
+
+            <!-- Участники дела -->
+            <div class="sub-block">
+              <div class="sub-block-title"><span>Участники дела и напоминания</span></div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>ФИО участника</label>
+                  <input type="text" id="partName" placeholder="Иванов Иван Иванович" />
+                </div>
+                <div class="form-group">
+                  <label>Статус / роль</label>
+                  <select id="partRole">
+                    <option value="Свидетель">Свидетель</option>
+                    <option value="Подозреваемый">Подозреваемый</option>
+                    <option value="Обвиняемый">Обвиняемый</option>
+                    <option value="Потерпевший">Потерпевший</option>
+                    <option value="Защитник">Защитник</option>
+                    <option value="Законный представитель">Законный представитель</option>
+                    <option value="Специалист / эксперт">Специалист / эксперт</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Телефон / контакты</label>
+                  <input type="text" id="partContact" placeholder="+7 (999) 000-00-00" />
+                </div>
+                <div class="form-group">
+                  <label>Своя заметка / напоминание</label>
+                  <input type="text" id="partCustomNote" placeholder="Например: принести договор" />
+                </div>
+              </div>
+              <div class="check-pills" style="margin-bottom:10px;">
+                <label class="check-pill"><input type="checkbox" id="partNeedInterrogate" /> Допросить</label>
+                <label class="check-pill"><input type="checkbox" id="partNeedSummon" /> Вызвать</label>
+                <label class="check-pill"><input type="checkbox" id="partNeedAcquaint" /> Ознакомить</label>
+              </div>
+              <button type="button" id="addParticipantBtn" class="btn btn-sm btn-outline">+ Добавить участника</button>
+              <div id="participantsDraftList" style="margin-top:8px;"></div>
+            </div>
+
+            <!-- План расследования: Необходимо провести -->
+            <div class="sub-block">
+              <div class="sub-block-title"><span>Необходимо провести (план расследования)</span></div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Действие / задача по делу</label>
+                  <input type="text" id="taskTitleInput" placeholder="Назначить товароведческую экспертизу" />
+                </div>
+                <div class="form-group">
+                  <label>Срок / дата выполнения</label>
+                  <input type="date" id="taskDueDateInput" />
+                </div>
+              </div>
+              <button type="button" id="addPlanTaskBtn" class="btn btn-sm btn-outline">+ Добавить в план</button>
+              <div id="planTasksDraftList" style="margin-top:8px;"></div>
+            </div>
+
+            <!-- Документы дела: систематизация и перемещение -->
+            <div class="sub-block">
+              <div class="sub-block-title"><span>Документы дела (для описи и систематизации)</span></div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Наименование документа</label>
+                  <input type="text" id="docTitleInput" placeholder="Постановление о возбуждении УД" />
+                </div>
+                <div class="form-group">
+                  <label>Способ / вид</label>
+                  <select id="docKindInput">
+                    <option value="Фото / скан">Фото / скан</option>
+                    <option value="Создать">Создать (по бланку / базе знаний)</option>
+                  </select>
+                </div>
+              </div>
+              <button type="button" id="addCaseDocBtn" class="btn btn-sm btn-outline">+ Добавить документ</button>
+              <div id="caseDocsDraftList" style="margin-top:8px;"></div>
+            </div>
+
+            <div class="form-group">
+              <label>Фабула</label>
+              <textarea id="caseNotes" placeholder="Краткие обстоятельства совершённого деяния..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Дополнительная информация</label>
+              <textarea id="caseExtraInfo" style="min-height:64px;" placeholder="Вещдоки, особенности, поручения, отметки..."></textarea>
+            </div>
+
             <button type="submit" class="btn btn-primary btn-block">Сохранить дело в облаке</button>
           </form>
         </div>
 
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Реестр дел в производстве</h2>
+            <h2 class="card-title">Реестр дел</h2>
           </div>
           <div class="form-group">
-            <input type="text" id="caseSearch" placeholder="Поиск по номеру дела, статье или фамилии..." />
+            <input type="text" id="caseSearch" placeholder="Поиск по номеру дела, статье, участнику или фабуле..." />
+          </div>
+          <div class="filter-chips" id="caseFilterChips">
+            <button type="button" class="chip-btn active" data-filter="all">Все</button>
+            <button type="button" class="chip-btn" data-filter="urgent">Срок ≤ 10 дн. / Продление</button>
+            <button type="button" class="chip-btn" data-filter="В производстве">В производстве</button>
+            <button type="button" class="chip-btn" data-filter="Продлён срок">Продлён срок</button>
+            <button type="button" class="chip-btn" data-filter="Приостановлено">Приостановлено</button>
+            <button type="button" class="chip-btn" data-filter="Направлено прокурору">Направлено прокурору</button>
           </div>
           <div id="casesList"></div>
         </div>
@@ -676,7 +949,7 @@
       <section id="sec-calendar" class="section">
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Запланировать вызов / следственное действие</h2>
+            <h2 class="card-title">Запланировать следственное действие / вызов</h2>
           </div>
           <form id="eventForm">
             <div class="form-row">
@@ -712,7 +985,7 @@
 
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">График вызовов и действий</h2>
+            <h2 class="card-title">График следственных действий</h2>
           </div>
           <div id="eventsList"></div>
         </div>
@@ -814,8 +1087,8 @@
         <span>Дела</span>
       </button>
       <button type="button" class="nav-btn" data-target="sec-calendar">
-        <span class="nav-icon">📅</span>
-        <span>Вызовы</span>
+        <span class="nav-icon">⚖️</span>
+        <span>След. действия</span>
       </button>
       <button type="button" class="nav-btn" data-target="sec-docs">
         <span class="nav-icon">📄</span>
@@ -838,6 +1111,13 @@
     let currentUser = null;
     let authMode = 'login';
     let syncTimer = null;
+    let activeCaseFilter = 'all';
+
+    // Черновики вложенных списков внутри формы дела
+    let draftQualifications = [];
+    let draftParticipants = [];
+    let draftPlanTasks = [];
+    let draftCaseDocs = [];
 
     const defaultState = () => ({
       cases: [],
@@ -1085,11 +1365,47 @@
       btn.addEventListener('click', () => switchSection(btn.dataset.nav));
     });
 
+    function getEffectiveDeadline(c) {
+      if (c.status === 'Продлён срок' && c.extendedUntil) return c.extendedUntil;
+      return c.extendedUntil || c.deadlineDate || '';
+    }
+
     function daysLeft(dateStr) {
       if (!dateStr) return null;
       const target = new Date(dateStr + 'T23:59:59');
       const now = new Date();
       return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+    }
+
+    function addMonthsToDateStr(dateStr, months) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-').map(Number);
+      if (parts.length !== 3) return '';
+      const d = new Date(Date.UTC(parts[0], parts[1] - 1 + months, parts[2]));
+      return d.toISOString().slice(0, 10);
+    }
+
+    function shiftDateByDays(dateStr, deltaDays) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-').map(Number);
+      if (parts.length !== 3) return '';
+      const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + deltaDays));
+      return d.toISOString().slice(0, 10);
+    }
+
+    function formatQualificationString(q) {
+      const chunks = [];
+      if (q.point) chunks.push(q.point);
+      if (q.part) chunks.push(q.part);
+      if (q.article) chunks.push(`ст. ${q.article.replace(/^ст\.?\s*/i, '')} УК РФ`);
+      return chunks.join(' ').trim();
+    }
+
+    function getCaseQualificationText(c) {
+      if (Array.isArray(c.qualifications) && c.qualifications.length) {
+        return c.qualifications.map(formatQualificationString).filter(Boolean).join('; ');
+      }
+      return c.article || 'Квалификация не указана';
     }
 
     function escapeHtml(str) {
@@ -1100,18 +1416,312 @@
         .replace(/"/g, '&quot;');
     }
 
+    // Автоподсказка срока (+2 мес.) и расчёт напоминания о ходатайстве
+    function updateDeadlineHint() {
+      const start = document.getElementById('caseStartDate').value;
+      const dl = document.getElementById('caseDeadlineDate').value;
+      const ext = document.getElementById('caseExtendedUntil').value;
+      const status = document.getElementById('caseStatus').value;
+      const lead = parseInt(document.getElementById('caseMotionLeadDays').value || '10', 10);
+      const hint = document.getElementById('deadlineCalcHint');
+
+      const activeEnd = (status === 'Продлён срок' && ext) ? ext : (ext || dl);
+      if (!activeEnd) {
+        hint.className = 'hint-banner';
+        hint.textContent = start
+          ? `Рекомендуемый срок (+2 мес. от возбуждения): ${addMonthsToDateStr(start, 2)}.`
+          : 'Укажите дату возбуждения для расчёта срока и контрольной даты ходатайства.';
+        return;
+      }
+
+      const rem = daysLeft(activeEnd);
+      const motionDate = shiftDateByDays(activeEnd, -lead);
+      const suspInfo = (document.getElementById('caseSuspendedFrom').value || document.getElementById('caseSuspendedTo').value)
+        ? ` • Приостановление: ${document.getElementById('caseSuspendedFrom').value || '—'} — ${document.getElementById('caseSuspendedTo').value || '—'}`
+        : '';
+
+      if (rem !== null && rem <= lead) {
+        hint.className = 'hint-banner warn';
+      } else {
+        hint.className = 'hint-banner';
+      }
+
+      hint.textContent = `Актуальный срок: ${activeEnd} (осталось ${rem} дн.) • Ходатайство о продлении — до ${motionDate} (за ${lead} дн.)${suspInfo}`;
+    }
+
+    document.getElementById('caseStartDate').addEventListener('change', (e) => {
+      const dlInput = document.getElementById('caseDeadlineDate');
+      if (e.target.value && !dlInput.value) {
+        dlInput.value = addMonthsToDateStr(e.target.value, 2);
+      }
+      updateDeadlineHint();
+    });
+
+    ['caseDeadlineDate', 'caseExtendedUntil', 'caseSuspendedFrom', 'caseSuspendedTo', 'caseStatus', 'caseMotionLeadDays'].forEach(id => {
+      document.getElementById(id).addEventListener('change', updateDeadlineHint);
+      document.getElementById(id).addEventListener('input', updateDeadlineHint);
+    });
+
+    // Работа с квалификациями (добавление статьи вручную + выбор части/пункта)
+    function collectCurrentQualificationInput() {
+      const art = document.getElementById('qualArticleInput').value.trim();
+      const part = document.getElementById('qualPartSelect').value;
+      const point = document.getElementById('qualPointSelect').value;
+      if (!art && !part && !point) return null;
+      return {
+        id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        article: art,
+        part,
+        point
+      };
+    }
+
+    function addQualificationFromInputs() {
+      const item = collectCurrentQualificationInput();
+      if (!item || !item.article) {
+        showToast('Введите номер статьи УК РФ');
+        return false;
+      }
+      draftQualifications.push(item);
+      document.getElementById('qualArticleInput').value = '';
+      document.getElementById('qualPartSelect').value = '';
+      document.getElementById('qualPointSelect').value = '';
+      renderDraftQualifications();
+      return true;
+    }
+
+    document.getElementById('addQualificationBtn').addEventListener('click', addQualificationFromInputs);
+    document.getElementById('applyQualNowBtn').addEventListener('click', addQualificationFromInputs);
+
+    window.removeDraftQualification = function(id) {
+      draftQualifications = draftQualifications.filter(q => q.id !== id);
+      renderDraftQualifications();
+    };
+
+    function renderDraftQualifications() {
+      const box = document.getElementById('qualificationsList');
+      if (!draftQualifications.length) {
+        box.innerHTML = '<div style="font-size:12px; color:var(--text-muted);">Статьи не добавлены — можно зафиксировать выше или добавить ещё статью.</div>';
+        return;
+      }
+      box.innerHTML = draftQualifications.map(q => `
+        <div class="mini-row">
+          <span><strong>${escapeHtml(formatQualificationString(q))}</strong></span>
+          <button type="button" class="btn btn-sm btn-danger" onclick="removeDraftQualification('${q.id}')">✕</button>
+        </div>
+      `).join('');
+    }
+
+    // Участники
+    document.getElementById('addParticipantBtn').addEventListener('click', () => {
+      const name = document.getElementById('partName').value.trim();
+      if (!name) {
+        showToast('Укажите ФИО участника');
+        return;
+      }
+      const reminders = [];
+      if (document.getElementById('partNeedInterrogate').checked) reminders.push('Допросить');
+      if (document.getElementById('partNeedSummon').checked) reminders.push('Вызвать');
+      if (document.getElementById('partNeedAcquaint').checked) reminders.push('Ознакомить');
+      const customNote = document.getElementById('partCustomNote').value.trim();
+
+      draftParticipants.push({
+        id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        name,
+        role: document.getElementById('partRole').value,
+        contact: document.getElementById('partContact').value.trim(),
+        reminders,
+        customNote,
+        noteDone: false
+      });
+
+      document.getElementById('partName').value = '';
+      document.getElementById('partContact').value = '';
+      document.getElementById('partCustomNote').value = '';
+      document.getElementById('partNeedInterrogate').checked = false;
+      document.getElementById('partNeedSummon').checked = false;
+      document.getElementById('partNeedAcquaint').checked = false;
+      renderDraftParticipants();
+    });
+
+    window.toggleDraftParticipantNote = function(id) {
+      const p = draftParticipants.find(x => x.id === id);
+      if (p) {
+        p.noteDone = !p.noteDone;
+        renderDraftParticipants();
+      }
+    };
+
+    window.removeDraftParticipant = function(id) {
+      draftParticipants = draftParticipants.filter(x => x.id !== id);
+      renderDraftParticipants();
+    };
+
+    function renderDraftParticipants() {
+      const box = document.getElementById('participantsDraftList');
+      if (!draftParticipants.length) {
+        box.innerHTML = '';
+        return;
+      }
+      box.innerHTML = draftParticipants.map(p => {
+        const meta = [p.role, p.contact, ...p.reminders, p.customNote].filter(Boolean).join(' • ');
+        return `
+          <div class="mini-row" style="${p.noteDone ? 'opacity:0.65;' : ''}">
+            <div>
+              <div><strong>${escapeHtml(p.name)}</strong></div>
+              <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(meta)}</div>
+            </div>
+            <div style="display:flex; gap:4px;">
+              <button type="button" class="btn btn-sm btn-outline" onclick="toggleDraftParticipantNote('${p.id}')">${p.noteDone ? '✓ Отмечено' : 'Отметить'}</button>
+              <button type="button" class="btn btn-sm btn-danger" onclick="removeDraftParticipant('${p.id}')">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // План расследования («Необходимо провести») с привязкой к сроку и генерации бланка
+    document.getElementById('addPlanTaskBtn').addEventListener('click', () => {
+      const title = document.getElementById('taskTitleInput').value.trim();
+      if (!title) {
+        showToast('Введите действие для плана расследования');
+        return;
+      }
+      draftPlanTasks.push({
+        id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        title,
+        dueDate: document.getElementById('taskDueDateInput').value,
+        done: false
+      });
+      document.getElementById('taskTitleInput').value = '';
+      document.getElementById('taskDueDateInput').value = '';
+      renderDraftPlanTasks();
+    });
+
+    window.toggleDraftTask = function(id) {
+      const t = draftPlanTasks.find(x => x.id === id);
+      if (t) {
+        t.done = !t.done;
+        renderDraftPlanTasks();
+      }
+    };
+
+    window.removeDraftTask = function(id) {
+      draftPlanTasks = draftPlanTasks.filter(x => x.id !== id);
+      renderDraftPlanTasks();
+    };
+
+    function renderDraftPlanTasks() {
+      const box = document.getElementById('planTasksDraftList');
+      if (!draftPlanTasks.length) {
+        box.innerHTML = '';
+        return;
+      }
+      box.innerHTML = draftPlanTasks.map(t => `
+        <div class="mini-row" style="${t.done ? 'opacity:0.65;' : ''}">
+          <div>
+            <div><strong>${escapeHtml(t.title)}</strong></div>
+            <div style="font-size:11px; color:var(--text-muted);">${t.dueDate ? 'Срок: ' + escapeHtml(t.dueDate) : 'Без срока'} • ${t.done ? 'Выполнено' : 'В работе'}</div>
+          </div>
+          <div style="display:flex; gap:4px;">
+            <button type="button" class="btn btn-sm btn-outline" onclick="toggleDraftTask('${t.id}')">${t.done ? 'Вернуть' : 'Готово'}</button>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeDraftTask('${t.id}')">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Документы дела с перемещением вверх/вниз для описи
+    document.getElementById('addCaseDocBtn').addEventListener('click', () => {
+      const title = document.getElementById('docTitleInput').value.trim();
+      if (!title) {
+        showToast('Укажите наименование документа');
+        return;
+      }
+      draftCaseDocs.push({
+        id: 'd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        title,
+        kind: document.getElementById('docKindInput').value
+      });
+      document.getElementById('docTitleInput').value = '';
+      renderDraftCaseDocs();
+    });
+
+    window.moveDraftDoc = function(idx, dir) {
+      const nextIdx = idx + dir;
+      if (nextIdx < 0 || nextIdx >= draftCaseDocs.length) return;
+      const copy = [...draftCaseDocs];
+      const [moved] = copy.splice(idx, 1);
+      copy.splice(nextIdx, 0, moved);
+      draftCaseDocs = copy;
+      renderDraftCaseDocs();
+    };
+
+    window.removeDraftDoc = function(id) {
+      draftCaseDocs = draftCaseDocs.filter(d => d.id !== id);
+      renderDraftCaseDocs();
+    };
+
+    function renderDraftCaseDocs() {
+      const box = document.getElementById('caseDocsDraftList');
+      if (!draftCaseDocs.length) {
+        box.innerHTML = '';
+        return;
+      }
+      box.innerHTML = draftCaseDocs.map((d, i) => `
+        <div class="mini-row">
+          <div>
+            <div><strong>${i + 1}. ${escapeHtml(d.title)}</strong></div>
+            <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(d.kind)}</div>
+          </div>
+          <div style="display:flex; gap:4px;">
+            <button type="button" class="btn btn-sm btn-outline" onclick="moveDraftDoc(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="moveDraftDoc(${i}, 1)" ${i === draftCaseDocs.length - 1 ? 'disabled' : ''}>↓</button>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeDraftDoc('${d.id}')">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Сохранение дела
     document.getElementById('caseForm').addEventListener('submit', (e) => {
       e.preventDefault();
+      const pendingQual = collectCurrentQualificationInput();
+      if (pendingQual && pendingQual.article) {
+        draftQualifications.push(pendingQual);
+        document.getElementById('qualArticleInput').value = '';
+        document.getElementById('qualPartSelect').value = '';
+        document.getElementById('qualPointSelect').value = '';
+      }
+
+      const qualText = draftQualifications.length
+        ? draftQualifications.map(formatQualificationString).filter(Boolean).join('; ')
+        : 'Квалификация не указана';
+
       const editId = document.getElementById('caseEditId').value;
+      const suspectSummary = draftParticipants
+        .filter(p => ['Подозреваемый', 'Обвиняемый'].includes(p.role))
+        .map(p => `${p.name} (${p.role})`)
+        .join(', ');
+
       const item = {
         id: editId || ('case_' + Date.now()),
         number: document.getElementById('caseNumber').value.trim(),
-        article: document.getElementById('caseArticle').value.trim(),
+        article: qualText,
+        qualifications: [...draftQualifications],
         startDate: document.getElementById('caseStartDate').value,
         deadlineDate: document.getElementById('caseDeadlineDate').value,
-        suspect: document.getElementById('caseSuspect').value.trim(),
+        extendedUntil: document.getElementById('caseExtendedUntil').value,
+        suspendedFrom: document.getElementById('caseSuspendedFrom').value,
+        suspendedTo: document.getElementById('caseSuspendedTo').value,
+        motionLeadDays: parseInt(document.getElementById('caseMotionLeadDays').value || '10', 10),
+        suspect: suspectSummary,
+        participants: [...draftParticipants],
+        planTasks: [...draftPlanTasks],
+        documents: [...draftCaseDocs],
         status: document.getElementById('caseStatus').value,
-        notes: document.getElementById('caseNotes').value.trim()
+        notes: document.getElementById('caseNotes').value.trim(),
+        extraInfo: document.getElementById('caseExtraInfo').value.trim()
       };
 
       if (editId) {
@@ -1131,6 +1741,16 @@
     function resetCaseForm() {
       document.getElementById('caseForm').reset();
       document.getElementById('caseEditId').value = '';
+      document.getElementById('caseMotionLeadDays').value = '10';
+      draftQualifications = [];
+      draftParticipants = [];
+      draftPlanTasks = [];
+      draftCaseDocs = [];
+      renderDraftQualifications();
+      renderDraftParticipants();
+      renderDraftPlanTasks();
+      renderDraftCaseDocs();
+      updateDeadlineHint();
       document.getElementById('caseFormTitle').textContent = 'Новое уголовное дело / материал';
       document.getElementById('cancelEditCaseBtn').classList.add('hidden');
     }
@@ -1138,17 +1758,43 @@
     document.getElementById('cancelEditCaseBtn').addEventListener('click', resetCaseForm);
     document.getElementById('caseSearch').addEventListener('input', renderCases);
 
+    document.querySelectorAll('#caseFilterChips .chip-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCaseFilter = btn.dataset.filter;
+        document.querySelectorAll('#caseFilterChips .chip-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderCases();
+      });
+    });
+
     window.editCase = function(id) {
       const c = appState.cases.find(x => x.id === id);
       if (!c) return;
       document.getElementById('caseEditId').value = c.id;
-      document.getElementById('caseNumber').value = c.number;
-      document.getElementById('caseArticle').value = c.article;
-      document.getElementById('caseStartDate').value = c.startDate;
-      document.getElementById('caseDeadlineDate').value = c.deadlineDate;
-      document.getElementById('caseSuspect').value = c.suspect;
-      document.getElementById('caseStatus').value = c.status;
-      document.getElementById('caseNotes').value = c.notes;
+      document.getElementById('caseNumber').value = c.number || '';
+      document.getElementById('caseStartDate').value = c.startDate || '';
+      document.getElementById('caseDeadlineDate').value = c.deadlineDate || '';
+      document.getElementById('caseExtendedUntil').value = c.extendedUntil || '';
+      document.getElementById('caseSuspendedFrom').value = c.suspendedFrom || '';
+      document.getElementById('caseSuspendedTo').value = c.suspendedTo || '';
+      document.getElementById('caseMotionLeadDays').value = c.motionLeadDays || 10;
+      document.getElementById('caseStatus').value = c.status || 'В производстве';
+      document.getElementById('caseNotes').value = c.notes || '';
+      document.getElementById('caseExtraInfo').value = c.extraInfo || '';
+
+      draftQualifications = Array.isArray(c.qualifications) && c.qualifications.length
+        ? c.qualifications.map(q => ({ ...q }))
+        : (c.article ? [{ id: 'q_legacy', article: c.article, part: '', point: '' }] : []);
+      draftParticipants = Array.isArray(c.participants) ? c.participants.map(p => ({ ...p, reminders: [...(p.reminders || [])] })) : [];
+      draftPlanTasks = Array.isArray(c.planTasks) ? c.planTasks.map(t => ({ ...t })) : [];
+      draftCaseDocs = Array.isArray(c.documents) ? c.documents.map(d => ({ ...d })) : [];
+
+      renderDraftQualifications();
+      renderDraftParticipants();
+      renderDraftPlanTasks();
+      renderDraftCaseDocs();
+      updateDeadlineHint();
+
       document.getElementById('caseFormTitle').textContent = 'Редактирование дела ' + c.number;
       document.getElementById('cancelEditCaseBtn').classList.remove('hidden');
       switchSection('sec-cases');
@@ -1161,6 +1807,36 @@
       renderAll();
       scheduleSave();
       showToast('Дело удалено');
+    };
+
+    // Быстрые действия по делу из списка: переключение задачи плана, переход в бланки, сортировка документов дела
+    window.toggleSavedTask = function(caseId, taskId) {
+      const c = appState.cases.find(x => x.id === caseId);
+      if (!c || !Array.isArray(c.planTasks)) return;
+      const t = c.planTasks.find(x => x.id === taskId);
+      if (t) {
+        t.done = !t.done;
+        renderAll();
+        scheduleSave();
+      }
+    };
+
+    window.createDocFromTask = function(caseId, taskTitle) {
+      document.getElementById('docCaseSelect').value = caseId;
+      document.getElementById('docCustomBody').value = taskTitle;
+      switchSection('sec-docs');
+      showToast('Дело и действие подставлены в бланки');
+    };
+
+    window.moveSavedDoc = function(caseId, docIdx, dir) {
+      const c = appState.cases.find(x => x.id === caseId);
+      if (!c || !Array.isArray(c.documents)) return;
+      const nextIdx = docIdx + dir;
+      if (nextIdx < 0 || nextIdx >= c.documents.length) return;
+      const [moved] = c.documents.splice(docIdx, 1);
+      c.documents.splice(nextIdx, 0, moved);
+      renderAll();
+      scheduleSave();
     };
 
     document.getElementById('eventForm').addEventListener('submit', (e) => {
@@ -1178,7 +1854,7 @@
       e.target.reset();
       renderAll();
       scheduleSave();
-      showToast('Вызов добавлен в план');
+      showToast('Следственное действие добавлено');
     });
 
     window.toggleEventDone = function(id) {
@@ -1206,63 +1882,35 @@
       const body = document.getElementById('docCustomBody').value.trim();
       const cfg = appState.docConfig;
 
-      const caseInfo = c ? `по уголовному делу № ${c.number} (${c.article})` : 'по материалу проверки / уголовному делу № ______________';
+      const qualStr = c ? getCaseQualificationText(c) : '';
+      const caseInfo = c ? `по уголовному делу № ${c.number} (${qualStr})` : 'по материалу проверки / уголовному делу № ______________';
       let text = '';
 
       if (tpl === 'summons') {
-        text = `ПОВЕСТКА О ВЫЗОВЕ НА ДОПРОС
-
-` +
-               `Кому: ${target}
-
-` +
+        text = `ПОВЕСТКА О ВЫЗОВЕ НА ДОПРОС\n\n` +
+               `Кому: ${target}\n\n` +
                `В соответствии со ст. 188 УПК РФ Вам надлежит явиться ${dateText} ` +
                `в ${cfg.department} (${cfg.address}) к ${cfg.rank} ${cfg.name || '________________'} ` +
-               `для производства следственного действия (допроса) ${caseInfo}.
-
-` +
-               `При себе необходимо иметь паспорт или иной документ, удостоверяющий личность.
-` +
-               `В случае неявки без уважительных причин Вы можете быть подвергнуты приводу на основании ст. 113 УПК РФ.
-
-` +
-               `${cfg.rank} ${cfg.department}
-____________________ / ${cfg.name || '____________'} /`;
+               `для производства следственного действия (допроса) ${caseInfo}.\n\n` +
+               `При себе необходимо иметь паспорт или иной документ, удостоверяющий личность.\n` +
+               `В случае неявки без уважительных причин Вы можете быть подвергнуты приводу на основании ст. 113 УПК РФ.\n\n` +
+               `${cfg.rank} ${cfg.department}\n____________________ / ${cfg.name || '____________'} /`;
       } else if (tpl === 'interrogation') {
-        text = `ПРОТОКОЛ ДОПРОСА
-
-` +
-               `Дата и время: ${dateText}
-` +
-               `Место составления: ${cfg.department} (${cfg.address})
-
-` +
+        text = `ПРОТОКОЛ ДОПРОСА\n\n` +
+               `Дата и время: ${dateText}\n` +
+               `Место составления: ${cfg.department} (${cfg.address})\n\n` +
                `${cfg.rank} ${cfg.department} ${cfg.name || '________________'} ` +
-               `в помещении ${cfg.address} в соответствии со ст. 189 и 190 УПК РФ допросил ${caseInfo}:
-` +
-               `Допрашиваемое лицо: ${target}
-
-` +
-               `По существу заданных вопросов показал следующее:
-${body || '__________________________________________________________________'}`;
+               `в помещении ${cfg.address} в соответствии со ст. 189 и 190 УПК РФ допросил ${caseInfo}:\n` +
+               `Допрашиваемое лицо: ${target}\n\n` +
+               `По существу заданных вопросов показал следующее:\n${body || '__________________________________________________________________'}`;
       } else {
-        text = `ЗАПРОС (в порядке ч. 4 ст. 21 УПК РФ)
-
-` +
-               `Кому: ${target}
-` +
-               `Исх. от ${dateText}
-
-` +
-               `В производстве ${cfg.department} находится уголовное дело ${c ? '№ ' + c.number + ', возбужденное по признакам преступления, предусмотренного ' + c.article : '№ ______________'}.
-` +
-               `На основании ч. 4 ст. 21 УПК РФ прошу в кратчайший срок предоставить следующие сведения и документы:
-` +
-               `${body || '1. ______________________________________________'}
-
-` +
-               `${cfg.rank} ${cfg.department}
-____________________ / ${cfg.name || '____________'} /`;
+        text = `ЗАПРОС (в порядке ч. 4 ст. 21 УПК РФ)\n\n` +
+               `Кому: ${target}\n` +
+               `Исх. от ${dateText}\n\n` +
+               `В производстве ${cfg.department} находится уголовное дело ${c ? '№ ' + c.number + ', возбужденное по признакам преступления, предусмотренного ' + qualStr : '№ ______________'}.\n` +
+               `На основании ч. 4 ст. 21 УПК РФ прошу в кратчайший срок предоставить следующие сведения и документы:\n` +
+               `${body || '1. ______________________________________________'}\n\n` +
+               `${cfg.rank} ${cfg.department}\n____________________ / ${cfg.name || '____________'} /`;
       }
 
       document.getElementById('docPreview').textContent = text;
@@ -1313,34 +1961,95 @@ ____________________ / ${cfg.name || '____________'} /`;
 
     function renderCases() {
       const q = (document.getElementById('caseSearch').value || '').toLowerCase();
-      const filtered = appState.cases.filter(c =>
-        (c.number + ' ' + c.article + ' ' + c.suspect + ' ' + c.notes).toLowerCase().includes(q)
-      );
+      const filtered = appState.cases.filter(c => {
+        const qualText = getCaseQualificationText(c);
+        const partsText = (c.participants || []).map(p => `${p.name} ${p.role} ${p.customNote || ''}`).join(' ');
+        const hay = `${c.number || ''} ${qualText} ${c.suspect || ''} ${partsText} ${c.notes || ''} ${c.extraInfo || ''}`.toLowerCase();
+        if (q && !hay.includes(q)) return false;
+
+        const d = daysLeft(getEffectiveDeadline(c));
+        const lead = c.motionLeadDays || 10;
+        if (activeCaseFilter === 'urgent') {
+          return d !== null && d <= lead;
+        }
+        if (activeCaseFilter !== 'all') {
+          return c.status === activeCaseFilter;
+        }
+        return true;
+      });
 
       const container = document.getElementById('casesList');
       if (!filtered.length) {
-        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Дел пока нет. Добавьте первое дело выше.</div>';
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Подходящих дел не найдено.</div>';
         return;
       }
 
       container.innerHTML = filtered.map(c => {
-        const d = daysLeft(c.deadlineDate);
+        const effDate = getEffectiveDeadline(c);
+        const d = daysLeft(effDate);
+        const lead = c.motionLeadDays || 10;
         let badge = `<span class="badge badge-ok">Осталось ${d} дн.</span>`;
         if (d !== null && d < 0) badge = `<span class="badge badge-danger">Просрочено на ${Math.abs(d)} дн.</span>`;
-        else if (d !== null && d <= 10) badge = `<span class="badge badge-warn">Осталось ${d} дн.</span>`;
+        else if (d !== null && d <= lead) badge = `<span class="badge badge-warn">Осталось ${d} дн. (ходатайство)</span>`;
+
+        const qualText = getCaseQualificationText(c);
+        const partsHtml = Array.isArray(c.participants) && c.participants.length
+          ? `<div style="margin-top:6px; font-size:12px;"><strong>Участники:</strong> ${c.participants.map(p => {
+              const marks = [...(p.reminders || []), p.customNote].filter(Boolean).join(', ');
+              return `${escapeHtml(p.name)} (${escapeHtml(p.role)}${marks ? ': ' + escapeHtml(marks) : ''}${p.noteDone ? ' ✓' : ''})`;
+            }).join(' • ')}</div>`
+          : '';
+
+        const tasksHtml = Array.isArray(c.planTasks) && c.planTasks.length
+          ? `<div style="margin-top:8px;">
+              <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:4px;">Необходимо провести:</div>
+              ${c.planTasks.map(t => `
+                <div class="mini-row" style="margin-bottom:4px; ${t.done ? 'opacity:0.65;' : ''}">
+                  <div>
+                    <span>${t.done ? '<s>' : ''}${escapeHtml(t.title)}${t.done ? '</s>' : ''}</span>
+                    ${t.dueDate ? `<span style="font-size:11px; color:var(--text-muted);"> • до ${escapeHtml(t.dueDate)}</span>` : ''}
+                  </div>
+                  <div style="display:flex; gap:4px;">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleSavedTask('${c.id}', '${t.id}')">${t.done ? 'Вернуть' : 'Готово'}</button>
+                    <button type="button" class="btn btn-sm btn-accent" onclick="createDocFromTask('${c.id}', '${escapeHtml(t.title).replace(/'/g, '&#39;')}')">Создать бланк</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>`
+          : '';
+
+        const docsHtml = Array.isArray(c.documents) && c.documents.length
+          ? `<div style="margin-top:8px;">
+              <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:4px;">Документы (порядок описи):</div>
+              ${c.documents.map((d, idx) => `
+                <div class="mini-row" style="margin-bottom:4px;">
+                  <div><strong>${idx + 1}.</strong> ${escapeHtml(d.title)} <span style="font-size:11px; color:var(--text-muted);">(${escapeHtml(d.kind)})</span></div>
+                  <div style="display:flex; gap:4px;">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="moveSavedDoc('${c.id}', ${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="moveSavedDoc('${c.id}', ${idx}, 1)" ${idx === c.documents.length - 1 ? 'disabled' : ''}>↓</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>`
+          : '';
 
         return `
           <div class="list-item">
             <div class="list-item-top">
-              <div class="item-title">УД № ${escapeHtml(c.number)} — ${escapeHtml(c.article)}</div>
+              <div class="item-title">УД № ${escapeHtml(c.number)} — ${escapeHtml(qualText)}</div>
               ${badge}
             </div>
             <div class="item-meta">
-              Срок до: <strong>${escapeHtml(c.deadlineDate)}</strong> • Статус: ${escapeHtml(c.status)}<br/>
-              Фигурант: ${escapeHtml(c.suspect || 'не указан')}
-              ${c.notes ? '<br/>Заметки: ' + escapeHtml(c.notes) : ''}
+              Срок до: <strong>${escapeHtml(effDate || '—')}</strong> • Статус: <strong>${escapeHtml(c.status)}</strong>
+              ${c.extendedUntil ? ` • Продлено до: ${escapeHtml(c.extendedUntil)}` : ''}
+              ${(c.suspendedFrom || c.suspendedTo) ? ` • Приостановлено: ${escapeHtml(c.suspendedFrom || '—')} — ${escapeHtml(c.suspendedTo || '—')}` : ''}
+              ${c.notes ? '<br/><strong>Фабула:</strong> ' + escapeHtml(c.notes) : ''}
+              ${c.extraInfo ? '<br/><strong>Доп. инфо:</strong> ' + escapeHtml(c.extraInfo) : ''}
+              ${partsHtml}
             </div>
-            <div class="item-actions">
+            ${tasksHtml}
+            ${docsHtml}
+            <div class="item-actions" style="margin-top:8px;">
               <button type="button" class="btn btn-sm btn-outline" onclick="editCase('${c.id}')">Изменить</button>
               <button type="button" class="btn btn-sm btn-danger" onclick="deleteCase('${c.id}')">Удалить</button>
             </div>
@@ -1352,7 +2061,7 @@ ____________________ / ${cfg.name || '____________'} /`;
     function renderEvents() {
       const container = document.getElementById('eventsList');
       if (!appState.events.length) {
-        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Запланированных вызовов пока нет.</div>';
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Запланированных следственных действий пока нет.</div>';
         return;
       }
 
@@ -1377,8 +2086,9 @@ ____________________ / ${cfg.name || '____________'} /`;
     function renderDashboardAndSelects() {
       const activeCases = appState.cases.filter(c => c.status === 'В производстве' || c.status === 'Продлён срок');
       const urgent = activeCases.filter(c => {
-        const d = daysLeft(c.deadlineDate);
-        return d !== null && d <= 10;
+        const d = daysLeft(getEffectiveDeadline(c));
+        const lead = c.motionLeadDays || 10;
+        return d !== null && d <= lead;
       });
       const upcoming = appState.events.filter(e => !e.done);
 
@@ -1390,17 +2100,19 @@ ____________________ / ${cfg.name || '____________'} /`;
       if (!activeCases.length) {
         dlBox.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Активных дел в производстве нет.</div>';
       } else {
-        const sorted = [...activeCases].sort((a, b) => new Date(a.deadlineDate) - new Date(b.deadlineDate)).slice(0, 5);
+        const sorted = [...activeCases].sort((a, b) => new Date(getEffectiveDeadline(a)) - new Date(getEffectiveDeadline(b))).slice(0, 5);
         dlBox.innerHTML = sorted.map(c => {
-          const d = daysLeft(c.deadlineDate);
-          const cls = d < 0 ? 'badge-danger' : d <= 10 ? 'badge-warn' : 'badge-ok';
+          const effDate = getEffectiveDeadline(c);
+          const d = daysLeft(effDate);
+          const lead = c.motionLeadDays || 10;
+          const cls = d < 0 ? 'badge-danger' : d <= lead ? 'badge-warn' : 'badge-ok';
           const lbl = d < 0 ? `Просрочено (${Math.abs(d)} дн.)` : `${d} дн.`;
           return `
             <div class="list-item" style="margin-bottom:8px;">
               <div class="list-item-top" style="margin-bottom:0;">
                 <div>
-                  <div class="item-title">№ ${escapeHtml(c.number)} (${escapeHtml(c.article)})</div>
-                  <div class="item-meta" style="margin-bottom:0;">Срок до ${escapeHtml(c.deadlineDate)} • ${escapeHtml(c.suspect || 'фигурант не указан')}</div>
+                  <div class="item-title">№ ${escapeHtml(c.number)} (${escapeHtml(getCaseQualificationText(c))})</div>
+                  <div class="item-meta" style="margin-bottom:0;">Срок до ${escapeHtml(effDate)} • ${escapeHtml(c.status)}</div>
                 </div>
                 <span class="badge ${cls}">${lbl}</span>
               </div>
@@ -1411,7 +2123,7 @@ ____________________ / ${cfg.name || '____________'} /`;
 
       const evBox = document.getElementById('dashboardEvents');
       if (!upcoming.length) {
-        evBox.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Ближайших вызовов не запланировано.</div>';
+        evBox.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Ближайших следственных действий не запланировано.</div>';
       } else {
         evBox.innerHTML = upcoming.slice(0, 4).map(ev => {
           const dt = ev.dateTime ? new Date(ev.dateTime).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '';
@@ -1430,12 +2142,12 @@ ____________________ / ${cfg.name || '____________'} /`;
       }
 
       const caseOptions = ['<option value="">— Без привязки к делу —</option>']
-        .concat(appState.cases.map(c => `<option value="УД № ${escapeHtml(c.number)} (${escapeHtml(c.article)})">УД № ${escapeHtml(c.number)} — ${escapeHtml(c.article)}</option>`))
+        .concat(appState.cases.map(c => `<option value="УД № ${escapeHtml(c.number)} (${escapeHtml(getCaseQualificationText(c))})">УД № ${escapeHtml(c.number)} — ${escapeHtml(getCaseQualificationText(c))}</option>`))
         .join('');
       document.getElementById('eventCaseRef').innerHTML = caseOptions;
 
       const docOptions = ['<option value="">— Выберите дело —</option>']
-        .concat(appState.cases.map(c => `<option value="${c.id}">УД № ${escapeHtml(c.number)} — ${escapeHtml(c.article)}</option>`))
+        .concat(appState.cases.map(c => `<option value="${c.id}">УД № ${escapeHtml(c.number)} — ${escapeHtml(getCaseQualificationText(c))}</option>`))
         .join('');
       document.getElementById('docCaseSelect').innerHTML = docOptions;
 
@@ -1450,6 +2162,12 @@ ____________________ / ${cfg.name || '____________'} /`;
       renderCases();
       renderEvents();
     }
+
+    renderDraftQualifications();
+    renderDraftParticipants();
+    renderDraftPlanTasks();
+    renderDraftCaseDocs();
+    updateDeadlineHint();
 
     window.addEventListener('online', () => {
       showToast('Связь восстановлена — синхронизация...');
