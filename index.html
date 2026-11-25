@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#0f2342" />
+  <meta name="theme-color" content="#f6f8fc" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="IAR" />
-  <title>IAR — Investigator's Automated Room</title>
+  <title>АРМ Следователя — Автоматизированное рабочее место</title>
   <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230f2342'/%3E%3Cpath d='M256 66 L414 124 V254 C414 352 346 422 256 452 C166 422 98 352 98 254 V124 Z' fill='none' stroke='%23ffffff' stroke-width='22' stroke-linejoin='round'/%3E%3Cpath d='M162 296 L248 210 L292 254 L366 176' fill='none' stroke='%233b82f6' stroke-width='24' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M322 174 H368 V220' fill='none' stroke='%233b82f6' stroke-width='24' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='256' y='356' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-weight='800' font-size='88' letter-spacing='4' fill='%23ffffff'%3EIAR%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='26' fill='%230d1b3e'/%3E%3Cpath d='M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z' fill='none' stroke='%23ffffff' stroke-width='6' stroke-linejoin='round'/%3E%3Cpath d='M36 66 L54 48 L65 58 L84 39' fill='none' stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70 39 H84 V53' fill='none' stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='60' y='88' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-weight='800' font-size='22' letter-spacing='1' fill='%23ffffff'%3EIAR%3C/text%3E%3C/svg%3E" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
@@ -96,35 +100,55 @@
   </script>
   <style>
     :root {
-      --bg: #f3f6fb;
+      --bg: #f6f8fc;
       --surface: #ffffff;
-      --surface-alt: #f8fafc;
-      --primary: #0f2342;
-      --primary-light: #1a3668;
-      --accent: #2563eb;
-      --accent-soft: #dbeafe;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --danger: #dc2626;
-      --danger-soft: #fee2e2;
-      --warning: #d97706;
-      --warning-soft: #fef3c7;
-      --success: #059669;
-      --success-soft: #d1fae5;
-      --radius: 14px;
-      --shadow: 0 4px 20px rgba(15, 35, 66, 0.06);
+      --surface-soft: #f9fbff;
+      --primary: #334e7b;
+      --primary-soft: #eef3fb;
+      --accent: #5b7bb2;
+      --accent-soft: #e6eefc;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e6ebf2;
+
+      --cat-court-bg: #fdf2f2;
+      --cat-court-border: #f5d0d0;
+      --cat-court-text: #9b3b3b;
+      --cat-court-dot: #d97777;
+
+      --cat-work-bg: #eff6ff;
+      --cat-work-border: #cfe0fc;
+      --cat-work-text: #2c5282;
+      --cat-work-dot: #5b7bb2;
+
+      --cat-expert-bg: #f0f9f4;
+      --cat-expert-border: #cbe8d6;
+      --cat-expert-text: #276749;
+      --cat-expert-dot: #489c73;
+
+      --cat-term-bg: #fffbeb;
+      --cat-term-border: #f6e0a6;
+      --cat-term-text: #8c5a19;
+      --cat-term-dot: #d69e2e;
+
+      --shadow-soft: 0 4px 20px rgba(51, 78, 123, 0.05);
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
     }
 
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
+      padding-bottom: 96px;
       line-height: 1.45;
-      padding-bottom: 84px;
     }
 
     .auth-screen {
@@ -133,44 +157,17 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
-      background: linear-gradient(160deg, #0b1526 0%, #0f2342 55%, #163261 100%);
+      background: var(--bg);
     }
 
     .auth-card {
       width: 100%;
       max-width: 410px;
-      background: #ffffff;
-      border-radius: 20px;
-      padding: 28px 24px;
-      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28);
-    }
-
-    .auth-brand {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      margin-bottom: 22px;
-    }
-
-    .auth-brand svg {
-      width: 68px;
-      height: 68px;
-      margin-bottom: 12px;
-    }
-
-    .auth-brand h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 800;
-      color: var(--primary);
-      letter-spacing: 0.2px;
-    }
-
-    .auth-brand p {
-      margin: 4px 0 0;
-      font-size: 13px;
-      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 26px 22px;
+      box-shadow: 0 14px 36px rgba(51, 78, 123, 0.1);
     }
 
     .auth-tabs {
@@ -178,397 +175,328 @@
       grid-template-columns: 1fr 1fr;
       background: var(--bg);
       padding: 4px;
-      border-radius: 11px;
-      margin-bottom: 18px;
+      border-radius: 12px;
+      margin-bottom: 16px;
     }
 
     .auth-tab {
       border: none;
       background: transparent;
-      padding: 9px;
-      border-radius: 8px;
+      padding: 8px;
+      border-radius: 9px;
       font-weight: 600;
-      font-size: 14px;
-      color: var(--text-muted);
+      font-size: 13px;
+      color: var(--muted);
       cursor: pointer;
     }
 
     .auth-tab.active {
-      background: #ffffff;
+      background: var(--surface);
       color: var(--primary);
-      box-shadow: 0 2px 6px rgba(15, 35, 66, 0.08);
+      box-shadow: 0 2px 6px rgba(51, 78, 123, 0.08);
     }
 
     .auth-msg {
-      font-size: 13px;
+      font-size: 12.5px;
       padding: 10px 12px;
-      border-radius: 10px;
-      margin-bottom: 14px;
+      border-radius: 11px;
+      margin-bottom: 12px;
       display: none;
     }
 
-    .auth-msg.error { display: block; background: var(--danger-soft); color: var(--danger); }
-    .auth-msg.success { display: block; background: var(--success-soft); color: var(--success); }
+    .auth-msg.error { display: block; background: #fef2f2; color: #b91c1c; }
+    .auth-msg.success { display: block; background: #ecfdf5; color: #047857; }
 
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 40;
-      background: var(--primary);
-      color: #ffffff;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      box-shadow: 0 2px 12px rgba(11, 21, 38, 0.2);
-    }
-
-    .brand-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
-
-    .brand-logo {
-      width: 36px;
-      height: 36px;
-      flex-shrink: 0;
-    }
-
-    .brand-titles { min-width: 0; }
-
-    .brand-title {
-      font-weight: 800;
-      font-size: 15px;
-      letter-spacing: 0.3px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .brand-sub {
-      font-size: 11px;
-      color: #93c5fd;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .sync-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 5px 10px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.12);
-      color: #e2e8f0;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    .sync-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #34d399;
-    }
-
-    .sync-dot.offline { background: #fbbf24; }
-    .sync-dot.syncing { background: #60a5fa; }
-
-    .container {
-      max-width: 920px;
+    .app-container {
+      max-width: 820px;
       margin: 0 auto;
-      padding: 16px;
+      padding: 12px 14px 28px;
     }
-
-    .section { display: none; }
-    .section.active { display: block; }
 
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 14px;
-      box-shadow: var(--shadow);
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
+      border-radius: var(--radius-lg);
+      padding: 15px;
+      box-shadow: var(--shadow-soft);
       margin-bottom: 12px;
     }
 
-    .card-title {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--primary);
-    }
-
-    .sub-block {
-      border: 1px solid var(--border);
-      background: var(--surface-alt);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-
-    .sub-block-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--primary);
-      margin: 0 0 8px;
-      display: flex;
+    .status-chip {
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .stat-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px;
-      text-align: center;
-      box-shadow: var(--shadow);
-    }
-
-    .stat-num {
-      font-size: 22px;
-      font-weight: 800;
-      color: var(--primary);
-    }
-
-    .stat-num.danger { color: var(--danger); }
-    .stat-num.accent { color: var(--accent); }
-
-    .stat-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
-    .form-group { margin-bottom: 12px; }
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .form-row-3 {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr 1fr auto;
-      gap: 8px;
-      align-items: end;
-    }
-
-    label {
-      display: block;
-      font-size: 12px;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 11.5px;
       font-weight: 600;
-      color: var(--text-muted);
-      margin-bottom: 5px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
     }
 
-    input, select, textarea {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      font-size: 14px;
-      font-family: inherit;
+    .brand-hero {
+      text-align: center;
+      padding: 6px 8px 16px;
+    }
+
+    .brand-emblem {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 12px;
+      border-radius: 18px;
+      background: #0d1b3e;
+      border: 1.5px solid #1e356b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 20px rgba(13, 27, 62, 0.16);
+    }
+
+    .metric-tile {
       background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 6px;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .metric-tile.active {
+      border-color: var(--accent);
+      background: var(--primary-soft);
+    }
+
+    .ios-week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .ios-day-col {
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 5px 3px 6px;
+      min-height: 138px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .ios-day-col.selected {
+      background: #ffffff;
+      border-color: var(--accent);
+      box-shadow: 0 2px 10px rgba(91, 123, 178, 0.12);
+    }
+
+    .ios-day-letter {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .ios-day-num {
+      width: 24px;
+      height: 24px;
+      margin: 1px auto 3px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
       color: var(--text);
     }
 
-    select.wheel-select {
-      max-height: 42px;
-      background-color: #ffffff;
+    .ios-day-num.today {
+      background: #e06c6c;
+      color: #ffffff;
     }
 
-    input:focus, select:focus, textarea:focus {
+    .ios-mini-event {
+      border-radius: 7px;
+      padding: 3px 4px;
+      font-size: 9.5px;
+      line-height: 1.2;
+      font-weight: 600;
+      text-align: left;
+      overflow: hidden;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+
+    .ios-mini-event .ev-title {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ios-mini-event .ev-time {
+      display: block;
+      font-size: 8.5px;
+      opacity: 0.82;
+      margin-top: 1px;
+    }
+
+    .ev-court {
+      background: var(--cat-court-bg);
+      border-color: var(--cat-court-border);
+      color: var(--cat-court-text);
+    }
+
+    .ev-work {
+      background: var(--cat-work-bg);
+      border-color: var(--cat-work-border);
+      color: var(--cat-work-text);
+    }
+
+    .ev-expert {
+      background: var(--cat-expert-bg);
+      border-color: var(--cat-expert-border);
+      color: var(--cat-expert-text);
+    }
+
+    .ev-term {
+      background: var(--cat-term-bg);
+      border-color: var(--cat-term-border);
+      color: var(--cat-term-text);
+    }
+
+    .inner-accordion {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      margin-bottom: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .accordion-header {
+      width: 100%;
+      background: var(--surface);
+      border: none;
+      padding: 13px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .accordion-body {
+      padding: 0 15px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-soft);
+    }
+
+    .chevron-icon {
+      transition: transform 0.2s ease;
+      color: var(--muted);
+    }
+
+    .chevron-icon.open {
+      transform: rotate(180deg);
+    }
+
+    .soft-input, .soft-select, .soft-textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13.5px;
+      color: var(--text);
+      background: #ffffff;
+      font-family: inherit;
+    }
+
+    .soft-input:focus, .soft-select:focus, .soft-textarea:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-soft);
+      box-shadow: 0 0 0 3px rgba(91, 123, 178, 0.14);
     }
 
-    textarea { min-height: 82px; resize: vertical; }
-
-    .btn {
+    .btn-soft-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 11px 15px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 10px 15px;
-      border-radius: 10px;
-      border: 1px solid transparent;
+      transition: opacity 0.15s ease;
+    }
+
+    .btn-soft-secondary {
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid #d7e3f7;
+      border-radius: 12px;
+      padding: 10px 14px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      font-family: inherit;
-      transition: 0.15s ease;
-    }
-
-    .btn:active { transform: scale(0.98); }
-    .btn-primary { background: var(--primary); color: #ffffff; }
-    .btn-accent { background: var(--accent); color: #ffffff; }
-    .btn-outline { background: var(--surface); border-color: var(--border); color: var(--text); }
-    .btn-danger { background: var(--danger-soft); color: var(--danger); }
-    .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
-    .btn-block { width: 100%; }
-
-    .filter-chips {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-      margin-bottom: 10px;
-    }
-
-    .chip-btn {
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text-muted);
-      border-radius: 999px;
-      padding: 5px 11px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .chip-btn.active {
-      background: var(--primary);
-      color: #ffffff;
-      border-color: var(--primary);
-    }
-
-    .mini-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 8px 10px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: #ffffff;
-      margin-bottom: 6px;
-      font-size: 13px;
-    }
-
-    .check-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 6px;
-    }
-
-    .check-pill {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text);
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 5px 9px;
-      cursor: pointer;
-    }
-
-    .check-pill input[type="checkbox"] {
-      width: auto;
-      margin: 0;
-    }
-
-    .hint-banner {
-      font-size: 12px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: var(--accent-soft);
-      color: var(--primary);
-      margin-bottom: 10px;
-    }
-
-    .hint-banner.warn {
-      background: var(--warning-soft);
-      color: #92400e;
-    }
-
-    .list-item {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 10px;
-      background: var(--surface-alt);
-    }
-
-    .list-item-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-
-    .item-title {
-      font-weight: 700;
-      font-size: 14px;
-      color: var(--primary);
-    }
-
-    .item-meta {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .badge-ok { background: var(--success-soft); color: var(--success); }
-    .badge-warn { background: var(--warning-soft); color: var(--warning); }
-    .badge-danger { background: var(--danger-soft); color: var(--danger); }
-    .badge-info { background: var(--accent-soft); color: var(--accent); }
-
-    .item-actions {
-      display: flex;
-      flex-wrap: wrap;
+      justify-content: center;
       gap: 6px;
     }
 
-    .doc-preview {
-      background: #f8fafc;
+    .btn-soft-ghost {
+      background: #ffffff;
+      color: var(--muted);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px;
-      font-family: "Times New Roman", Times, serif;
-      font-size: 14px;
-      white-space: pre-wrap;
-      line-height: 1.5;
-      color: #111827;
+      border-radius: 12px;
+      padding: 9px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(30, 41, 59, 0.35);
+      backdrop-filter: blur(3px);
+      z-index: 60;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    @media (min-width: 640px) {
+      .modal-overlay {
+        align-items: center;
+      }
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 520px;
+      background: #ffffff;
+      border-radius: 22px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 45px rgba(30, 41, 59, 0.16);
+      max-height: 88vh;
+      overflow-y: auto;
     }
 
     .bottom-nav {
@@ -576,79 +504,93 @@
       bottom: 0;
       left: 0;
       right: 0;
-      z-index: 45;
-      background: var(--surface);
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
       border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 20px rgba(51, 78, 123, 0.06);
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      padding: 6px 2px calc(6px + env(safe-area-inset-bottom));
-      box-shadow: 0 -2px 12px rgba(15, 35, 66, 0.05);
+      grid-template-columns: repeat(6, 1fr);
+      padding: 8px 4px 12px;
+      z-index: 45;
     }
 
-    .nav-btn {
-      background: none;
+    .nav-tab {
       border: none;
+      background: transparent;
+      border-radius: 13px;
+      padding: 6px 2px;
+      min-height: 54px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 3px;
-      font-size: 9.5px;
+      justify-content: center;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 10.5px;
       font-weight: 600;
-      color: var(--text-muted);
-      padding: 4px 1px;
       cursor: pointer;
-      min-width: 0;
+      transition: all 0.15s ease;
     }
 
-    .nav-btn span:last-child {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
+    .nav-tab.active {
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 700;
     }
 
-    .nav-btn.active { color: var(--accent); }
-    .nav-icon { font-size: 17px; line-height: 1; }
-
-    .toast {
+    .toast-bar {
       position: fixed;
-      bottom: 76px;
+      top: 14px;
       left: 50%;
       transform: translateX(-50%);
       background: var(--primary);
-      color: #fff;
+      color: #ffffff;
       padding: 9px 16px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 600;
-      z-index: 60;
+      z-index: 80;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease;
+      max-width: 92vw;
+      text-align: center;
     }
 
-    .toast.show { opacity: 1; }
-    .hidden { display: none !important; }
+    .toast-bar.show {
+      opacity: 1;
+    }
 
-    @media (max-width: 640px) {
-      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    @media (max-width: 440px) {
+      .nav-tab {
+        font-size: 9.5px;
+      }
+      .ios-day-col {
+        padding: 4px 2px 5px;
+        min-height: 126px;
+      }
+      .ios-mini-event {
+        padding: 2.5px 3px;
+        font-size: 9px;
+      }
     }
   </style>
 </head>
 <body>
-
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="auth-brand">
-        <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-          <rect width="120" height="120" rx="26" fill="#0f2342"/>
-          <path d="M60 16 L96 30 V60 C96 83 80 99 60 106 C40 99 24 83 24 60 V30 Z" fill="none" stroke="#ffffff" stroke-width="5" stroke-linejoin="round"/>
-          <path d="M38 69 L58 49 L68 59 L86 41" fill="none" stroke="#3b82f6" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M75 40 H87 V52" fill="none" stroke="#3b82f6" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <text x="60" y="84" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="21" letter-spacing="1" fill="#ffffff">IAR</text>
-        </svg>
-        <h1>IAR — Investigator's Automated Room</h1>
-        <p>Облачная синхронизация дел, сроков и процессуальных бланков</p>
+      <div class="text-center mb-4">
+        <div class="brand-emblem" aria-label="Логотип IAR">
+          <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="#0d1b3e" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
+            <path d="M60 19 L93 32 V59 C93 81 78 96 60 103 C42 96 27 81 27 59 V32 Z" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
+            <path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M70 39 H84 V53" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="60" y="88" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="22" letter-spacing="1">IAR</text>
+          </svg>
+        </div>
+        <h1 class="text-base font-extrabold text-[#1e3a6e] uppercase m-0">АВТОМАТИЗИРОВАННОЕ РАБОЧЕЕ МЕСТО СЛЕДОВАТЕЛЯ</h1>
+        <p class="text-xs text-slate-500 mt-1 mb-0">Облачная синхронизация дел, календаря и бланков</p>
       </div>
 
       <div class="auth-tabs">
@@ -658,623 +600,650 @@
 
       <div id="authMsg" class="auth-msg"></div>
 
-      <form id="authForm">
-        <div class="form-group">
-          <label for="authEmail">Электронная почта (логин)</label>
-          <input type="email" id="authEmail" placeholder="name@example.com" required autocomplete="email" />
+      <form id="authForm" class="space-y-3">
+        <div>
+          <label for="authEmail" class="block text-xs font-semibold text-slate-600 mb-1">Электронная почта</label>
+          <input type="email" id="authEmail" class="soft-input" placeholder="name@example.com" required autocomplete="email" />
         </div>
-        <div class="form-group">
-          <label for="authPassword">Пароль (минимум 6 символов)</label>
-          <input type="password" id="authPassword" placeholder="••••••••" minlength="6" required autocomplete="current-password" />
+        <div>
+          <label for="authPassword" class="block text-xs font-semibold text-slate-600 mb-1">Пароль (от 6 символов)</label>
+          <input type="password" id="authPassword" class="soft-input" placeholder="••••••••" minlength="6" required autocomplete="current-password" />
         </div>
-        <button type="submit" id="authSubmitBtn" class="btn btn-primary btn-block">Войти в рабочее место</button>
+        <button type="submit" id="authSubmitBtn" class="btn-soft-primary w-full">Войти в рабочее место</button>
       </form>
     </div>
   </div>
 
   <div id="appShell" class="hidden">
-    <header class="topbar">
-      <div class="brand-row">
-        <svg class="brand-logo" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-          <rect width="120" height="120" rx="26" fill="#163261" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
-          <path d="M60 16 L96 30 V60 C96 83 80 99 60 106 C40 99 24 83 24 60 V30 Z" fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linejoin="round"/>
-          <path d="M38 69 L58 49 L68 59 L86 41" fill="none" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M75 40 H87 V52" fill="none" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-          <text x="60" y="84" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="21" letter-spacing="1" fill="#ffffff">IAR</text>
-        </svg>
-        <div class="brand-titles">
-          <div class="brand-title">IAR — Investigator's Automated Room</div>
-          <div class="brand-sub" id="userEmailLabel">Аккаунт подключён</div>
+    <div class="app-container">
+      <div class="flex items-center justify-between mb-2 gap-2">
+        <span id="userEmailSub" class="text-xs font-medium text-slate-400 truncate">IAR • Рабочее пространство</span>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span id="netChip" class="status-chip" style="cursor:default;">
+            <span id="netDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="netText">Онлайн</span>
+          </span>
+          <button type="button" id="cloudChip" class="status-chip" onclick="pullFromCloud()" title="Синхронизировать с облаком">
+            <span id="cloudDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="cloudText">Облако</span>
+          </button>
         </div>
       </div>
 
-      <button type="button" id="syncNowBtn" class="sync-pill" title="Синхронизировать с облаком">
-        <span id="syncDot" class="sync-dot"></span>
-        <span id="syncStatusText">Облако</span>
-      </button>
-    </header>
+      <!-- ==================== ВКЛАДКА 1: СВОДКА ==================== -->
+      <main id="view-svodka">
+        <header class="brand-hero">
+          <div class="brand-emblem" aria-label="Логотип IAR">
+            <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+              <path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="#0d1b3e" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
+              <path d="M60 19 L93 32 V59 C93 81 78 96 60 103 C42 96 27 81 27 59 V32 Z" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
+              <path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M70 39 H84 V53" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <text x="60" y="88" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="22" letter-spacing="1">IAR</text>
+            </svg>
+          </div>
+          <h1 class="text-base sm:text-lg font-extrabold text-[#1e3a6e] tracking-wide uppercase leading-snug max-w-md mx-auto m-0">
+            АВТОМАТИЗИРОВАННОЕ РАБОЧЕЕ МЕСТО СЛЕДОВАТЕЛЯ
+          </h1>
+        </header>
 
-    <main class="container">
-      <section id="sec-dashboard" class="section active">
-        <div class="stats-grid">
-          <div class="stat-box">
-            <div class="stat-num" id="statTotalCases">0</div>
-            <div class="stat-label">В производстве</div>
+        <section class="grid grid-cols-3 gap-2 mb-3" aria-label="Показатели">
+          <button type="button" id="tileCases" class="metric-tile" onclick="focusMetric('cases')">
+            <div id="statCasesCount" class="text-xl font-extrabold text-[#334e7b]">0</div>
+            <div class="text-[11px] font-semibold text-slate-500 mt-0.5">В производстве</div>
+          </button>
+          <button type="button" id="tileUrgent" class="metric-tile" onclick="focusMetric('urgent')">
+            <div id="statUrgentCount" class="text-xl font-extrabold text-[#b45353]">0</div>
+            <div class="text-[11px] font-semibold text-slate-500 mt-0.5">Срок &le; 10 дн.</div>
+          </button>
+          <button type="button" id="tileToday" class="metric-tile active" onclick="focusMetric('today')">
+            <div id="statTodayCount" class="text-xl font-extrabold text-[#4a6fa5]">0</div>
+            <div class="text-[11px] font-semibold text-slate-500 mt-0.5">На сегодня</div>
+          </button>
+        </section>
+
+        <section class="card" aria-label="Рабочий календарь на неделю">
+          <div class="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" onclick="shiftWeek(-1)" aria-label="Предыдущая неделя">◀</button>
+              <span id="calendarMonthTitle" class="text-base font-extrabold text-[#243b61] px-1"></span>
+              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" onclick="shiftWeek(1)" aria-label="Следующая неделя">▶</button>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="btn-soft-secondary py-1.5 px-3 text-xs" onclick="goToday()">Сегодня</button>
+              <button type="button" class="btn-soft-primary py-1.5 px-3 text-xs" onclick="openEventModal()">+ Событие</button>
+            </div>
           </div>
-          <div class="stat-box">
-            <div class="stat-num danger" id="statUrgentCases">0</div>
-            <div class="stat-label">Срок ≤ 10 дн.</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-num accent" id="statUpcomingEvents">0</div>
-            <div class="stat-label">След. действия</div>
+
+          <div class="flex flex-wrap items-center gap-1.5 mb-3" id="calendarColorFilterBar"></div>
+          <div id="iosWeekGrid" class="ios-week-grid"></div>
+        </section>
+
+        <div class="grid grid-cols-2 gap-2.5 mb-3">
+          <button type="button" class="btn-soft-primary w-full" onclick="openEventModal()">
+            <span>+ Событие в календарь</span>
+          </button>
+          <button type="button" class="btn-soft-secondary w-full" onclick="switchTab('blanks')">
+            <span>Создать бланк</span>
+          </button>
+        </div>
+
+        <div class="inner-accordion">
+          <button type="button" class="accordion-header" onclick="toggleAccordion('accDayEvents')">
+            <div>
+              <div class="text-sm font-bold text-[#243b61]">События выбранного дня</div>
+              <div id="selectedDaySubtitle" class="text-xs text-slate-500"></div>
+            </div>
+            <svg id="chev-accDayEvents" class="chevron-icon open w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          <div id="accDayEvents" class="accordion-body pt-3">
+            <div id="selectedDayEventsList"></div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Контроль процессуальных сроков</h2>
-            <button type="button" class="btn btn-sm btn-accent" data-nav="sec-cases">+ Дело</button>
+        <div class="inner-accordion">
+          <button type="button" class="accordion-header" onclick="toggleAccordion('accDeadlines')">
+            <div>
+              <div class="text-sm font-bold text-[#243b61]">Контроль процессуальных сроков</div>
+              <div class="text-xs text-slate-500">Нажмите, чтобы раскрыть сроки следствия и ходатайств</div>
+            </div>
+            <svg id="chev-accDeadlines" class="chevron-icon w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          <div id="accDeadlines" class="accordion-body hidden pt-3">
+            <div id="svodkaDeadlinesList"></div>
           </div>
-          <div id="dashboardDeadlines"></div>
+        </div>
+      </main>
+
+      <!-- ==================== ВКЛАДКА 2: ДЕЛА ==================== -->
+      <main id="view-cases" class="hidden">
+        <div class="mb-3">
+          <h2 class="text-lg font-extrabold text-[#243b61] m-0">Уголовные дела</h2>
+          <p class="text-xs text-slate-500 mt-0.5 mb-0">Сначала отображаются дела в производстве; раскрывайте нужное дело для просмотра подразделов.</p>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Ближайшие следственные действия</h2>
-            <button type="button" class="btn btn-sm btn-outline" data-nav="sec-calendar">+ Действие</button>
-          </div>
-          <div id="dashboardEvents"></div>
+        <div id="casesCardsContainer"></div>
+
+        <div id="addCaseTriggerWrap" class="mt-2 mb-3">
+          <button type="button" class="btn-soft-primary w-full py-3" onclick="toggleNewCaseForm(true)">
+            <span>+ Добавить дело</span>
+          </button>
         </div>
-      </section>
 
-      <section id="sec-cases" class="section">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title" id="caseFormTitle">Новое уголовное дело / материал</h2>
-            <button type="button" id="cancelEditCaseBtn" class="btn btn-sm btn-outline hidden">Отмена</button>
+        <section id="newCaseFormCard" class="card hidden">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-extrabold text-[#243b61] m-0">Новое уголовное дело</h3>
+            <button type="button" class="text-slate-400 font-bold px-2 py-1" onclick="toggleNewCaseForm(false)">✕</button>
           </div>
-          <form id="caseForm">
-            <input type="hidden" id="caseEditId" />
 
-            <div class="form-row">
-              <div class="form-group">
-                <label>Номер УД / КУСП</label>
-                <input type="text" id="caseNumber" placeholder="№ 12601180001000123" required />
-              </div>
-              <div class="form-group">
-                <label>Статус производства</label>
-                <select id="caseStatus">
-                  <option value="В производстве">В производстве</option>
-                  <option value="Продлён срок">Продлён срок</option>
-                  <option value="Приостановлено">Приостановлено</option>
-                  <option value="Направлено прокурору">Направлено прокурору</option>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Номер уголовного дела *</label>
+              <input type="text" id="ncNumber" class="soft-input" placeholder="Например: № 34901" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Дата возбуждения</label>
+              <input type="date" id="ncOpened" class="soft-input" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Срок следствия до</label>
+              <input type="date" id="ncDeadline" class="soft-input" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Напомнить о ходатайстве за (дн.)</label>
+              <input type="number" id="ncLeadDays" class="soft-input" value="10" min="1" max="60" />
+            </div>
+          </div>
+
+          <div class="mb-2.5">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Квалификация (статьи УК РФ)</label>
+            <div class="flex gap-2 mb-1.5">
+              <input type="text" id="ncArticleInput" class="soft-input" placeholder="Например: ч. 2 ст. 158 УК РФ" />
+              <button type="button" class="btn-soft-secondary shrink-0" onclick="addTempArticle()">+ Статья</button>
+            </div>
+            <div id="tempArticlesList" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <div class="mb-2.5">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Фабула дела</label>
+            <textarea id="ncFabula" class="soft-textarea" rows="2" placeholder="Краткие обстоятельства преступления..."></textarea>
+          </div>
+
+          <div class="mb-2.5">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Участники (ФИО и процессуальный статус)</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-1.5">
+              <input type="text" id="ncPartName" class="soft-input sm:col-span-2" placeholder="ФИО участника" />
+              <div class="flex gap-1.5">
+                <select id="ncPartRole" class="soft-select">
+                  <option value="Свидетель">Свидетель</option>
+                  <option value="Потерпевший">Потерпевший</option>
+                  <option value="Подозреваемый">Подозреваемый</option>
+                  <option value="Обвиняемый">Обвиняемый</option>
                 </select>
+                <button type="button" class="btn-soft-secondary shrink-0" onclick="addTempParticipant()">+</button>
               </div>
             </div>
+            <div id="tempParticipantsList" class="space-y-1"></div>
+          </div>
 
-            <!-- Квалификация: несколько статей, статья вручную, часть и пункт выбором -->
-            <div class="sub-block">
-              <div class="sub-block-title">
-                <span>Квалификация по УК РФ</span>
-                <button type="button" id="addQualificationBtn" class="btn btn-sm btn-outline">+ Добавить статью</button>
-              </div>
-              <div class="form-row-3" style="margin-bottom:8px;">
-                <div>
-                  <label>Статья УК РФ (вручную)</label>
-                  <input type="text" id="qualArticleInput" placeholder="например, 158 или 162" />
-                </div>
-                <div>
-                  <label>Часть (выбор)</label>
-                  <select id="qualPartSelect" class="wheel-select">
-                    <option value="">—</option>
-                    <option value="ч. 1">ч. 1</option>
-                    <option value="ч. 2">ч. 2</option>
-                    <option value="ч. 3">ч. 3</option>
-                    <option value="ч. 4">ч. 4</option>
-                    <option value="ч. 5">ч. 5</option>
-                    <option value="ч. 6">ч. 6</option>
-                  </select>
-                </div>
-                <div>
-                  <label>Пункт (выбор)</label>
-                  <select id="qualPointSelect" class="wheel-select">
-                    <option value="">—</option>
-                    <option value="п. «а»">п. «а»</option>
-                    <option value="п. «б»">п. «б»</option>
-                    <option value="п. «в»">п. «в»</option>
-                    <option value="п. «г»">п. «г»</option>
-                    <option value="п. «д»">п. «д»</option>
-                    <option value="п. «е»">п. «е»</option>
-                    <option value="п. «ж»">п. «ж»</option>
-                    <option value="п. «з»">п. «з»</option>
-                    <option value="пп. «а», «б»">пп. «а», «б»</option>
-                    <option value="пп. «а», «в»">пп. «а», «в»</option>
-                    <option value="пп. «б», «в»">пп. «б», «в»</option>
-                    <option value="пп. «а», «б», «в»">пп. «а», «б», «в»</option>
-                  </select>
-                </div>
-                <button type="button" id="applyQualNowBtn" class="btn btn-sm btn-accent">Зафиксировать</button>
-              </div>
-              <div id="qualificationsList"></div>
+          <div class="mb-3">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">План: что необходимо провести</label>
+            <div class="flex gap-2 mb-1.5">
+              <input type="text" id="ncPlanInput" class="soft-input" placeholder="Например: Допросить свидетеля / Назначить экспертизу" />
+              <button type="button" class="btn-soft-secondary shrink-0" onclick="addTempPlan()">+</button>
             </div>
+            <div id="tempPlanList" class="space-y-1"></div>
+          </div>
 
-            <!-- Сроки, продление, приостановление и напоминание о ходатайстве -->
-            <div class="sub-block">
-              <div class="sub-block-title"><span>Процессуальные сроки и контроль продления</span></div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Дата возбуждения / принятия</label>
-                  <input type="date" id="caseStartDate" required />
-                </div>
-                <div class="form-group">
-                  <label>Окончание срока (авто +2 мес., можно менять)</label>
-                  <input type="date" id="caseDeadlineDate" required />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Продлено до</label>
-                  <input type="date" id="caseExtendedUntil" />
-                </div>
-                <div class="form-group">
-                  <label>Напомнить о ходатайстве за (дней)</label>
-                  <input type="number" id="caseMotionLeadDays" min="1" max="60" value="10" />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group" style="margin-bottom:0;">
-                  <label>Приостановлено с</label>
-                  <input type="date" id="caseSuspendedFrom" />
-                </div>
-                <div class="form-group" style="margin-bottom:0;">
-                  <label>Приостановлено до</label>
-                  <input type="date" id="caseSuspendedTo" />
-                </div>
-              </div>
-              <div id="deadlineCalcHint" class="hint-banner" style="margin-top:10px; margin-bottom:0;">
-                Укажите дату возбуждения для расчёта срока и контрольной даты ходатайства.
-              </div>
-            </div>
+          <div class="flex justify-end gap-2">
+            <button type="button" class="btn-soft-ghost" onclick="toggleNewCaseForm(false)">Отмена</button>
+            <button type="button" class="btn-soft-primary" onclick="saveNewCase()">Сохранить дело</button>
+          </div>
+        </section>
+      </main>
 
-            <!-- Участники дела -->
-            <div class="sub-block">
-              <div class="sub-block-title"><span>Участники дела и напоминания</span></div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>ФИО участника</label>
-                  <input type="text" id="partName" placeholder="Иванов Иван Иванович" />
-                </div>
-                <div class="form-group">
-                  <label>Статус / роль</label>
-                  <select id="partRole">
-                    <option value="Свидетель">Свидетель</option>
-                    <option value="Подозреваемый">Подозреваемый</option>
-                    <option value="Обвиняемый">Обвиняемый</option>
-                    <option value="Потерпевший">Потерпевший</option>
-                    <option value="Защитник">Защитник</option>
-                    <option value="Законный представитель">Законный представитель</option>
-                    <option value="Специалист / эксперт">Специалист / эксперт</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Телефон / контакты</label>
-                  <input type="text" id="partContact" placeholder="+7 (999) 000-00-00" />
-                </div>
-                <div class="form-group">
-                  <label>Своя заметка / напоминание</label>
-                  <input type="text" id="partCustomNote" placeholder="Например: принести договор" />
-                </div>
-              </div>
-              <div class="check-pills" style="margin-bottom:10px;">
-                <label class="check-pill"><input type="checkbox" id="partNeedInterrogate" /> Допросить</label>
-                <label class="check-pill"><input type="checkbox" id="partNeedSummon" /> Вызвать</label>
-                <label class="check-pill"><input type="checkbox" id="partNeedAcquaint" /> Ознакомить</label>
-              </div>
-              <button type="button" id="addParticipantBtn" class="btn btn-sm btn-outline">+ Добавить участника</button>
-              <div id="participantsDraftList" style="margin-top:8px;"></div>
-            </div>
+      <!-- ==================== ВКЛАДКА 3: БЛАНКИ ==================== -->
+      <main id="view-blanks" class="hidden">
+        <div class="card">
+          <h2 class="text-base font-extrabold text-[#243b61] mb-1">Процессуальные бланки</h2>
+          <p class="text-xs text-slate-500 mb-3">Форма сохраняется по образцу, а генерация по УД опирается на Базу знаний и материалы дела.</p>
 
-            <!-- План расследования: Необходимо провести -->
-            <div class="sub-block">
-              <div class="sub-block-title"><span>Необходимо провести (план расследования)</span></div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Действие / задача по делу</label>
-                  <input type="text" id="taskTitleInput" placeholder="Назначить товароведческую экспертизу" />
-                </div>
-                <div class="form-group">
-                  <label>Срок / дата выполнения</label>
-                  <input type="date" id="taskDueDateInput" />
-                </div>
-              </div>
-              <button type="button" id="addPlanTaskBtn" class="btn btn-sm btn-outline">+ Добавить в план</button>
-              <div id="planTasksDraftList" style="margin-top:8px;"></div>
-            </div>
+          <input type="text" id="blankSearch" class="soft-input mb-2.5" placeholder="Поиск бланка (выемка, допрос, экспертиза, запрос)..." oninput="renderBlankSelect()" />
 
-            <!-- Документы дела: систематизация и перемещение -->
-            <div class="sub-block">
-              <div class="sub-block-title"><span>Документы дела (для описи и систематизации)</span></div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Наименование документа</label>
-                  <input type="text" id="docTitleInput" placeholder="Постановление о возбуждении УД" />
-                </div>
-                <div class="form-group">
-                  <label>Способ / вид</label>
-                  <select id="docKindInput">
-                    <option value="Фото / скан">Фото / скан</option>
-                    <option value="Создать">Создать (по бланку / базе знаний)</option>
-                  </select>
-                </div>
-              </div>
-              <button type="button" id="addCaseDocBtn" class="btn btn-sm btn-outline">+ Добавить документ</button>
-              <div id="caseDocsDraftList" style="margin-top:8px;"></div>
-            </div>
+          <div class="grid grid-cols-3 gap-1.5 mb-3">
+            <button type="button" id="bGrp-Постановления" class="btn-soft-secondary text-xs py-2" onclick="setBlankGroup('Постановления')">Постановления</button>
+            <button type="button" id="bGrp-Протоколы" class="btn-soft-ghost text-xs py-2" onclick="setBlankGroup('Протоколы')">Протоколы</button>
+            <button type="button" id="bGrp-Иные документы" class="btn-soft-ghost text-xs py-2" onclick="setBlankGroup('Иные документы')">Иные документы</button>
+          </div>
 
-            <div class="form-group">
-              <label>Фабула</label>
-              <textarea id="caseNotes" placeholder="Краткие обстоятельства совершённого деяния..."></textarea>
-            </div>
-            <div class="form-group">
-              <label>Дополнительная информация</label>
-              <textarea id="caseExtraInfo" style="min-height:64px;" placeholder="Вещдоки, особенности, поручения, отметки..."></textarea>
-            </div>
+          <select id="blankPicker" class="soft-select mb-3" onchange="updateBlankDraft()"></select>
 
-            <button type="submit" class="btn btn-primary btn-block">Сохранить дело в облаке</button>
-          </form>
+          <div class="space-y-2 mb-3">
+            <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 text-xs font-semibold cursor-pointer">
+              <input type="radio" name="bMode" value="empty" onchange="updateBlankDraft()" />
+              <span>Пустой (по образцу)</span>
+            </label>
+            <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 text-xs font-semibold cursor-pointer">
+              <input type="radio" name="bMode" value="header" onchange="updateBlankDraft()" />
+              <span>Пустой с шапкой следователя</span>
+            </label>
+            <div class="p-2.5 rounded-xl border border-blue-200 bg-blue-50/40">
+              <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer mb-2">
+                <input type="radio" name="bMode" value="case" checked onchange="updateBlankDraft()" />
+                <span>Сгенерировать по УД (на основе Базы знаний и дела)</span>
+              </label>
+              <select id="blankCaseSelect" class="soft-select text-xs py-2" onchange="updateBlankDraft()"></select>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn-soft-primary flex-1" onclick="downloadBlankDocx()">Скачать .DOCX</button>
+            <button type="button" class="btn-soft-secondary flex-1" onclick="attachBlankToCase()">В документы дела</button>
+          </div>
         </div>
 
         <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Реестр дел</h2>
-          </div>
-          <div class="form-group">
-            <input type="text" id="caseSearch" placeholder="Поиск по номеру дела, статье, участнику или фабуле..." />
-          </div>
-          <div class="filter-chips" id="caseFilterChips">
-            <button type="button" class="chip-btn active" data-filter="all">Все</button>
-            <button type="button" class="chip-btn" data-filter="urgent">Срок ≤ 10 дн. / Продление</button>
-            <button type="button" class="chip-btn" data-filter="В производстве">В производстве</button>
-            <button type="button" class="chip-btn" data-filter="Продлён срок">Продлён срок</button>
-            <button type="button" class="chip-btn" data-filter="Приостановлено">Приостановлено</button>
-            <button type="button" class="chip-btn" data-filter="Направлено прокурору">Направлено прокурору</button>
-          </div>
-          <div id="casesList"></div>
+          <div class="text-xs font-bold text-[#243b61] mb-2">Предпросмотр и правка перед скачиванием в Word</div>
+          <textarea id="blankEditor" class="soft-textarea" rows="10" style="font-family:'Times New Roman',serif;"></textarea>
         </div>
-      </section>
+      </main>
 
-      <section id="sec-calendar" class="section">
+      <!-- ==================== ВКЛАДКА 4: БАЗА ЗНАНИЙ ==================== -->
+      <main id="view-kb" class="hidden">
         <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Запланировать следственное действие / вызов</h2>
+          <h2 class="text-base font-extrabold text-[#243b61] mb-1">База знаний</h2>
+          <p class="text-xs text-slate-500 mb-3">Загружайте учебные пособия, образцы бланков и материалы для расчёта сроков по УПК и вопросов экспертиз.</p>
+
+          <div class="flex flex-wrap gap-1.5 mb-2.5" id="kbCatChips"></div>
+          <input type="text" id="kbNewTitle" class="soft-input mb-2" placeholder="Название пособия или бланка..." />
+          <textarea id="kbNewNotes" class="soft-textarea mb-2.5" rows="2" placeholder="Ключевые положения, сроки по УПК или примерные вопросы для экспертизы..."></textarea>
+          <button type="button" class="btn-soft-primary w-full" onclick="addKbMaterial()">+ Вставить материал в Базу знаний</button>
+        </div>
+
+        <div id="kbMaterialList"></div>
+      </main>
+
+      <!-- ==================== ВКЛАДКА 5: ДЕЙСТВИЯ ==================== -->
+      <main id="view-actions" class="hidden">
+        <div class="card">
+          <h2 class="text-base font-extrabold text-[#243b61] mb-1">Следственные действия и экспертизы</h2>
+          <p class="text-xs text-slate-500 mb-3">Все запланированные действия и контрольные сроки с цветовым разделением по категориям.</p>
+          <div id="allActionsContainer"></div>
+        </div>
+      </main>
+
+      <!-- ==================== ВКЛАДКА 6: ПРОФИЛЬ ==================== -->
+      <main id="view-profile" class="hidden">
+        <div class="card">
+          <h2 class="text-base font-extrabold text-[#243b61] mb-3">Профиль следователя (шапка документов)</h2>
+          <div class="space-y-2.5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Следственный орган</label>
+              <input type="text" id="profOrg" class="soft-input" oninput="onProfileInput()" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Должность и звание</label>
+              <input type="text" id="profRank" class="soft-input" oninput="onProfileInput()" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">ФИО следователя</label>
+              <input type="text" id="profFio" class="soft-input" oninput="onProfileInput()" />
+            </div>
           </div>
-          <form id="eventForm">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Дата и время</label>
-                <input type="datetime-local" id="eventDateTime" required />
-              </div>
-              <div class="form-group">
-                <label>Следственное действие</label>
-                <select id="eventType">
-                  <option value="Допрос свидетеля">Допрос свидетеля</option>
-                  <option value="Допрос подозреваемого / обвиняемого">Допрос подозреваемого / обвиняемого</option>
-                  <option value="Очная ставка">Очная ставка</option>
-                  <option value="Осмотр места происшествия / предметов">Осмотр места происшествия / предметов</option>
-                  <option value="Проверка показаний на месте">Проверка показаний на месте</option>
-                  <option value="Ознакомление с материалами (ст. 217 УПК)">Ознакомление с материалами (ст. 217 УПК)</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Участник (ФИО, процессуальный статус)</label>
-                <input type="text" id="eventPerson" placeholder="Петров П.П., свидетель" required />
-              </div>
-              <div class="form-group">
-                <label>По уголовному делу</label>
-                <select id="eventCaseRef"></select>
-              </div>
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">Добавить в план</button>
-          </form>
         </div>
 
         <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">График следственных действий</h2>
+          <div class="text-xs font-bold text-[#243b61] mb-1">Облачная синхронизация</div>
+          <div class="text-xs text-slate-500 mb-3">
+            Аккаунт: <strong id="settingsEmail">-</strong> • Синхронизация: <strong id="lastSyncTime">ожидание...</strong>
           </div>
-          <div id="eventsList"></div>
-        </div>
-      </section>
-
-      <section id="sec-docs" class="section">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Генератор процессуальных бланков (УПК РФ)</h2>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Тип документа</label>
-              <select id="docTemplateSelect">
-                <option value="summons">Повестка о вызове на допрос (ст. 188 УПК РФ)</option>
-                <option value="interrogation">Шапка протокола допроса (ст. 189–190 УПК РФ)</option>
-                <option value="request">Запрос в порядке ч. 4 ст. 21 УПК РФ</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Дело из базы</label>
-              <select id="docCaseSelect"></select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Адресат / Допрашиваемое лицо</label>
-              <input type="text" id="docTargetPerson" placeholder="Сидорову С.С., г. Волгоград..." />
-            </div>
-            <div class="form-group">
-              <label>Дата и время явки / составления</label>
-              <input type="text" id="docDateText" placeholder="«26» ноября 2026 г. в 10 ч. 00 мин." />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Дополнительный текст / перечень запрашиваемых сведений</label>
-            <textarea id="docCustomBody" placeholder="Укажите кабинет, обстоятельства или перечень запрашиваемых документов..."></textarea>
-          </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-            <button type="button" id="generateDocBtn" class="btn btn-primary">Сформировать текст</button>
-            <button type="button" id="copyDocBtn" class="btn btn-outline">Копировать текст</button>
-          </div>
-          <div id="docPreview" class="doc-preview">Выберите шаблон и нажмите «Сформировать текст».</div>
-        </div>
-      </section>
-
-      <section id="sec-settings" class="section">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Реквизиты следователя (для шапок бланков)</h2>
-          </div>
-          <form id="profileForm">
-            <div class="form-group">
-              <label>Следственный орган</label>
-              <input type="text" id="cfgDepartment" placeholder="СО ОП № ... Управления МВД России по г. Волгограду" />
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Должность и звание</label>
-                <input type="text" id="cfgRank" placeholder="следователь лейтенант юстиции" />
-              </div>
-              <div class="form-group">
-                <label>Фамилия и инициалы</label>
-                <input type="text" id="cfgName" placeholder="Иванова И.А." />
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Адрес и кабинет / телефон</label>
-              <input type="text" id="cfgAddress" placeholder="г. Волгоград, каб. 214, тел. ..." />
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">Сохранить реквизиты</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Облако и резервное копирование</h2>
-          </div>
-          <p style="font-size:13px; color:var(--text-muted); margin-top:0;">
-            Текущий аккаунт: <strong id="settingsEmail">-</strong><br/>
-            Последняя синхронизация с Supabase: <strong id="lastSyncTime">ожидание...</strong>
-          </p>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button type="button" id="forcePullBtn" class="btn btn-outline">Загрузить из облака</button>
-            <button type="button" id="exportJsonBtn" class="btn btn-outline">Экспорт .JSON</button>
-            <button type="button" id="logoutBtn" class="btn btn-danger">Выйти из аккаунта</button>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn-soft-secondary text-xs" onclick="pullFromCloud()">Обновить из облака</button>
+            <button type="button" class="btn-soft-ghost text-xs" onclick="exportBackupJson()">Экспорт .JSON</button>
+            <button type="button" class="btn-soft-ghost text-xs text-red-600" onclick="logoutUser()">Выйти</button>
           </div>
         </div>
-      </section>
-    </main>
+      </main>
+    </div>
 
-    <nav class="bottom-nav">
-      <button type="button" class="nav-btn active" data-target="sec-dashboard">
-        <span class="nav-icon">📊</span>
+    <nav class="bottom-nav" aria-label="Навигация">
+      <button type="button" id="tab-svodka" class="nav-tab active" onclick="switchTab('svodka')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="3" />
+          <path d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
         <span>Сводка</span>
       </button>
-      <button type="button" class="nav-btn" data-target="sec-cases">
-        <span class="nav-icon">📁</span>
+      <button type="button" id="tab-cases" class="nav-tab" onclick="switchTab('cases')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+        </svg>
         <span>Дела</span>
       </button>
-      <button type="button" class="nav-btn" data-target="sec-calendar">
-        <span class="nav-icon">⚖️</span>
-        <span>След. действия</span>
-      </button>
-      <button type="button" class="nav-btn" data-target="sec-docs">
-        <span class="nav-icon">📄</span>
+      <button type="button" id="tab-blanks" class="nav-tab" onclick="switchTab('blanks')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+          <path d="M14 2v6h6M8 13h8M8 17h5" />
+        </svg>
         <span>Бланки</span>
       </button>
-      <button type="button" class="nav-btn" data-target="sec-settings">
-        <span class="nav-icon">⚙️</span>
+      <button type="button" id="tab-kb" class="nav-tab" onclick="switchTab('kb')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+        </svg>
+        <span>База знаний</span>
+      </button>
+      <button type="button" id="tab-actions" class="nav-tab" onclick="switchTab('actions')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3v18M5 7h14M5 7l-2 5h4l-2-5zM19 7l-2 5h4l-2-5z" />
+        </svg>
+        <span>Действия</span>
+      </button>
+      <button type="button" id="tab-profile" class="nav-tab" onclick="switchTab('profile')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 20c1.8-3.6 5-5 8-5s6.2 1.4 8 5" />
+        </svg>
         <span>Профиль</span>
       </button>
     </nav>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <!-- Модалка добавления / редактирования события календаря с выбором цвета -->
+  <div id="eventModal" class="modal-overlay hidden" onclick="if(event.target.id==='eventModal') closeEventModal()">
+    <div class="modal-sheet">
+      <div class="flex items-center justify-between mb-3">
+        <h3 id="evModalHeading" class="text-base font-extrabold text-[#243b61] m-0">Событие календаря</h3>
+        <button type="button" class="text-slate-400 font-bold px-2 py-1" onclick="closeEventModal()">✕</button>
+      </div>
+
+      <input type="hidden" id="evEditId" />
+
+      <div class="mb-2.5">
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Краткое название для календаря</label>
+        <input type="text" id="evTitleInput" class="soft-input" placeholder="Например: Допрос свидетеля или Продление срока" />
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Дата и время</label>
+          <input type="datetime-local" id="evDtInput" class="soft-input" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Уголовное дело</label>
+          <input type="text" id="evCaseInput" class="soft-input" placeholder="УД № 116611" />
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Цветовое выделение категории</label>
+        <div class="grid grid-cols-2 gap-2" id="evColorChoices"></div>
+      </div>
+
+      <div class="flex items-center justify-between gap-2">
+        <button type="button" id="evDeleteBtn" class="btn-soft-ghost text-red-600 hidden" onclick="deleteCalendarEvent()">Удалить</button>
+        <div class="flex gap-2 ml-auto">
+          <button type="button" class="btn-soft-ghost" onclick="closeEventModal()">Отмена</button>
+          <button type="button" class="btn-soft-primary" onclick="saveCalendarEvent()">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastBar" class="toast-bar" role="status"></div>
 
   <script>
     const SUPABASE_URL = 'https://xazxltujkizmnpkbqfgr.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_UssySBK5fWV_MZa2_RDmHA_Ksrwfvxz';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    function getTodayIso() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    function addMonthsIso(isoStr, months) {
+      const [y, m, d] = isoStr.split('-').map(Number);
+      const dt = new Date(Date.UTC(y, m - 1 + months, d));
+      return dt.toISOString().slice(0, 10);
+    }
+
+    const EVENT_CATEGORIES = {
+      court: {
+        label: 'Суд / Прокурор / Рук. СО',
+        cls: 'ev-court',
+        dot: '#d97777'
+      },
+      work: {
+        label: 'Следств. действия (гибкие)',
+        cls: 'ev-work',
+        dot: '#5b7bb2'
+      },
+      expert: {
+        label: 'Экспертизы и запросы',
+        cls: 'ev-expert',
+        dot: '#489c73'
+      },
+      term: {
+        label: 'Контроль сроков',
+        cls: 'ev-term',
+        dot: '#d69e2e'
+      }
+    };
+
+    const BLANKS_LIST = [
+      { id: 'b_vyemka', group: 'Постановления', title: 'Постановление о производстве выемки', ref: 'ст. 183 УПК РФ' },
+      { id: 'b_eksp', group: 'Постановления', title: 'Постановление о назначении судебной экспертизы', ref: 'ст. 195 УПК РФ' },
+      { id: 'b_dopros', group: 'Протоколы', title: 'Протокол допроса свидетеля', ref: 'ст. 189 УПК РФ' },
+      { id: 'b_zapros', group: 'Иные документы', title: 'Запрос в порядке ч. 4 ст. 21 УПК РФ', ref: 'ч. 4 ст. 21 УПК РФ' }
+    ];
+
+    const KB_CATEGORIES = ['УПК', 'Учебники', 'Запросы', 'Постановления', 'Экспертизы'];
+
+    const defaultWorkspace = () => {
+      const t = getTodayIso();
+      return {
+        eventsData: [
+          { id: 'e1', title: 'Допрос свидетеля', caseNum: 'УД № 116611', dt: `${t}T10:30`, color: 'work' },
+          { id: 'e2', title: 'Уведомл. прокурору', caseNum: 'УД № 116611', dt: `${t}T15:00`, color: 'court' }
+        ],
+        casesData: [],
+        kbMaterials: [
+          {
+            title: 'Криминалистика и тактика следственных действий (учебное пособие)',
+            cats: ['Учебники', 'Экспертизы'],
+            notes: 'Тактика допроса, выемки и постановки вопросов при назначении судебных экспертиз.'
+          },
+          {
+            title: 'Сроки предварительного следствия и ходатайства по УПК РФ',
+            cats: ['УПК', 'Постановления'],
+            notes: 'Расчёт сроков по ст. 162 УПК РФ и порядок уведомления прокурора и руководителя СО.'
+          }
+        ],
+        profile: {
+          org: 'СО ОП № 4 СУ УМВД России',
+          rank: 'следователь лейтенант юстиции',
+          fio: ''
+        },
+        updatedAt: new Date().toISOString()
+      };
+    };
+
     let currentUser = null;
     let authMode = 'login';
     let syncTimer = null;
-    let activeCaseFilter = 'all';
+    let ws = defaultWorkspace();
 
-    // Черновики вложенных списков внутри формы дела
-    let draftQualifications = [];
-    let draftParticipants = [];
-    let draftPlanTasks = [];
-    let draftCaseDocs = [];
+    let selectedDay = getTodayIso();
+    let weekDelta = 0;
+    let activeColorFilter = 'all';
+    let modalPickedColor = 'work';
 
-    const defaultState = () => ({
-      cases: [],
-      events: [],
-      docConfig: {
-        department: 'Следственный отдел УМВД России',
-        rank: 'следователь лейтенант юстиции',
-        name: '',
-        address: 'каб. 101'
-      },
-      updatedAt: new Date().toISOString()
-    });
+    let tempArticles = [];
+    let tempParticipants = [];
+    let tempPlans = [];
+    let currentBlankGrp = 'Постановления';
+    let kbSelectedCats = ['Учебники', 'УПК'];
 
-    let appState = defaultState();
-
-    function showToast(text) {
-      const el = document.getElementById('toast');
-      el.textContent = text;
-      el.classList.add('show');
-      clearTimeout(el._t);
-      el._t = setTimeout(() => el.classList.remove('show'), 2600);
+    function showToast(msg) {
+      const bar = document.getElementById('toastBar');
+      bar.textContent = msg;
+      bar.classList.add('show');
+      clearTimeout(bar._t);
+      bar._t = setTimeout(() => bar.classList.remove('show'), 2300);
     }
 
-    function setSyncUI(state, label) {
-      const dot = document.getElementById('syncDot');
-      const txt = document.getElementById('syncStatusText');
-      dot.className = 'sync-dot' + (state === 'offline' ? ' offline' : state === 'syncing' ? ' syncing' : '');
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function parseDate(str) {
+      const [y, m, d] = str.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function toIsoDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function daysUntil(deadlineIso) {
+      if (!deadlineIso) return 999;
+      return Math.ceil((parseDate(deadlineIso) - parseDate(getTodayIso())) / (1000 * 60 * 60 * 24));
+    }
+
+    function setNetIndicator() {
+      const online = navigator.onLine;
+      document.getElementById('netDot').className = `w-2 h-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-amber-400'}`;
+      document.getElementById('netText').textContent = online ? 'Онлайн' : 'Офлайн';
+    }
+
+    function setCloudIndicator(mode, label) {
+      const dot = document.getElementById('cloudDot');
+      const txt = document.getElementById('cloudText');
+      if (mode === 'ok') {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+      } else if (mode === 'sync') {
+        dot.className = 'w-2 h-2 rounded-full bg-sky-400';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+      }
       txt.textContent = label;
     }
 
-    function localStorageKey() {
-      return currentUser ? `iar_workspace_cache_${currentUser.id}` : 'iar_workspace_guest';
+    function cacheKey() {
+      return currentUser ? `iar_ws_cache_${currentUser.id}` : 'iar_ws_guest';
     }
 
-    function saveLocalCache() {
+    function saveLocal() {
       try {
-        localStorage.setItem(localStorageKey(), JSON.stringify(appState));
-      } catch (e) {
-        console.warn('Local cache error:', e);
-      }
+        localStorage.setItem(cacheKey(), JSON.stringify(ws));
+      } catch (e) {}
     }
 
-    function loadLocalCache() {
+    function loadLocal() {
       try {
-        const raw = localStorage.getItem(localStorageKey());
+        const raw = localStorage.getItem(cacheKey());
         if (raw) {
           const parsed = JSON.parse(raw);
-          appState = { ...defaultState(), ...parsed };
+          const base = defaultWorkspace();
+          ws = {
+            ...base,
+            ...parsed,
+            profile: { ...base.profile, ...(parsed.profile || {}) }
+          };
         }
-      } catch (e) {
-        console.warn('Read cache error:', e);
-      }
+      } catch (e) {}
     }
 
     async function pullFromCloud() {
       if (!currentUser) return;
       if (!navigator.onLine) {
-        setSyncUI('offline', 'Офлайн');
+        setCloudIndicator('warn', 'Офлайн');
         return;
       }
-
-      setSyncUI('syncing', 'Загрузка...');
-      let data, error;
+      setCloudIndicator('sync', 'Загрузка...');
       try {
-        const res = await supabaseClient
+        const { data, error } = await supabaseClient
           .from('iar_user_workspaces')
           .select('workspace_data, updated_at')
           .eq('user_id', currentUser.id)
           .maybeSingle();
-        data = res.data;
-        error = res.error;
-      } catch (fetchErr) {
-        console.error('Network/SDK pull exception:', fetchErr);
-        setSyncUI('offline', 'Блок/Сеть');
-        showToast('Нет доступа к ' + SUPABASE_URL.replace('https://', ''));
-        return;
-      }
+        if (error) throw error;
 
-      if (error) {
-        console.error('Supabase pull error:', error);
-        const msg = (error.message || '').toLowerCase().includes('fetch') || (error.message || '').toLowerCase().includes('network')
-          ? 'Блок/Сеть'
-          : (error.code || 'Ошибка БД');
-        setSyncUI('offline', msg);
-        showToast('Supabase: ' + (error.message || error.code || 'ошибка'));
-        return;
-      }
-
-      if (data && data.workspace_data) {
-        const cloudState = { ...defaultState(), ...data.workspace_data };
-        const localTime = new Date(appState.updatedAt || 0).getTime();
-        const cloudTime = new Date(data.updated_at || cloudState.updatedAt || 0).getTime();
-
-        if (cloudTime >= localTime || appState.cases.length === 0) {
-          appState = cloudState;
-          saveLocalCache();
+        if (data && data.workspace_data) {
+          const base = defaultWorkspace();
+          const cloudWs = {
+            ...base,
+            ...data.workspace_data,
+            profile: { ...base.profile, ...(data.workspace_data.profile || {}) }
+          };
+          const localTs = new Date(ws.updatedAt || 0).getTime();
+          const cloudTs = new Date(data.updated_at || cloudWs.updatedAt || 0).getTime();
+          if (cloudTs >= localTs || !ws.casesData.length) {
+            ws = cloudWs;
+            saveLocal();
+          } else {
+            await pushToCloud();
+          }
         } else {
           await pushToCloud();
         }
-      } else {
-        await pushToCloud();
+        setCloudIndicator('ok', 'Облако');
+        document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
+        renderAll();
+      } catch (err) {
+        console.error(err);
+        setCloudIndicator('warn', err.code || 'Сеть');
+        showToast('Синхронизация: ' + (err.message || err.code || 'ошибка'));
       }
-
-      setSyncUI('online', 'Облако');
-      document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
-      renderAll();
     }
 
     async function pushToCloud() {
       if (!currentUser) return;
-      appState.updatedAt = new Date().toISOString();
-      saveLocalCache();
-
+      ws.updatedAt = new Date().toISOString();
+      saveLocal();
       if (!navigator.onLine) {
-        setSyncUI('offline', 'Офлайн (в очереди)');
+        setCloudIndicator('warn', 'Офлайн');
         return;
       }
-
-      setSyncUI('syncing', 'Сохранение...');
-      let error;
+      setCloudIndicator('sync', 'Сохранение...');
       try {
-        const res = await supabaseClient
+        const { error } = await supabaseClient
           .from('iar_user_workspaces')
           .upsert({
             user_id: currentUser.id,
-            workspace_data: appState,
-            updated_at: appState.updatedAt
+            workspace_data: ws,
+            updated_at: ws.updatedAt
           }, { onConflict: 'user_id' });
-        error = res.error;
-      } catch (fetchErr) {
-        console.error('Network/SDK push exception:', fetchErr);
-        setSyncUI('offline', 'Блок/Сеть');
-        showToast('Сохранено локально (недоступен supabase.co)');
-        return;
+        if (error) throw error;
+        setCloudIndicator('ok', 'Облако');
+        document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
+      } catch (err) {
+        console.error(err);
+        setCloudIndicator('warn', err.code || 'Сеть');
+        showToast('Сохранено локально: ' + (err.message || err.code || 'ошибка'));
       }
-
-      if (error) {
-        console.error('Supabase push error:', error);
-        const msg = (error.message || '').toLowerCase().includes('fetch') || (error.message || '').toLowerCase().includes('network')
-          ? 'Блок/Сеть'
-          : (error.code || 'Ошибка БД');
-        setSyncUI('offline', msg);
-        showToast('Сохранено локально: ' + (error.message || error.code || 'ошибка'));
-        return;
-      }
-
-      setSyncUI('online', 'Облако');
-      document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
     }
 
-    function scheduleSave() {
-      saveLocalCache();
+    function scheduleSync() {
+      saveLocal();
       clearTimeout(syncTimer);
-      syncTimer = setTimeout(() => {
-        pushToCloud();
-      }, 450);
+      syncTimer = setTimeout(() => pushToCloud(), 450);
     }
+
+    /* ==================== АВТОРИЗАЦИЯ ==================== */
 
     const tabLogin = document.getElementById('tabLogin');
     const tabRegister = document.getElementById('tabRegister');
@@ -1298,7 +1267,7 @@
       authMode = 'register';
       tabRegister.classList.add('active');
       tabLogin.classList.remove('active');
-      authSubmitBtn.textContent = 'Создать облачный аккаунт';
+      authSubmitBtn.textContent = 'Создать аккаунт';
       authMsg.className = 'auth-msg';
     });
 
@@ -1313,892 +1282,779 @@
         if (authMode === 'login') {
           const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
           if (error) throw error;
-          await enterWorkspace(data.user);
+          await enterApp(data.user);
         } else {
           const { data, error } = await supabaseClient.auth.signUp({ email, password });
           if (error) throw error;
           if (data.session && data.user) {
-            await enterWorkspace(data.user);
-            showToast('Аккаунт создан и подключён');
+            await enterApp(data.user);
+            showToast('Аккаунт создан');
           } else {
-            showAuthMsg('Аккаунт создан! Если включено подтверждение почты в Supabase, проверьте письмо или отключите Confirm email в настройках Supabase.', 'success');
+            showAuthMsg('Аккаунт создан! Проверьте почту для подтверждения или отключите Confirm email в Supabase.', 'success');
           }
         }
       } catch (err) {
-        showAuthMsg(err.message || 'Ошибка авторизации', 'error');
+        showAuthMsg(err.message || 'Ошибка входа', 'error');
       } finally {
         authSubmitBtn.disabled = false;
       }
     });
 
-    async function enterWorkspace(user) {
+    async function enterApp(user) {
       currentUser = user;
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appShell').classList.remove('hidden');
-      document.getElementById('userEmailLabel').textContent = user.email;
+      document.getElementById('userEmailSub').textContent = user.email;
       document.getElementById('settingsEmail').textContent = user.email;
 
-      appState = defaultState();
-      loadLocalCache();
+      ws = defaultWorkspace();
+      loadLocal();
+      initCaseFormDates();
+      syncProfileInputs();
       renderAll();
-      if (!navigator.onLine) {
-        setSyncUI('offline', 'Офлайн');
-        return;
-      }
-      await pullFromCloud();
-    }
 
-    function switchSection(targetId) {
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      const sec = document.getElementById(targetId);
-      if (sec) sec.classList.add('active');
-      const btn = document.querySelector(`.nav-btn[data-target="${targetId}"]`);
-      if (btn) btn.classList.add('active');
-    }
-
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-      btn.addEventListener('click', () => switchSection(btn.dataset.target));
-    });
-
-    document.querySelectorAll('[data-nav]').forEach(btn => {
-      btn.addEventListener('click', () => switchSection(btn.dataset.nav));
-    });
-
-    function getEffectiveDeadline(c) {
-      if (c.status === 'Продлён срок' && c.extendedUntil) return c.extendedUntil;
-      return c.extendedUntil || c.deadlineDate || '';
-    }
-
-    function daysLeft(dateStr) {
-      if (!dateStr) return null;
-      const target = new Date(dateStr + 'T23:59:59');
-      const now = new Date();
-      return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
-    }
-
-    function addMonthsToDateStr(dateStr, months) {
-      if (!dateStr) return '';
-      const parts = dateStr.split('-').map(Number);
-      if (parts.length !== 3) return '';
-      const d = new Date(Date.UTC(parts[0], parts[1] - 1 + months, parts[2]));
-      return d.toISOString().slice(0, 10);
-    }
-
-    function shiftDateByDays(dateStr, deltaDays) {
-      if (!dateStr) return '';
-      const parts = dateStr.split('-').map(Number);
-      if (parts.length !== 3) return '';
-      const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + deltaDays));
-      return d.toISOString().slice(0, 10);
-    }
-
-    function formatQualificationString(q) {
-      const chunks = [];
-      if (q.point) chunks.push(q.point);
-      if (q.part) chunks.push(q.part);
-      if (q.article) chunks.push(`ст. ${q.article.replace(/^ст\.?\s*/i, '')} УК РФ`);
-      return chunks.join(' ').trim();
-    }
-
-    function getCaseQualificationText(c) {
-      if (Array.isArray(c.qualifications) && c.qualifications.length) {
-        return c.qualifications.map(formatQualificationString).filter(Boolean).join('; ');
-      }
-      return c.article || 'Квалификация не указана';
-    }
-
-    function escapeHtml(str) {
-      return String(str || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    // Автоподсказка срока (+2 мес.) и расчёт напоминания о ходатайстве
-    function updateDeadlineHint() {
-      const start = document.getElementById('caseStartDate').value;
-      const dl = document.getElementById('caseDeadlineDate').value;
-      const ext = document.getElementById('caseExtendedUntil').value;
-      const status = document.getElementById('caseStatus').value;
-      const lead = parseInt(document.getElementById('caseMotionLeadDays').value || '10', 10);
-      const hint = document.getElementById('deadlineCalcHint');
-
-      const activeEnd = (status === 'Продлён срок' && ext) ? ext : (ext || dl);
-      if (!activeEnd) {
-        hint.className = 'hint-banner';
-        hint.textContent = start
-          ? `Рекомендуемый срок (+2 мес. от возбуждения): ${addMonthsToDateStr(start, 2)}.`
-          : 'Укажите дату возбуждения для расчёта срока и контрольной даты ходатайства.';
-        return;
-      }
-
-      const rem = daysLeft(activeEnd);
-      const motionDate = shiftDateByDays(activeEnd, -lead);
-      const suspInfo = (document.getElementById('caseSuspendedFrom').value || document.getElementById('caseSuspendedTo').value)
-        ? ` • Приостановление: ${document.getElementById('caseSuspendedFrom').value || '—'} — ${document.getElementById('caseSuspendedTo').value || '—'}`
-        : '';
-
-      if (rem !== null && rem <= lead) {
-        hint.className = 'hint-banner warn';
+      if (navigator.onLine) {
+        await pullFromCloud();
       } else {
-        hint.className = 'hint-banner';
+        setCloudIndicator('warn', 'Офлайн');
       }
-
-      hint.textContent = `Актуальный срок: ${activeEnd} (осталось ${rem} дн.) • Ходатайство о продлении — до ${motionDate} (за ${lead} дн.)${suspInfo}`;
     }
 
-    document.getElementById('caseStartDate').addEventListener('change', (e) => {
-      const dlInput = document.getElementById('caseDeadlineDate');
-      if (e.target.value && !dlInput.value) {
-        dlInput.value = addMonthsToDateStr(e.target.value, 2);
-      }
-      updateDeadlineHint();
-    });
-
-    ['caseDeadlineDate', 'caseExtendedUntil', 'caseSuspendedFrom', 'caseSuspendedTo', 'caseStatus', 'caseMotionLeadDays'].forEach(id => {
-      document.getElementById(id).addEventListener('change', updateDeadlineHint);
-      document.getElementById(id).addEventListener('input', updateDeadlineHint);
-    });
-
-    // Работа с квалификациями (добавление статьи вручную + выбор части/пункта)
-    function collectCurrentQualificationInput() {
-      const art = document.getElementById('qualArticleInput').value.trim();
-      const part = document.getElementById('qualPartSelect').value;
-      const point = document.getElementById('qualPointSelect').value;
-      if (!art && !part && !point) return null;
-      return {
-        id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-        article: art,
-        part,
-        point
-      };
-    }
-
-    function addQualificationFromInputs() {
-      const item = collectCurrentQualificationInput();
-      if (!item || !item.article) {
-        showToast('Введите номер статьи УК РФ');
-        return false;
-      }
-      draftQualifications.push(item);
-      document.getElementById('qualArticleInput').value = '';
-      document.getElementById('qualPartSelect').value = '';
-      document.getElementById('qualPointSelect').value = '';
-      renderDraftQualifications();
-      return true;
-    }
-
-    document.getElementById('addQualificationBtn').addEventListener('click', addQualificationFromInputs);
-    document.getElementById('applyQualNowBtn').addEventListener('click', addQualificationFromInputs);
-
-    window.removeDraftQualification = function(id) {
-      draftQualifications = draftQualifications.filter(q => q.id !== id);
-      renderDraftQualifications();
-    };
-
-    function renderDraftQualifications() {
-      const box = document.getElementById('qualificationsList');
-      if (!draftQualifications.length) {
-        box.innerHTML = '<div style="font-size:12px; color:var(--text-muted);">Статьи не добавлены — можно зафиксировать выше или добавить ещё статью.</div>';
-        return;
-      }
-      box.innerHTML = draftQualifications.map(q => `
-        <div class="mini-row">
-          <span><strong>${escapeHtml(formatQualificationString(q))}</strong></span>
-          <button type="button" class="btn btn-sm btn-danger" onclick="removeDraftQualification('${q.id}')">✕</button>
-        </div>
-      `).join('');
-    }
-
-    // Участники
-    document.getElementById('addParticipantBtn').addEventListener('click', () => {
-      const name = document.getElementById('partName').value.trim();
-      if (!name) {
-        showToast('Укажите ФИО участника');
-        return;
-      }
-      const reminders = [];
-      if (document.getElementById('partNeedInterrogate').checked) reminders.push('Допросить');
-      if (document.getElementById('partNeedSummon').checked) reminders.push('Вызвать');
-      if (document.getElementById('partNeedAcquaint').checked) reminders.push('Ознакомить');
-      const customNote = document.getElementById('partCustomNote').value.trim();
-
-      draftParticipants.push({
-        id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-        name,
-        role: document.getElementById('partRole').value,
-        contact: document.getElementById('partContact').value.trim(),
-        reminders,
-        customNote,
-        noteDone: false
-      });
-
-      document.getElementById('partName').value = '';
-      document.getElementById('partContact').value = '';
-      document.getElementById('partCustomNote').value = '';
-      document.getElementById('partNeedInterrogate').checked = false;
-      document.getElementById('partNeedSummon').checked = false;
-      document.getElementById('partNeedAcquaint').checked = false;
-      renderDraftParticipants();
-    });
-
-    window.toggleDraftParticipantNote = function(id) {
-      const p = draftParticipants.find(x => x.id === id);
-      if (p) {
-        p.noteDone = !p.noteDone;
-        renderDraftParticipants();
-      }
-    };
-
-    window.removeDraftParticipant = function(id) {
-      draftParticipants = draftParticipants.filter(x => x.id !== id);
-      renderDraftParticipants();
-    };
-
-    function renderDraftParticipants() {
-      const box = document.getElementById('participantsDraftList');
-      if (!draftParticipants.length) {
-        box.innerHTML = '';
-        return;
-      }
-      box.innerHTML = draftParticipants.map(p => {
-        const meta = [p.role, p.contact, ...p.reminders, p.customNote].filter(Boolean).join(' • ');
-        return `
-          <div class="mini-row" style="${p.noteDone ? 'opacity:0.65;' : ''}">
-            <div>
-              <div><strong>${escapeHtml(p.name)}</strong></div>
-              <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(meta)}</div>
-            </div>
-            <div style="display:flex; gap:4px;">
-              <button type="button" class="btn btn-sm btn-outline" onclick="toggleDraftParticipantNote('${p.id}')">${p.noteDone ? '✓ Отмечено' : 'Отметить'}</button>
-              <button type="button" class="btn btn-sm btn-danger" onclick="removeDraftParticipant('${p.id}')">✕</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // План расследования («Необходимо провести») с привязкой к сроку и генерации бланка
-    document.getElementById('addPlanTaskBtn').addEventListener('click', () => {
-      const title = document.getElementById('taskTitleInput').value.trim();
-      if (!title) {
-        showToast('Введите действие для плана расследования');
-        return;
-      }
-      draftPlanTasks.push({
-        id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-        title,
-        dueDate: document.getElementById('taskDueDateInput').value,
-        done: false
-      });
-      document.getElementById('taskTitleInput').value = '';
-      document.getElementById('taskDueDateInput').value = '';
-      renderDraftPlanTasks();
-    });
-
-    window.toggleDraftTask = function(id) {
-      const t = draftPlanTasks.find(x => x.id === id);
-      if (t) {
-        t.done = !t.done;
-        renderDraftPlanTasks();
-      }
-    };
-
-    window.removeDraftTask = function(id) {
-      draftPlanTasks = draftPlanTasks.filter(x => x.id !== id);
-      renderDraftPlanTasks();
-    };
-
-    function renderDraftPlanTasks() {
-      const box = document.getElementById('planTasksDraftList');
-      if (!draftPlanTasks.length) {
-        box.innerHTML = '';
-        return;
-      }
-      box.innerHTML = draftPlanTasks.map(t => `
-        <div class="mini-row" style="${t.done ? 'opacity:0.65;' : ''}">
-          <div>
-            <div><strong>${escapeHtml(t.title)}</strong></div>
-            <div style="font-size:11px; color:var(--text-muted);">${t.dueDate ? 'Срок: ' + escapeHtml(t.dueDate) : 'Без срока'} • ${t.done ? 'Выполнено' : 'В работе'}</div>
-          </div>
-          <div style="display:flex; gap:4px;">
-            <button type="button" class="btn btn-sm btn-outline" onclick="toggleDraftTask('${t.id}')">${t.done ? 'Вернуть' : 'Готово'}</button>
-            <button type="button" class="btn btn-sm btn-danger" onclick="removeDraftTask('${t.id}')">✕</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // Документы дела с перемещением вверх/вниз для описи
-    document.getElementById('addCaseDocBtn').addEventListener('click', () => {
-      const title = document.getElementById('docTitleInput').value.trim();
-      if (!title) {
-        showToast('Укажите наименование документа');
-        return;
-      }
-      draftCaseDocs.push({
-        id: 'd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-        title,
-        kind: document.getElementById('docKindInput').value
-      });
-      document.getElementById('docTitleInput').value = '';
-      renderDraftCaseDocs();
-    });
-
-    window.moveDraftDoc = function(idx, dir) {
-      const nextIdx = idx + dir;
-      if (nextIdx < 0 || nextIdx >= draftCaseDocs.length) return;
-      const copy = [...draftCaseDocs];
-      const [moved] = copy.splice(idx, 1);
-      copy.splice(nextIdx, 0, moved);
-      draftCaseDocs = copy;
-      renderDraftCaseDocs();
-    };
-
-    window.removeDraftDoc = function(id) {
-      draftCaseDocs = draftCaseDocs.filter(d => d.id !== id);
-      renderDraftCaseDocs();
-    };
-
-    function renderDraftCaseDocs() {
-      const box = document.getElementById('caseDocsDraftList');
-      if (!draftCaseDocs.length) {
-        box.innerHTML = '';
-        return;
-      }
-      box.innerHTML = draftCaseDocs.map((d, i) => `
-        <div class="mini-row">
-          <div>
-            <div><strong>${i + 1}. ${escapeHtml(d.title)}</strong></div>
-            <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(d.kind)}</div>
-          </div>
-          <div style="display:flex; gap:4px;">
-            <button type="button" class="btn btn-sm btn-outline" onclick="moveDraftDoc(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
-            <button type="button" class="btn btn-sm btn-outline" onclick="moveDraftDoc(${i}, 1)" ${i === draftCaseDocs.length - 1 ? 'disabled' : ''}>↓</button>
-            <button type="button" class="btn btn-sm btn-danger" onclick="removeDraftDoc('${d.id}')">✕</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // Сохранение дела
-    document.getElementById('caseForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const pendingQual = collectCurrentQualificationInput();
-      if (pendingQual && pendingQual.article) {
-        draftQualifications.push(pendingQual);
-        document.getElementById('qualArticleInput').value = '';
-        document.getElementById('qualPartSelect').value = '';
-        document.getElementById('qualPointSelect').value = '';
-      }
-
-      const qualText = draftQualifications.length
-        ? draftQualifications.map(formatQualificationString).filter(Boolean).join('; ')
-        : 'Квалификация не указана';
-
-      const editId = document.getElementById('caseEditId').value;
-      const suspectSummary = draftParticipants
-        .filter(p => ['Подозреваемый', 'Обвиняемый'].includes(p.role))
-        .map(p => `${p.name} (${p.role})`)
-        .join(', ');
-
-      const item = {
-        id: editId || ('case_' + Date.now()),
-        number: document.getElementById('caseNumber').value.trim(),
-        article: qualText,
-        qualifications: [...draftQualifications],
-        startDate: document.getElementById('caseStartDate').value,
-        deadlineDate: document.getElementById('caseDeadlineDate').value,
-        extendedUntil: document.getElementById('caseExtendedUntil').value,
-        suspendedFrom: document.getElementById('caseSuspendedFrom').value,
-        suspendedTo: document.getElementById('caseSuspendedTo').value,
-        motionLeadDays: parseInt(document.getElementById('caseMotionLeadDays').value || '10', 10),
-        suspect: suspectSummary,
-        participants: [...draftParticipants],
-        planTasks: [...draftPlanTasks],
-        documents: [...draftCaseDocs],
-        status: document.getElementById('caseStatus').value,
-        notes: document.getElementById('caseNotes').value.trim(),
-        extraInfo: document.getElementById('caseExtraInfo').value.trim()
-      };
-
-      if (editId) {
-        const idx = appState.cases.findIndex(c => c.id === editId);
-        if (idx !== -1) appState.cases[idx] = item;
-        showToast('Дело обновлено');
-      } else {
-        appState.cases.unshift(item);
-        showToast('Дело добавлено');
-      }
-
-      resetCaseForm();
-      renderAll();
-      scheduleSave();
-    });
-
-    function resetCaseForm() {
-      document.getElementById('caseForm').reset();
-      document.getElementById('caseEditId').value = '';
-      document.getElementById('caseMotionLeadDays').value = '10';
-      draftQualifications = [];
-      draftParticipants = [];
-      draftPlanTasks = [];
-      draftCaseDocs = [];
-      renderDraftQualifications();
-      renderDraftParticipants();
-      renderDraftPlanTasks();
-      renderDraftCaseDocs();
-      updateDeadlineHint();
-      document.getElementById('caseFormTitle').textContent = 'Новое уголовное дело / материал';
-      document.getElementById('cancelEditCaseBtn').classList.add('hidden');
-    }
-
-    document.getElementById('cancelEditCaseBtn').addEventListener('click', resetCaseForm);
-    document.getElementById('caseSearch').addEventListener('input', renderCases);
-
-    document.querySelectorAll('#caseFilterChips .chip-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        activeCaseFilter = btn.dataset.filter;
-        document.querySelectorAll('#caseFilterChips .chip-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        renderCases();
-      });
-    });
-
-    window.editCase = function(id) {
-      const c = appState.cases.find(x => x.id === id);
-      if (!c) return;
-      document.getElementById('caseEditId').value = c.id;
-      document.getElementById('caseNumber').value = c.number || '';
-      document.getElementById('caseStartDate').value = c.startDate || '';
-      document.getElementById('caseDeadlineDate').value = c.deadlineDate || '';
-      document.getElementById('caseExtendedUntil').value = c.extendedUntil || '';
-      document.getElementById('caseSuspendedFrom').value = c.suspendedFrom || '';
-      document.getElementById('caseSuspendedTo').value = c.suspendedTo || '';
-      document.getElementById('caseMotionLeadDays').value = c.motionLeadDays || 10;
-      document.getElementById('caseStatus').value = c.status || 'В производстве';
-      document.getElementById('caseNotes').value = c.notes || '';
-      document.getElementById('caseExtraInfo').value = c.extraInfo || '';
-
-      draftQualifications = Array.isArray(c.qualifications) && c.qualifications.length
-        ? c.qualifications.map(q => ({ ...q }))
-        : (c.article ? [{ id: 'q_legacy', article: c.article, part: '', point: '' }] : []);
-      draftParticipants = Array.isArray(c.participants) ? c.participants.map(p => ({ ...p, reminders: [...(p.reminders || [])] })) : [];
-      draftPlanTasks = Array.isArray(c.planTasks) ? c.planTasks.map(t => ({ ...t })) : [];
-      draftCaseDocs = Array.isArray(c.documents) ? c.documents.map(d => ({ ...d })) : [];
-
-      renderDraftQualifications();
-      renderDraftParticipants();
-      renderDraftPlanTasks();
-      renderDraftCaseDocs();
-      updateDeadlineHint();
-
-      document.getElementById('caseFormTitle').textContent = 'Редактирование дела ' + c.number;
-      document.getElementById('cancelEditCaseBtn').classList.remove('hidden');
-      switchSection('sec-cases');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    window.deleteCase = function(id) {
-      if (!confirm('Удалить это дело из базы?')) return;
-      appState.cases = appState.cases.filter(c => c.id !== id);
-      renderAll();
-      scheduleSave();
-      showToast('Дело удалено');
-    };
-
-    // Быстрые действия по делу из списка: переключение задачи плана, переход в бланки, сортировка документов дела
-    window.toggleSavedTask = function(caseId, taskId) {
-      const c = appState.cases.find(x => x.id === caseId);
-      if (!c || !Array.isArray(c.planTasks)) return;
-      const t = c.planTasks.find(x => x.id === taskId);
-      if (t) {
-        t.done = !t.done;
-        renderAll();
-        scheduleSave();
-      }
-    };
-
-    window.createDocFromTask = function(caseId, taskTitle) {
-      document.getElementById('docCaseSelect').value = caseId;
-      document.getElementById('docCustomBody').value = taskTitle;
-      switchSection('sec-docs');
-      showToast('Дело и действие подставлены в бланки');
-    };
-
-    window.moveSavedDoc = function(caseId, docIdx, dir) {
-      const c = appState.cases.find(x => x.id === caseId);
-      if (!c || !Array.isArray(c.documents)) return;
-      const nextIdx = docIdx + dir;
-      if (nextIdx < 0 || nextIdx >= c.documents.length) return;
-      const [moved] = c.documents.splice(docIdx, 1);
-      c.documents.splice(nextIdx, 0, moved);
-      renderAll();
-      scheduleSave();
-    };
-
-    document.getElementById('eventForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const ev = {
-        id: 'ev_' + Date.now(),
-        dateTime: document.getElementById('eventDateTime').value,
-        type: document.getElementById('eventType').value,
-        person: document.getElementById('eventPerson').value.trim(),
-        caseRef: document.getElementById('eventCaseRef').value,
-        done: false
-      };
-      appState.events.push(ev);
-      appState.events.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
-      e.target.reset();
-      renderAll();
-      scheduleSave();
-      showToast('Следственное действие добавлено');
-    });
-
-    window.toggleEventDone = function(id) {
-      const ev = appState.events.find(x => x.id === id);
-      if (ev) {
-        ev.done = !ev.done;
-        renderAll();
-        scheduleSave();
-      }
-    };
-
-    window.deleteEvent = function(id) {
-      appState.events = appState.events.filter(x => x.id !== id);
-      renderAll();
-      scheduleSave();
-      showToast('Запись удалена');
-    };
-
-    document.getElementById('generateDocBtn').addEventListener('click', () => {
-      const tpl = document.getElementById('docTemplateSelect').value;
-      const caseId = document.getElementById('docCaseSelect').value;
-      const c = appState.cases.find(x => x.id === caseId);
-      const target = document.getElementById('docTargetPerson').value.trim() || '__________________________';
-      const dateText = document.getElementById('docDateText').value.trim() || '«___» __________ 2026 г. в ___ ч. ___ мин.';
-      const body = document.getElementById('docCustomBody').value.trim();
-      const cfg = appState.docConfig;
-
-      const qualStr = c ? getCaseQualificationText(c) : '';
-      const caseInfo = c ? `по уголовному делу № ${c.number} (${qualStr})` : 'по материалу проверки / уголовному делу № ______________';
-      let text = '';
-
-      if (tpl === 'summons') {
-        text = `ПОВЕСТКА О ВЫЗОВЕ НА ДОПРОС\n\n` +
-               `Кому: ${target}\n\n` +
-               `В соответствии со ст. 188 УПК РФ Вам надлежит явиться ${dateText} ` +
-               `в ${cfg.department} (${cfg.address}) к ${cfg.rank} ${cfg.name || '________________'} ` +
-               `для производства следственного действия (допроса) ${caseInfo}.\n\n` +
-               `При себе необходимо иметь паспорт или иной документ, удостоверяющий личность.\n` +
-               `В случае неявки без уважительных причин Вы можете быть подвергнуты приводу на основании ст. 113 УПК РФ.\n\n` +
-               `${cfg.rank} ${cfg.department}\n____________________ / ${cfg.name || '____________'} /`;
-      } else if (tpl === 'interrogation') {
-        text = `ПРОТОКОЛ ДОПРОСА\n\n` +
-               `Дата и время: ${dateText}\n` +
-               `Место составления: ${cfg.department} (${cfg.address})\n\n` +
-               `${cfg.rank} ${cfg.department} ${cfg.name || '________________'} ` +
-               `в помещении ${cfg.address} в соответствии со ст. 189 и 190 УПК РФ допросил ${caseInfo}:\n` +
-               `Допрашиваемое лицо: ${target}\n\n` +
-               `По существу заданных вопросов показал следующее:\n${body || '__________________________________________________________________'}`;
-      } else {
-        text = `ЗАПРОС (в порядке ч. 4 ст. 21 УПК РФ)\n\n` +
-               `Кому: ${target}\n` +
-               `Исх. от ${dateText}\n\n` +
-               `В производстве ${cfg.department} находится уголовное дело ${c ? '№ ' + c.number + ', возбужденное по признакам преступления, предусмотренного ' + qualStr : '№ ______________'}.\n` +
-               `На основании ч. 4 ст. 21 УПК РФ прошу в кратчайший срок предоставить следующие сведения и документы:\n` +
-               `${body || '1. ______________________________________________'}\n\n` +
-               `${cfg.rank} ${cfg.department}\n____________________ / ${cfg.name || '____________'} /`;
-      }
-
-      document.getElementById('docPreview').textContent = text;
-    });
-
-    document.getElementById('copyDocBtn').addEventListener('click', async () => {
-      const txt = document.getElementById('docPreview').textContent;
-      try {
-        await navigator.clipboard.writeText(txt);
-        showToast('Текст бланка скопирован');
-      } catch {
-        showToast('Выделите и скопируйте текст вручную');
-      }
-    });
-
-    document.getElementById('profileForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      appState.docConfig = {
-        department: document.getElementById('cfgDepartment').value.trim(),
-        rank: document.getElementById('cfgRank').value.trim(),
-        name: document.getElementById('cfgName').value.trim(),
-        address: document.getElementById('cfgAddress').value.trim()
-      };
-      scheduleSave();
-      showToast('Реквизиты сохранены');
-    });
-
-    document.getElementById('syncNowBtn').addEventListener('click', () => pullFromCloud());
-    document.getElementById('forcePullBtn').addEventListener('click', () => pullFromCloud());
-
-    document.getElementById('exportJsonBtn').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `IAR_backup_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
+    async function logoutUser() {
       await supabaseClient.auth.signOut();
       currentUser = null;
       document.getElementById('appShell').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
       showToast('Вы вышли из аккаунта');
-    });
+    }
 
-    function renderCases() {
-      const q = (document.getElementById('caseSearch').value || '').toLowerCase();
-      const filtered = appState.cases.filter(c => {
-        const qualText = getCaseQualificationText(c);
-        const partsText = (c.participants || []).map(p => `${p.name} ${p.role} ${p.customNote || ''}`).join(' ');
-        const hay = `${c.number || ''} ${qualText} ${c.suspect || ''} ${partsText} ${c.notes || ''} ${c.extraInfo || ''}`.toLowerCase();
-        if (q && !hay.includes(q)) return false;
+    function exportBackupJson() {
+      const blob = new Blob([JSON.stringify(ws, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ARM_Sledovatelya_${getTodayIso()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
 
-        const d = daysLeft(getEffectiveDeadline(c));
-        const lead = c.motionLeadDays || 10;
-        if (activeCaseFilter === 'urgent') {
-          return d !== null && d <= lead;
-        }
-        if (activeCaseFilter !== 'all') {
-          return c.status === activeCaseFilter;
-        }
-        return true;
+    /* ==================== НАВИГАЦИЯ И СВОДКА ==================== */
+
+    function switchTab(tab) {
+      ['svodka', 'cases', 'blanks', 'kb', 'actions', 'profile'].forEach((t) => {
+        document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
+        document.getElementById('tab-' + t).classList.toggle('active', t === tab);
       });
+      if (tab === 'actions') renderAllActionsList();
+    }
 
-      const container = document.getElementById('casesList');
-      if (!filtered.length) {
-        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Подходящих дел не найдено.</div>';
+    function toggleAccordion(bodyId) {
+      const body = document.getElementById(bodyId);
+      const chev = document.getElementById('chev-' + bodyId);
+      const isHidden = body.classList.toggle('hidden');
+      if (chev) chev.classList.toggle('open', !isHidden);
+    }
+
+    function focusMetric(kind) {
+      ['tileCases', 'tileUrgent', 'tileToday'].forEach((id) => document.getElementById(id).classList.remove('active'));
+      if (kind === 'cases') {
+        document.getElementById('tileCases').classList.add('active');
+        switchTab('cases');
+      } else if (kind === 'urgent') {
+        document.getElementById('tileUrgent').classList.add('active');
+        const body = document.getElementById('accDeadlines');
+        body.classList.remove('hidden');
+        document.getElementById('chev-accDeadlines').classList.add('open');
+        body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        document.getElementById('tileToday').classList.add('active');
+        goToday();
+      }
+    }
+
+    /* ==================== КАЛЕНДАРЬ НА НЕДЕЛЮ ==================== */
+
+    function getCurrentWeekDates() {
+      const today = parseDate(getTodayIso());
+      const mondayOffset = (today.getDay() + 6) % 7;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - mondayOffset + weekDelta * 7);
+      const res = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        res.push(toIsoDate(d));
+      }
+      return res;
+    }
+
+    function shiftWeek(delta) {
+      weekDelta += delta;
+      const days = getCurrentWeekDates();
+      selectedDay = days[0];
+      renderCalendarSection();
+    }
+
+    function goToday() {
+      weekDelta = 0;
+      selectedDay = getTodayIso();
+      renderCalendarSection();
+    }
+
+    function selectDay(isoDate) {
+      selectedDay = isoDate;
+      renderCalendarSection();
+    }
+
+    function setColorFilter(key) {
+      activeColorFilter = key;
+      renderCalendarSection();
+    }
+
+    function renderCalendarSection() {
+      const filterBar = document.getElementById('calendarColorFilterBar');
+      const filterItems = [
+        { key: 'all', label: 'Все цвета', dot: '#64748b' },
+        ...Object.entries(EVENT_CATEGORIES).map(([k, v]) => ({ key: k, label: v.label, dot: v.dot }))
+      ];
+
+      filterBar.innerHTML = filterItems
+        .map((f) => {
+          const active = activeColorFilter === f.key;
+          return `
+            <button type="button" onclick="setColorFilter('${f.key}')"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${
+                active ? 'bg-[#eef3fb] border-[#5b7bb2] text-[#243b61]' : 'bg-white border-slate-200 text-slate-600'
+              }">
+              <span class="w-2 h-2 rounded-full" style="background:${f.dot}"></span>
+              <span>${esc(f.label)}</span>
+            </button>
+          `;
+        })
+        .join('');
+
+      const weekDays = getCurrentWeekDates();
+      const monthsNom = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+      const midDate = parseDate(weekDays[3]);
+      document.getElementById('calendarMonthTitle').textContent = `${monthsNom[midDate.getMonth()]} ${midDate.getFullYear()}`;
+
+      const letters = ['п', 'в', 'с', 'ч', 'п', 'с', 'в'];
+      const todayIso = getTodayIso();
+      const grid = document.getElementById('iosWeekGrid');
+
+      grid.innerHTML = weekDays
+        .map((iso, idx) => {
+          const dObj = parseDate(iso);
+          const isToday = iso === todayIso;
+          const isSel = iso === selectedDay;
+          const dayEvs = ws.eventsData
+            .filter((e) => e.dt && e.dt.startsWith(iso))
+            .filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter)
+            .sort((a, b) => a.dt.localeCompare(b.dt));
+
+          return `
+            <div class="ios-day-col ${isSel ? 'selected' : ''}" onclick="selectDay('${iso}')">
+              <div class="ios-day-letter">${letters[idx]}</div>
+              <div class="ios-day-num ${isToday ? 'today' : ''}">${dObj.getDate()}</div>
+              ${dayEvs
+                .map((ev) => {
+                  const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
+                  const timeStr = (ev.dt.split('T')[1] || '').slice(0, 5);
+                  return `
+                    <button type="button" class="ios-mini-event ${cat.cls}" onclick="event.stopPropagation(); openEventModal('${ev.id}')">
+                      <span class="ev-title">${esc(ev.title)}</span>
+                      <span class="ev-time">${esc(timeStr)}</span>
+                    </button>
+                  `;
+                })
+                .join('')}
+            </div>
+          `;
+        })
+        .join('');
+
+      renderSelectedDayEvents();
+    }
+
+    function renderSelectedDayEvents() {
+      const dObj = parseDate(selectedDay);
+      const wdFull = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+      const monthsGen = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+      document.getElementById('selectedDaySubtitle').textContent = `${wdFull[dObj.getDay()]}, ${dObj.getDate()} ${monthsGen[dObj.getMonth()]}`;
+
+      const listEl = document.getElementById('selectedDayEventsList');
+      const items = ws.eventsData
+        .filter((e) => e.dt && e.dt.startsWith(selectedDay))
+        .filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter)
+        .sort((a, b) => a.dt.localeCompare(b.dt));
+
+      if (!items.length) {
+        listEl.innerHTML = '<div class="text-xs text-slate-400 py-2">На этот день событий нет.</div>';
         return;
       }
 
-      container.innerHTML = filtered.map(c => {
-        const effDate = getEffectiveDeadline(c);
-        const d = daysLeft(effDate);
-        const lead = c.motionLeadDays || 10;
-        let badge = `<span class="badge badge-ok">Осталось ${d} дн.</span>`;
-        if (d !== null && d < 0) badge = `<span class="badge badge-danger">Просрочено на ${Math.abs(d)} дн.</span>`;
-        else if (d !== null && d <= lead) badge = `<span class="badge badge-warn">Осталось ${d} дн. (ходатайство)</span>`;
-
-        const qualText = getCaseQualificationText(c);
-        const partsHtml = Array.isArray(c.participants) && c.participants.length
-          ? `<div style="margin-top:6px; font-size:12px;"><strong>Участники:</strong> ${c.participants.map(p => {
-              const marks = [...(p.reminders || []), p.customNote].filter(Boolean).join(', ');
-              return `${escapeHtml(p.name)} (${escapeHtml(p.role)}${marks ? ': ' + escapeHtml(marks) : ''}${p.noteDone ? ' ✓' : ''})`;
-            }).join(' • ')}</div>`
-          : '';
-
-        const tasksHtml = Array.isArray(c.planTasks) && c.planTasks.length
-          ? `<div style="margin-top:8px;">
-              <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:4px;">Необходимо провести:</div>
-              ${c.planTasks.map(t => `
-                <div class="mini-row" style="margin-bottom:4px; ${t.done ? 'opacity:0.65;' : ''}">
-                  <div>
-                    <span>${t.done ? '<s>' : ''}${escapeHtml(t.title)}${t.done ? '</s>' : ''}</span>
-                    ${t.dueDate ? `<span style="font-size:11px; color:var(--text-muted);"> • до ${escapeHtml(t.dueDate)}</span>` : ''}
-                  </div>
-                  <div style="display:flex; gap:4px;">
-                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleSavedTask('${c.id}', '${t.id}')">${t.done ? 'Вернуть' : 'Готово'}</button>
-                    <button type="button" class="btn btn-sm btn-accent" onclick="createDocFromTask('${c.id}', '${escapeHtml(t.title).replace(/'/g, '&#39;')}')">Создать бланк</button>
-                  </div>
-                </div>
-              `).join('')}
-            </div>`
-          : '';
-
-        const docsHtml = Array.isArray(c.documents) && c.documents.length
-          ? `<div style="margin-top:8px;">
-              <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:4px;">Документы (порядок описи):</div>
-              ${c.documents.map((d, idx) => `
-                <div class="mini-row" style="margin-bottom:4px;">
-                  <div><strong>${idx + 1}.</strong> ${escapeHtml(d.title)} <span style="font-size:11px; color:var(--text-muted);">(${escapeHtml(d.kind)})</span></div>
-                  <div style="display:flex; gap:4px;">
-                    <button type="button" class="btn btn-sm btn-outline" onclick="moveSavedDoc('${c.id}', ${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
-                    <button type="button" class="btn btn-sm btn-outline" onclick="moveSavedDoc('${c.id}', ${idx}, 1)" ${idx === c.documents.length - 1 ? 'disabled' : ''}>↓</button>
-                  </div>
-                </div>
-              `).join('')}
-            </div>`
-          : '';
-
-        return `
-          <div class="list-item">
-            <div class="list-item-top">
-              <div class="item-title">УД № ${escapeHtml(c.number)} — ${escapeHtml(qualText)}</div>
-              ${badge}
+      listEl.innerHTML = items
+        .map((ev) => {
+          const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
+          return `
+            <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 flex-wrap ${cat.cls}">
+              <div class="min-w-0">
+                <div class="text-xs font-bold">${esc(ev.title)} <span class="opacity-75">• ${esc(ev.caseNum)}</span></div>
+                <div class="text-[11px] opacity-80">${esc(cat.label)}</div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <input type="datetime-local" value="${esc(ev.dt)}"
+                  class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white text-slate-700"
+                  onchange="quickShiftEvent('${ev.id}', this.value)" />
+                <button type="button" class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-600"
+                  onclick="openEventModal('${ev.id}')">Цвет</button>
+              </div>
             </div>
-            <div class="item-meta">
-              Срок до: <strong>${escapeHtml(effDate || '—')}</strong> • Статус: <strong>${escapeHtml(c.status)}</strong>
-              ${c.extendedUntil ? ` • Продлено до: ${escapeHtml(c.extendedUntil)}` : ''}
-              ${(c.suspendedFrom || c.suspendedTo) ? ` • Приостановлено: ${escapeHtml(c.suspendedFrom || '—')} — ${escapeHtml(c.suspendedTo || '—')}` : ''}
-              ${c.notes ? '<br/><strong>Фабула:</strong> ' + escapeHtml(c.notes) : ''}
-              ${c.extraInfo ? '<br/><strong>Доп. инфо:</strong> ' + escapeHtml(c.extraInfo) : ''}
-              ${partsHtml}
-            </div>
-            ${tasksHtml}
-            ${docsHtml}
-            <div class="item-actions" style="margin-top:8px;">
-              <button type="button" class="btn btn-sm btn-outline" onclick="editCase('${c.id}')">Изменить</button>
-              <button type="button" class="btn btn-sm btn-danger" onclick="deleteCase('${c.id}')">Удалить</button>
-            </div>
-          </div>
-        `;
-      }).join('');
+          `;
+        })
+        .join('');
     }
 
-    function renderEvents() {
-      const container = document.getElementById('eventsList');
-      if (!appState.events.length) {
-        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Запланированных следственных действий пока нет.</div>';
+    function quickShiftEvent(id, newDt) {
+      const ev = ws.eventsData.find((x) => x.id === id);
+      if (!ev || !newDt) return;
+      ev.dt = newDt;
+      selectedDay = newDt.split('T')[0];
+      renderAll();
+      scheduleSync();
+      showToast('Дата и время обновлены');
+    }
+
+    function openEventModal(eventId) {
+      const modal = document.getElementById('eventModal');
+      const delBtn = document.getElementById('evDeleteBtn');
+
+      if (eventId) {
+        const ev = ws.eventsData.find((x) => x.id === eventId);
+        if (!ev) return;
+        document.getElementById('evModalHeading').textContent = 'Настройка события';
+        document.getElementById('evEditId').value = ev.id;
+        document.getElementById('evTitleInput').value = ev.title;
+        document.getElementById('evDtInput').value = ev.dt;
+        document.getElementById('evCaseInput').value = ev.caseNum || '';
+        modalPickedColor = ev.color || 'work';
+        delBtn.classList.remove('hidden');
+      } else {
+        document.getElementById('evModalHeading').textContent = 'Новое событие';
+        document.getElementById('evEditId').value = '';
+        document.getElementById('evTitleInput').value = '';
+        document.getElementById('evDtInput').value = `${selectedDay}T10:00`;
+        document.getElementById('evCaseInput').value = ws.casesData[0] ? `УД ${ws.casesData[0].number}` : '';
+        modalPickedColor = 'work';
+        delBtn.classList.add('hidden');
+      }
+
+      renderModalColorChoices();
+      modal.classList.remove('hidden');
+    }
+
+    function renderModalColorChoices() {
+      const wrap = document.getElementById('evColorChoices');
+      wrap.innerHTML = Object.entries(EVENT_CATEGORIES)
+        .map(([key, cfg]) => {
+          const active = modalPickedColor === key;
+          return `
+            <button type="button" onclick="pickModalColor('${key}')"
+              class="p-2 rounded-xl border text-left text-xs font-semibold flex items-center gap-2 ${cfg.cls} ${
+                active ? 'ring-2 ring-[#5b7bb2]' : ''
+              }">
+              <span class="w-3 h-3 rounded-full shrink-0" style="background:${cfg.dot}"></span>
+              <span class="truncate">${esc(cfg.label)}</span>
+            </button>
+          `;
+        })
+        .join('');
+    }
+
+    function pickModalColor(key) {
+      modalPickedColor = key;
+      renderModalColorChoices();
+    }
+
+    function closeEventModal() {
+      document.getElementById('eventModal').classList.add('hidden');
+    }
+
+    function saveCalendarEvent() {
+      const id = document.getElementById('evEditId').value;
+      const title = (document.getElementById('evTitleInput').value || '').trim();
+      const dt = document.getElementById('evDtInput').value || `${selectedDay}T10:00`;
+      const caseNum = (document.getElementById('evCaseInput').value || '').trim();
+
+      if (!title) {
+        showToast('Укажите название события');
         return;
       }
 
-      container.innerHTML = appState.events.map(ev => {
-        const dt = ev.dateTime ? new Date(ev.dateTime).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '';
-        return `
-          <div class="list-item" style="${ev.done ? 'opacity:0.6;' : ''}">
-            <div class="list-item-top">
-              <div class="item-title">${escapeHtml(ev.type)} — ${escapeHtml(ev.person)}</div>
-              <span class="badge ${ev.done ? 'badge-ok' : 'badge-info'}">${ev.done ? 'Проведено' : dt}</span>
-            </div>
-            <div class="item-meta">${escapeHtml(ev.caseRef || 'Без привязки к делу')}</div>
-            <div class="item-actions">
-              <button type="button" class="btn btn-sm btn-outline" onclick="toggleEventDone('${ev.id}')">${ev.done ? 'Вернуть в план' : 'Отметить выполненным'}</button>
-              <button type="button" class="btn btn-sm btn-danger" onclick="deleteEvent('${ev.id}')">Удалить</button>
-            </div>
-          </div>
-        `;
-      }).join('');
+      if (id) {
+        const ev = ws.eventsData.find((x) => x.id === id);
+        if (ev) {
+          ev.title = title;
+          ev.dt = dt;
+          ev.caseNum = caseNum;
+          ev.color = modalPickedColor;
+        }
+        showToast('Событие сохранено');
+      } else {
+        ws.eventsData.push({
+          id: 'e_' + Date.now(),
+          title,
+          dt,
+          caseNum,
+          color: modalPickedColor
+        });
+        showToast('Событие добавлено в календарь');
+      }
+
+      selectedDay = dt.split('T')[0];
+      closeEventModal();
+      renderAll();
+      scheduleSync();
     }
 
-    function renderDashboardAndSelects() {
-      const activeCases = appState.cases.filter(c => c.status === 'В производстве' || c.status === 'Продлён срок');
-      const urgent = activeCases.filter(c => {
-        const d = daysLeft(getEffectiveDeadline(c));
-        const lead = c.motionLeadDays || 10;
-        return d !== null && d <= lead;
+    function deleteCalendarEvent() {
+      const id = document.getElementById('evEditId').value;
+      ws.eventsData = ws.eventsData.filter((x) => x.id !== id);
+      closeEventModal();
+      renderAll();
+      scheduleSync();
+      showToast('Событие удалено');
+    }
+
+    /* ==================== ВКЛАДКА «ДЕЛА» ==================== */
+
+    function initCaseFormDates() {
+      const t = getTodayIso();
+      document.getElementById('ncOpened').value = t;
+      document.getElementById('ncDeadline').value = addMonthsIso(t, 2);
+    }
+
+    function toggleNewCaseForm(show) {
+      const card = document.getElementById('newCaseFormCard');
+      const btnWrap = document.getElementById('addCaseTriggerWrap');
+      if (show) {
+        tempArticles = [];
+        tempParticipants = [];
+        tempPlans = [];
+        initCaseFormDates();
+        renderTempFormLists();
+        card.classList.remove('hidden');
+        btnWrap.classList.add('hidden');
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        card.classList.add('hidden');
+        btnWrap.classList.remove('hidden');
+      }
+    }
+
+    function addTempArticle() {
+      const inp = document.getElementById('ncArticleInput');
+      const val = (inp.value || '').trim();
+      if (!val) return;
+      tempArticles.push(val);
+      inp.value = '';
+      renderTempFormLists();
+    }
+
+    function addTempParticipant() {
+      const nameInp = document.getElementById('ncPartName');
+      const roleSel = document.getElementById('ncPartRole');
+      const name = (nameInp.value || '').trim();
+      if (!name) return;
+      tempParticipants.push({ name, role: roleSel.value });
+      nameInp.value = '';
+      renderTempFormLists();
+    }
+
+    function addTempPlan() {
+      const inp = document.getElementById('ncPlanInput');
+      const val = (inp.value || '').trim();
+      if (!val) return;
+      tempPlans.push(val);
+      inp.value = '';
+      renderTempFormLists();
+    }
+
+    function renderTempFormLists() {
+      document.getElementById('tempArticlesList').innerHTML = tempArticles
+        .map((a) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold">${esc(a)}</span>`)
+        .join('');
+      document.getElementById('tempParticipantsList').innerHTML = tempParticipants
+        .map((p) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg">${esc(p.name)} — <b>${esc(p.role)}</b></div>`)
+        .join('');
+      document.getElementById('tempPlanList').innerHTML = tempPlans
+        .map((pl) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg">• ${esc(pl)}</div>`)
+        .join('');
+    }
+
+    function saveNewCase() {
+      const numRaw = (document.getElementById('ncNumber').value || '').trim();
+      if (!numRaw) {
+        showToast('Введите номер уголовного дела');
+        return;
+      }
+      const pendingArt = (document.getElementById('ncArticleInput').value || '').trim();
+      if (pendingArt) tempArticles.push(pendingArt);
+
+      const openedVal = document.getElementById('ncOpened').value || getTodayIso();
+      ws.casesData.unshift({
+        id: 'ud_' + Date.now(),
+        number: numRaw.startsWith('№') ? numRaw : '№ ' + numRaw,
+        opened: openedVal,
+        deadline: document.getElementById('ncDeadline').value || addMonthsIso(openedVal, 2),
+        leadDays: parseInt(document.getElementById('ncLeadDays').value, 10) || 10,
+        articles: tempArticles.length ? [...tempArticles] : ['ст. 158 УК РФ'],
+        fabula: (document.getElementById('ncFabula').value || '').trim() || 'Фабула не заполнена.',
+        participants: [...tempParticipants],
+        plan: [...tempPlans],
+        docs: [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }],
+        expanded: false
       });
-      const upcoming = appState.events.filter(e => !e.done);
 
-      document.getElementById('statTotalCases').textContent = activeCases.length;
-      document.getElementById('statUrgentCases').textContent = urgent.length;
-      document.getElementById('statUpcomingEvents').textContent = upcoming.length;
+      document.getElementById('ncNumber').value = '';
+      document.getElementById('ncArticleInput').value = '';
+      document.getElementById('ncFabula').value = '';
+      toggleNewCaseForm(false);
+      renderAll();
+      scheduleSync();
+      showToast('Уголовное дело добавлено');
+    }
 
-      const dlBox = document.getElementById('dashboardDeadlines');
-      if (!activeCases.length) {
-        dlBox.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Активных дел в производстве нет.</div>';
-      } else {
-        const sorted = [...activeCases].sort((a, b) => new Date(getEffectiveDeadline(a)) - new Date(getEffectiveDeadline(b))).slice(0, 5);
-        dlBox.innerHTML = sorted.map(c => {
-          const effDate = getEffectiveDeadline(c);
-          const d = daysLeft(effDate);
-          const lead = c.motionLeadDays || 10;
-          const cls = d < 0 ? 'badge-danger' : d <= lead ? 'badge-warn' : 'badge-ok';
-          const lbl = d < 0 ? `Просрочено (${Math.abs(d)} дн.)` : `${d} дн.`;
-          return `
-            <div class="list-item" style="margin-bottom:8px;">
-              <div class="list-item-top" style="margin-bottom:0;">
-                <div>
-                  <div class="item-title">№ ${escapeHtml(c.number)} (${escapeHtml(getCaseQualificationText(c))})</div>
-                  <div class="item-meta" style="margin-bottom:0;">Срок до ${escapeHtml(effDate)} • ${escapeHtml(c.status)}</div>
-                </div>
-                <span class="badge ${cls}">${lbl}</span>
-              </div>
-            </div>
-          `;
-        }).join('');
+    function toggleCaseExpand(caseId) {
+      const item = ws.casesData.find((c) => c.id === caseId);
+      if (item) {
+        item.expanded = !item.expanded;
+        renderCasesList();
+      }
+    }
+
+    function moveCaseDoc(caseId, idx, delta) {
+      const item = ws.casesData.find((c) => c.id === caseId);
+      if (!item) return;
+      const target = idx + delta;
+      if (target < 0 || target >= item.docs.length) return;
+      const [moved] = item.docs.splice(idx, 1);
+      item.docs.splice(target, 0, moved);
+      renderCasesList();
+      scheduleSync();
+    }
+
+    function deleteCaseById(caseId) {
+      ws.casesData = ws.casesData.filter((c) => c.id !== caseId);
+      renderAll();
+      scheduleSync();
+      showToast('Дело удалено');
+    }
+
+    function renderCasesList() {
+      const container = document.getElementById('casesCardsContainer');
+      if (!ws.casesData.length) {
+        container.innerHTML = '<div class="card text-xs text-slate-400">Дел в производстве пока нет. Нажмите «+ Добавить дело» ниже.</div>';
+        return;
       }
 
-      const evBox = document.getElementById('dashboardEvents');
-      if (!upcoming.length) {
-        evBox.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Ближайших следственных действий не запланировано.</div>';
-      } else {
-        evBox.innerHTML = upcoming.slice(0, 4).map(ev => {
-          const dt = ev.dateTime ? new Date(ev.dateTime).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      container.innerHTML = ws.casesData
+        .map((c) => {
+          const left = daysUntil(c.deadline);
+          const isUrgent = left <= (c.leadDays || 10);
+          const badgeCls = isUrgent ? 'bg-red-50 text-red-700 border-red-200' : 'bg-[#eef3fb] text-[#334e7b] border-[#d7e3f7]';
+
           return `
-            <div class="list-item" style="margin-bottom:8px;">
-              <div class="list-item-top" style="margin-bottom:0;">
+            <div class="card">
+              <div class="flex items-start justify-between gap-2 cursor-pointer" onclick="toggleCaseExpand('${c.id}')">
                 <div>
-                  <div class="item-title">${escapeHtml(ev.type)}</div>
-                  <div class="item-meta" style="margin-bottom:0;">${escapeHtml(ev.person)} • ${escapeHtml(ev.caseRef || '')}</div>
+                  <div class="text-base font-extrabold text-[#243b61]">УД ${esc(c.number)}</div>
+                  <div class="flex flex-wrap gap-1 mt-1">
+                    ${(c.articles || []).map((a) => `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">${esc(a)}</span>`).join('')}
+                  </div>
                 </div>
-                <span class="badge badge-info">${dt}</span>
+                <div class="text-right shrink-0">
+                  <span class="inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${badgeCls}">${left} дн.</span>
+                  <div class="text-[11px] text-slate-400 mt-1">${c.expanded ? 'Свернуть ▲' : 'Подразделы ▼'}</div>
+                </div>
               </div>
+
+              ${c.expanded ? `
+                <div class="mt-3 pt-3 border-t border-slate-100 space-y-2.5 text-xs">
+                  <div class="p-2.5 rounded-xl bg-slate-50">
+                    <div class="font-bold text-[#243b61] mb-0.5">Фабула и сроки</div>
+                    <div class="text-slate-600 mb-1">${esc(c.fabula)}</div>
+                    <div class="text-slate-500">Возбуждено: ${esc(c.opened)} • Срок до: ${esc(c.deadline)}</div>
+                  </div>
+
+                  <div class="p-2.5 rounded-xl bg-slate-50">
+                    <div class="font-bold text-[#243b61] mb-1">Участники (${(c.participants || []).length})</div>
+                    ${(c.participants || []).length
+                      ? c.participants.map((p) => `<div class="text-slate-700">• ${esc(p.name)} — <span class="text-slate-500">${esc(p.role)}</span></div>`).join('')
+                      : '<div class="text-slate-400">Участники пока не добавлены</div>'}
+                  </div>
+
+                  <div class="p-2.5 rounded-xl bg-slate-50">
+                    <div class="font-bold text-[#243b61] mb-1">План: что провести</div>
+                    ${(c.plan || []).length
+                      ? c.plan.map((pl) => `<div class="text-slate-700">• ${esc(pl)}</div>`).join('')
+                      : '<div class="text-slate-400">Пунктов плана нет</div>'}
+                  </div>
+
+                  <div class="p-2.5 rounded-xl bg-slate-50">
+                    <div class="font-bold text-[#243b61] mb-1.5">Документы дела (порядок для описи)</div>
+                    ${(c.docs || []).map((doc, idx) => `
+                      <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-white border border-slate-200 mb-1">
+                        <span class="font-medium text-slate-700">${esc(doc.name)} <small class="text-slate-400">(${esc(doc.kind)})</small></span>
+                        <div class="flex gap-1 shrink-0">
+                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" onclick="moveCaseDoc('${c.id}', ${idx}, -1)">↑</button>
+                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" onclick="moveCaseDoc('${c.id}', ${idx}, 1)">↓</button>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+
+                  <div class="flex justify-end pt-1">
+                    <button type="button" class="btn-soft-ghost text-red-600 text-xs" onclick="deleteCaseById('${c.id}')">Удалить дело</button>
+                  </div>
+                </div>
+              ` : ''}
             </div>
           `;
-        }).join('');
+        })
+        .join('');
+    }
+
+    function renderSvodkaDeadlines() {
+      const el = document.getElementById('svodkaDeadlinesList');
+      if (!ws.casesData.length) {
+        el.innerHTML = '<div class="text-xs text-slate-400">Дел с контролем сроков пока нет.</div>';
+        return;
       }
-
-      const caseOptions = ['<option value="">— Без привязки к делу —</option>']
-        .concat(appState.cases.map(c => `<option value="УД № ${escapeHtml(c.number)} (${escapeHtml(getCaseQualificationText(c))})">УД № ${escapeHtml(c.number)} — ${escapeHtml(getCaseQualificationText(c))}</option>`))
+      el.innerHTML = ws.casesData
+        .map((c) => {
+          const left = daysUntil(c.deadline);
+          const urgent = left <= (c.leadDays || 10);
+          return `
+            <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 ${
+              urgent ? 'bg-red-50/70 border-red-200' : 'bg-white border-slate-200'
+            }">
+              <div>
+                <div class="text-xs font-bold text-[#243b61]">УД ${esc(c.number)} • ${esc((c.articles || []).join(', '))}</div>
+                <div class="text-[11px] text-slate-500">Срок до ${esc(c.deadline)}</div>
+              </div>
+              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${urgent ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-700'}">${left} дн.</span>
+            </div>
+          `;
+        })
         .join('');
-      document.getElementById('eventCaseRef').innerHTML = caseOptions;
+    }
 
-      const docOptions = ['<option value="">— Выберите дело —</option>']
-        .concat(appState.cases.map(c => `<option value="${c.id}">УД № ${escapeHtml(c.number)} — ${escapeHtml(getCaseQualificationText(c))}</option>`))
+    /* ==================== БЛАНКИ, БАЗА ЗНАНИЙ И ПРОФИЛЬ ==================== */
+
+    function syncProfileInputs() {
+      document.getElementById('profOrg').value = ws.profile.org || '';
+      document.getElementById('profRank').value = ws.profile.rank || '';
+      document.getElementById('profFio').value = ws.profile.fio || '';
+    }
+
+    function onProfileInput() {
+      ws.profile.org = document.getElementById('profOrg').value;
+      ws.profile.rank = document.getElementById('profRank').value;
+      ws.profile.fio = document.getElementById('profFio').value;
+      updateBlankDraft();
+      scheduleSync();
+    }
+
+    function setBlankGroup(grp) {
+      currentBlankGrp = grp;
+      ['Постановления', 'Протоколы', 'Иные документы'].forEach((g) => {
+        const b = document.getElementById('bGrp-' + g);
+        b.className = g === grp ? 'btn-soft-secondary text-xs py-2' : 'btn-soft-ghost text-xs py-2';
+      });
+      renderBlankSelect();
+    }
+
+    function renderBlankSelect() {
+      const q = (document.getElementById('blankSearch').value || '').toLowerCase();
+      let list = BLANKS_LIST.filter((b) => b.group === currentBlankGrp);
+      if (q) {
+        const m = BLANKS_LIST.filter((b) => b.title.toLowerCase().includes(q));
+        if (m.length) list = m;
+      }
+      document.getElementById('blankPicker').innerHTML = list
+        .map((b) => `<option value="${b.id}">${esc(b.title)} (${esc(b.ref)})</option>`)
         .join('');
-      document.getElementById('docCaseSelect').innerHTML = docOptions;
 
-      document.getElementById('cfgDepartment').value = appState.docConfig.department || '';
-      document.getElementById('cfgRank').value = appState.docConfig.rank || '';
-      document.getElementById('cfgName').value = appState.docConfig.name || '';
-      document.getElementById('cfgAddress').value = appState.docConfig.address || '';
+      const caseSel = document.getElementById('blankCaseSelect');
+      caseSel.innerHTML = ws.casesData.length
+        ? ws.casesData.map((c) => `<option value="${c.id}">УД ${esc(c.number)} — ${esc((c.articles || []).join(', '))}</option>`).join('')
+        : '<option value="">— Дела пока не добавлены —</option>';
+
+      updateBlankDraft();
+    }
+
+    function updateBlankDraft() {
+      const blank = BLANKS_LIST.find((b) => b.id === document.getElementById('blankPicker').value) || BLANKS_LIST[0];
+      const mode = (document.querySelector('input[name="bMode"]:checked') || {}).value || 'case';
+      const org = ws.profile.org || 'Следственный орган';
+      const rank = ws.profile.rank || 'следователь';
+      const fio = ws.profile.fio || '________________';
+      const editor = document.getElementById('blankEditor');
+
+      if (mode === 'empty') {
+        editor.value = `${blank.title.toUpperCase()}\n(${blank.ref})\n\n«___» __________ 2026 г.\n\nТекст документа:`;
+      } else if (mode === 'header') {
+        editor.value = `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\n(${blank.ref})\n\n«___» __________ 2026 г.\n\nТекст документа:`;
+      } else {
+        const kase = ws.casesData.find((c) => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
+        const kbRef = ws.kbMaterials.map((m) => `«${m.title}»`).join(', ');
+        if (!kase) {
+          editor.value = `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\nпо уголовному делу № ______________\n\nДобавьте дело во вкладке «Дела», чтобы подставить реквизиты и фабулу.`;
+          return;
+        }
+        editor.value =
+          `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\nпо уголовному делу ${kase.number} (${(kase.articles || []).join(', ')})\n\n` +
+          `Сформировано по образцу с учётом материалов дела, расчёта сроков по УПК РФ (срок до ${kase.deadline}) ` +
+          `и пособий из Базы знаний: ${kbRef}.\n\n` +
+          `Фабула: ${kase.fabula}`;
+      }
+    }
+
+    function downloadBlankDocx() {
+      const txt = document.getElementById('blankEditor').value;
+      const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'></head><body><pre style="font-family:'Times New Roman',serif;font-size:14pt;white-space:pre-wrap;">${esc(txt)}</pre></body></html>`;
+      const blob = new Blob(['\ufeff', html], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ARM_Sledovatelya_Dokument.docx';
+      a.click();
+      showToast('Документ .DOCX скачан');
+    }
+
+    function attachBlankToCase() {
+      const kase = ws.casesData.find((c) => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
+      if (!kase) {
+        showToast('Сначала добавьте дело');
+        return;
+      }
+      const blank = BLANKS_LIST.find((b) => b.id === document.getElementById('blankPicker').value) || BLANKS_LIST[0];
+      kase.docs = kase.docs || [];
+      kase.docs.push({ name: `${blank.title} (${kase.number})`, kind: 'Создать' });
+      renderCasesList();
+      scheduleSync();
+      showToast(`Добавлено в документы дела ${kase.number}`);
+    }
+
+    function renderKbSection() {
+      document.getElementById('kbCatChips').innerHTML = KB_CATEGORIES
+        .map((c) => {
+          const act = kbSelectedCats.includes(c);
+          return `<button type="button" onclick="toggleKbCat('${esc(c)}')" class="px-2.5 py-1 rounded-full text-xs font-semibold border ${
+            act ? 'bg-[#334e7b] text-white border-[#334e7b]' : 'bg-white text-slate-600 border-slate-200'
+          }">${esc(c)}</button>`;
+        })
+        .join('');
+
+      document.getElementById('kbMaterialList').innerHTML = ws.kbMaterials
+        .map((m) => `
+          <div class="card">
+            <div class="text-sm font-bold text-[#243b61]">${esc(m.title)}</div>
+            <div class="flex flex-wrap gap-1 my-1.5">
+              ${(m.cats || []).map((c) => `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#eef3fb] text-[#334e7b]">${esc(c)}</span>`).join('')}
+            </div>
+            <div class="text-xs text-slate-600">${esc(m.notes)}</div>
+          </div>
+        `)
+        .join('');
+    }
+
+    function toggleKbCat(c) {
+      if (kbSelectedCats.includes(c)) kbSelectedCats = kbSelectedCats.filter((x) => x !== c);
+      else kbSelectedCats.push(c);
+      renderKbSection();
+    }
+
+    function addKbMaterial() {
+      const title = (document.getElementById('kbNewTitle').value || '').trim();
+      if (!title) return;
+      const notes = (document.getElementById('kbNewNotes').value || '').trim() || 'Подключено к генерации бланков и расчётам по УПК.';
+      ws.kbMaterials.unshift({ title, cats: [...kbSelectedCats], notes });
+      document.getElementById('kbNewTitle').value = '';
+      document.getElementById('kbNewNotes').value = '';
+      renderKbSection();
+      updateBlankDraft();
+      scheduleSync();
+      showToast('Добавлено в Базу знаний');
+    }
+
+    function renderAllActionsList() {
+      const sorted = [...ws.eventsData].sort((a, b) => (a.dt || '').localeCompare(b.dt || ''));
+      if (!sorted.length) {
+        document.getElementById('allActionsContainer').innerHTML = '<div class="text-xs text-slate-400">Запланированных действий пока нет.</div>';
+        return;
+      }
+      document.getElementById('allActionsContainer').innerHTML = sorted
+        .map((ev) => {
+          const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
+          return `
+            <div class="p-3 rounded-xl border mb-2 flex items-center justify-between gap-2 ${cat.cls}">
+              <div>
+                <div class="text-xs font-bold">${esc(ev.title)} • ${esc(ev.caseNum)}</div>
+                <div class="text-[11px] opacity-80">${esc((ev.dt || '').replace('T', ' '))} (${esc(cat.label)})</div>
+              </div>
+              <button type="button" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700"
+                onclick="openEventModal('${ev.id}')">Изменить</button>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    function renderMetrics() {
+      const todayIso = getTodayIso();
+      document.getElementById('statCasesCount').textContent = String(ws.casesData.length);
+      document.getElementById('statUrgentCount').textContent = String(ws.casesData.filter((c) => daysUntil(c.deadline) <= (c.leadDays || 10)).length);
+      document.getElementById('statTodayCount').textContent = String(ws.eventsData.filter((e) => e.dt && e.dt.startsWith(todayIso)).length);
     }
 
     function renderAll() {
-      renderDashboardAndSelects();
-      renderCases();
-      renderEvents();
+      renderMetrics();
+      renderCalendarSection();
+      renderSvodkaDeadlines();
+      renderCasesList();
+      renderBlankSelect();
+      renderKbSection();
     }
 
-    renderDraftQualifications();
-    renderDraftParticipants();
-    renderDraftPlanTasks();
-    renderDraftCaseDocs();
-    updateDeadlineHint();
-
+    setNetIndicator();
     window.addEventListener('online', () => {
-      showToast('Связь восстановлена — синхронизация...');
+      setNetIndicator();
+      showToast('Связь восстановлена');
       pushToCloud();
     });
     window.addEventListener('offline', () => {
-      setSyncUI('offline', 'Офлайн');
-      showToast('Офлайн-режим: данные сохраняются на устройстве');
+      setNetIndicator();
+      setCloudIndicator('warn', 'Офлайн');
     });
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW error:', err));
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
       });
     }
 
     (async function init() {
       try {
-        if (!navigator.onLine) {
-          setSyncUI('offline', 'Офлайн');
-        }
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session && session.user) {
-          await enterWorkspace(session.user);
+          await enterApp(session.user);
         }
       } catch (err) {
-        console.error('Init error:', err);
-        document.getElementById('authScreen').classList.remove('hidden');
-        document.getElementById('appShell').classList.add('hidden');
+        console.error(err);
       }
     })();
   </script>
 </body>
 </html>
+
