@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="IAR" />
   <title>АРМ Следователя — Автоматизированное рабочее место</title>
   <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='26' fill='%230d1b3e'/%3E%3Cpath d='M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z' fill='none' stroke='%23ffffff' stroke-width='6' stroke-linejoin='round'/%3E%3Cpath d='M36 66 L54 48 L65 58 L84 39' fill='none' stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70 39 H84 V53' fill='none' stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='60' y='88' text-anchor='middle' fill='%23ffffff' font-family='Inter, Arial, sans-serif' font-weight='800' font-size='22' letter-spacing='1'%3EIAR%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='26' fill='%230d1b3e'/%3E%3Cpath d='M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z' fill='none' stroke='%23ffffff' stroke-width='6' stroke-linejoin='round'/%3E%3Cpath d='M36 66 L54 48 L65 58 L84 39' fill="none" stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70 39 H84 V53' fill="none" stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='60' y='88' text-anchor='middle' fill='%23ffffff' font-family='Inter, Arial, sans-serif' font-weight='800' font-size='22' letter-spacing='1'%3EIAR%3C/text%3E%3C/svg%3E" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -489,7 +489,7 @@
 
     .modal-sheet {
       width: 100%;
-      max-width: 520px;
+      max-width: 540px;
       background: #ffffff;
       border-radius: 22px;
       padding: 18px;
@@ -723,7 +723,7 @@
       <main id="view-cases" class="hidden">
         <div class="mb-3">
           <h2 class="text-lg font-extrabold text-[#243b61] m-0">Уголовные дела</h2>
-          <p class="text-xs text-slate-500 mt-0.5 mb-0">Сначала отображаются дела в производстве; раскрывайте нужное дело для просмотра подразделов.</p>
+          <p class="text-xs text-slate-500 mt-0.5 mb-0">Сначала отображаются дела в производстве; раскрывайте нужное дело для просмотра подразделов и редактирования.</p>
         </div>
 
         <div id="casesCardsContainer"></div>
@@ -753,7 +753,7 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Срок следствия до</label>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Срок окончания следствия до</label>
               <input type="date" id="ncDeadline" class="soft-input" />
             </div>
             <div>
@@ -957,6 +957,85 @@
     </nav>
   </div>
 
+  <!-- Модалка редактирования уголовного дела -->
+  <div id="editCaseModal" class="modal-overlay hidden" onclick="if(event.target.id==='editCaseModal') closeEditCaseModal()">
+    <div class="modal-sheet">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-extrabold text-[#243b61] m-0">Редактирование уголовного дела</h3>
+        <button type="button" class="text-slate-400 font-bold px-2 py-1" onclick="closeEditCaseModal()">✕</button>
+      </div>
+
+      <input type="hidden" id="ecId" />
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Номер уголовного дела *</label>
+          <input type="text" id="ecNumber" class="soft-input" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Дата возбуждения</label>
+          <input type="date" id="ecOpened" class="soft-input" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Срок окончания следствия до</label>
+          <input type="date" id="ecDeadline" class="soft-input" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Напомнить о ходатайстве за (дн.)</label>
+          <input type="number" id="ecLeadDays" class="soft-input" min="1" max="60" />
+        </div>
+      </div>
+
+      <div class="mb-2.5">
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Квалификация (статьи УК РФ)</label>
+        <div class="flex gap-2 mb-1.5">
+          <input type="text" id="ecArticleInput" class="soft-input" placeholder="Например: ч. 2 ст. 158 УК РФ" />
+          <button type="button" class="btn-soft-secondary shrink-0" onclick="addEditArticle()">+ Статья</button>
+        </div>
+        <div id="editArticlesList" class="flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <div class="mb-2.5">
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Фабула дела</label>
+        <textarea id="ecFabula" class="soft-textarea" rows="2"></textarea>
+      </div>
+
+      <div class="mb-2.5">
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Участники</label>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-1.5">
+          <input type="text" id="ecPartName" class="soft-input sm:col-span-2" placeholder="ФИО участника" />
+          <div class="flex gap-1.5">
+            <select id="ecPartRole" class="soft-select">
+              <option value="Свидетель">Свидетель</option>
+              <option value="Потерпевший">Потерпевший</option>
+              <option value="Подозреваемый">Подозреваемый</option>
+              <option value="Обвиняемый">Обвиняемый</option>
+            </select>
+            <button type="button" class="btn-soft-secondary shrink-0" onclick="addEditParticipant()">+</button>
+          </div>
+        </div>
+        <div id="editParticipantsList" class="space-y-1"></div>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-xs font-semibold text-slate-600 mb-1">План: что необходимо провести</label>
+        <div class="flex gap-2 mb-1.5">
+          <input type="text" id="ecPlanInput" class="soft-input" placeholder="Новый пункт плана..." />
+          <button type="button" class="btn-soft-secondary shrink-0" onclick="addEditPlan()">+</button>
+        </div>
+        <div id="editPlanList" class="space-y-1"></div>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn-soft-ghost" onclick="closeEditCaseModal()">Отмена</button>
+        <button type="button" class="btn-soft-primary" onclick="saveEditedCase()">Сохранить изменения</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Модалка добавления / редактирования события календаря с выбором цвета -->
   <div id="eventModal" class="modal-overlay hidden" onclick="if(event.target.id==='eventModal') closeEventModal()">
     <div class="modal-sheet">
@@ -1013,6 +1092,12 @@
     function addMonthsIso(isoStr, months) {
       const [y, m, d] = isoStr.split('-').map(Number);
       const dt = new Date(Date.UTC(y, m - 1 + months, d));
+      return dt.toISOString().slice(0, 10);
+    }
+
+    function shiftIsoDays(isoStr, days) {
+      const [y, m, d] = isoStr.split('-').map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d + days));
       return dt.toISOString().slice(0, 10);
     }
 
@@ -1140,6 +1225,11 @@
     let tempArticles = [];
     let tempParticipants = [];
     let tempPlans = [];
+
+    let editArticles = [];
+    let editParticipants = [];
+    let editPlans = [];
+
     let currentBlankGrp = 'Постановления';
     let kbSelectedCats = ['Учебники', 'УПК'];
 
@@ -1171,6 +1261,53 @@
     function daysUntil(deadlineIso) {
       if (!deadlineIso) return 999;
       return Math.ceil((parseDate(deadlineIso) - parseDate(getTodayIso())) / (1000 * 60 * 60 * 24));
+    }
+
+    function syncCaseDeadlineInCalendar(kase) {
+      if (!kase || !kase.id || !kase.deadline) return;
+      const numClean = String(kase.number || '').replace(/^№\s*/, '').trim();
+      const caseLabel = `УД № ${numClean}`;
+      const deadlineEvId = `term_end_${kase.id}`;
+      const deadlineTitle = `Окончание срока • ${caseLabel}`;
+      const existingEnd = ws.eventsData.find((e) => e.id === deadlineEvId);
+      if (existingEnd) {
+        existingEnd.title = deadlineTitle;
+        existingEnd.caseNum = caseLabel;
+        existingEnd.dt = `${kase.deadline}T18:00`;
+        existingEnd.color = 'term';
+      } else {
+        ws.eventsData.push({
+          id: deadlineEvId,
+          title: deadlineTitle,
+          caseNum: caseLabel,
+          dt: `${kase.deadline}T18:00`,
+          color: 'term'
+        });
+      }
+
+      const leadDays = Number(kase.leadDays) || 10;
+      const warnDate = shiftIsoDays(kase.deadline, -leadDays);
+      const warnEvId = `term_warn_${kase.id}`;
+      const warnTitle = `Ходатайство о продлении (${leadDays} дн.) • ${caseLabel}`;
+      const existingWarn = ws.eventsData.find((e) => e.id === warnEvId);
+      if (existingWarn) {
+        existingWarn.title = warnTitle;
+        existingWarn.caseNum = caseLabel;
+        existingWarn.dt = `${warnDate}T10:00`;
+        existingWarn.color = 'term';
+      } else {
+        ws.eventsData.push({
+          id: warnEvId,
+          title: warnTitle,
+          caseNum: caseLabel,
+          dt: `${warnDate}T10:00`,
+          color: 'term'
+        });
+      }
+    }
+
+    function removeCaseDeadlineEvents(caseId) {
+      ws.eventsData = ws.eventsData.filter((e) => e.id !== `term_end_${caseId}` && e.id !== `term_warn_${caseId}`);
     }
 
     function setNetIndicator() {
@@ -1220,6 +1357,7 @@
         } else if (rawOld) {
           ws = normalizeWorkspacePayload(JSON.parse(rawOld));
         }
+        ws.casesData.forEach((c) => syncCaseDeadlineInCalendar(c));
       } catch (e) {}
     }
 
@@ -1244,6 +1382,7 @@
           const cloudTs = new Date(data.updated_at || cloudWs.updatedAt || 0).getTime();
           if (cloudTs >= localTs || (!ws.casesData.length && cloudWs.casesData.length)) {
             ws = cloudWs;
+            ws.casesData.forEach((c) => syncCaseDeadlineInCalendar(c));
             saveLocal();
           } else {
             await pushToCloud();
@@ -1735,13 +1874,13 @@
 
     function renderTempFormLists() {
       document.getElementById('tempArticlesList').innerHTML = tempArticles
-        .map((a) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold">${esc(a)}</span>`)
+        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" onclick="tempArticles.splice(${idx},1);renderTempFormLists()">×</button></span>`)
         .join('');
       document.getElementById('tempParticipantsList').innerHTML = tempParticipants
-        .map((p) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg">${esc(p.name)} — <b>${esc(p.role)}</b></div>`)
+        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" onclick="tempParticipants.splice(${idx},1);renderTempFormLists()">×</button></div>`)
         .join('');
       document.getElementById('tempPlanList').innerHTML = tempPlans
-        .map((pl) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg">• ${esc(pl)}</div>`)
+        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" onclick="tempPlans.splice(${idx},1);renderTempFormLists()">×</button></div>`)
         .join('');
     }
 
@@ -1755,19 +1894,26 @@
       if (pendingArt) tempArticles.push(pendingArt);
 
       const openedVal = document.getElementById('ncOpened').value || getTodayIso();
-      ws.casesData.unshift({
+      const deadlineVal = document.getElementById('ncDeadline').value || addMonthsIso(openedVal, 2);
+      const leadDaysVal = parseInt(document.getElementById('ncLeadDays').value, 10) || 10;
+
+      const newCase = {
         id: 'ud_' + Date.now(),
         number: numRaw.startsWith('№') ? numRaw : '№ ' + numRaw,
         opened: openedVal,
-        deadline: document.getElementById('ncDeadline').value || addMonthsIso(openedVal, 2),
-        leadDays: parseInt(document.getElementById('ncLeadDays').value, 10) || 10,
+        deadline: deadlineVal,
+        leadDays: leadDaysVal,
         articles: tempArticles.length ? [...tempArticles] : ['ст. 158 УК РФ'],
         fabula: (document.getElementById('ncFabula').value || '').trim() || 'Фабула не заполнена.',
         participants: [...tempParticipants],
         plan: [...tempPlans],
         docs: [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }],
-        expanded: false
-      });
+        expanded: true
+      };
+
+      ws.casesData.unshift(newCase);
+      syncCaseDeadlineInCalendar(newCase);
+      selectedDay = deadlineVal;
 
       document.getElementById('ncNumber').value = '';
       document.getElementById('ncArticleInput').value = '';
@@ -1775,7 +1921,105 @@
       toggleNewCaseForm(false);
       renderAll();
       scheduleSync();
-      showToast('Уголовное дело добавлено');
+      showToast('Дело сохранено, срок отмечен в календаре');
+    }
+
+    function openEditCaseModal(caseId) {
+      const item = ws.casesData.find((c) => c.id === caseId);
+      if (!item) return;
+
+      document.getElementById('ecId').value = item.id;
+      document.getElementById('ecNumber').value = item.number || '';
+      document.getElementById('ecOpened').value = item.opened || getTodayIso();
+      document.getElementById('ecDeadline').value = item.deadline || addMonthsIso(getTodayIso(), 2);
+      document.getElementById('ecLeadDays').value = item.leadDays || 10;
+      document.getElementById('ecFabula').value = item.fabula || '';
+      document.getElementById('ecArticleInput').value = '';
+      document.getElementById('ecPartName').value = '';
+      document.getElementById('ecPlanInput').value = '';
+
+      editArticles = [...(item.articles || [])];
+      editParticipants = (item.participants || []).map((p) => ({ ...p }));
+      editPlans = [...(item.plan || [])];
+
+      renderEditFormLists();
+      document.getElementById('editCaseModal').classList.remove('hidden');
+    }
+
+    function closeEditCaseModal() {
+      document.getElementById('editCaseModal').classList.add('hidden');
+    }
+
+    function addEditArticle() {
+      const inp = document.getElementById('ecArticleInput');
+      const val = (inp.value || '').trim();
+      if (!val) return;
+      editArticles.push(val);
+      inp.value = '';
+      renderEditFormLists();
+    }
+
+    function addEditParticipant() {
+      const nameInp = document.getElementById('ecPartName');
+      const roleSel = document.getElementById('ecPartRole');
+      const name = (nameInp.value || '').trim();
+      if (!name) return;
+      editParticipants.push({ name, role: roleSel.value });
+      nameInp.value = '';
+      renderEditFormLists();
+    }
+
+    function addEditPlan() {
+      const inp = document.getElementById('ecPlanInput');
+      const val = (inp.value || '').trim();
+      if (!val) return;
+      editPlans.push(val);
+      inp.value = '';
+      renderEditFormLists();
+    }
+
+    function renderEditFormLists() {
+      document.getElementById('editArticlesList').innerHTML = editArticles
+        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" onclick="editArticles.splice(${idx},1);renderEditFormLists()">×</button></span>`)
+        .join('');
+      document.getElementById('editParticipantsList').innerHTML = editParticipants
+        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" onclick="editParticipants.splice(${idx},1);renderEditFormLists()">×</button></div>`)
+        .join('');
+      document.getElementById('editPlanList').innerHTML = editPlans
+        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" onclick="editPlans.splice(${idx},1);renderEditFormLists()">×</button></div>`)
+        .join('');
+    }
+
+    function saveEditedCase() {
+      const id = document.getElementById('ecId').value;
+      const item = ws.casesData.find((c) => c.id === id);
+      if (!item) return;
+
+      const numRaw = (document.getElementById('ecNumber').value || '').trim();
+      if (!numRaw) {
+        showToast('Укажите номер уголовного дела');
+        return;
+      }
+
+      const pendingArt = (document.getElementById('ecArticleInput').value || '').trim();
+      if (pendingArt) editArticles.push(pendingArt);
+
+      item.number = numRaw.startsWith('№') ? numRaw : '№ ' + numRaw;
+      item.opened = document.getElementById('ecOpened').value || item.opened;
+      item.deadline = document.getElementById('ecDeadline').value || item.deadline;
+      item.leadDays = parseInt(document.getElementById('ecLeadDays').value, 10) || 10;
+      item.fabula = (document.getElementById('ecFabula').value || '').trim() || 'Фабула не заполнена.';
+      item.articles = editArticles.length ? [...editArticles] : ['ст. 158 УК РФ'];
+      item.participants = [...editParticipants];
+      item.plan = [...editPlans];
+      item.expanded = true;
+
+      syncCaseDeadlineInCalendar(item);
+      selectedDay = item.deadline;
+      closeEditCaseModal();
+      renderAll();
+      scheduleSync();
+      showToast('Изменения сохранены, срок в календаре обновлён');
     }
 
     function toggleCaseExpand(caseId) {
@@ -1799,6 +2043,7 @@
 
     function deleteCaseById(caseId) {
       ws.casesData = ws.casesData.filter((c) => c.id !== caseId);
+      removeCaseDeadlineEvents(caseId);
       renderAll();
       scheduleSync();
       showToast('Дело удалено');
@@ -1867,7 +2112,8 @@
                     `).join('')}
                   </div>
 
-                  <div class="flex justify-end pt-1">
+                  <div class="flex items-center justify-between gap-2 pt-1">
+                    <button type="button" class="btn-soft-secondary text-xs" onclick="openEditCaseModal('${c.id}')">Редактировать дело</button>
                     <button type="button" class="btn-soft-ghost text-red-600 text-xs" onclick="deleteCaseById('${c.id}')">Удалить дело</button>
                   </div>
                 </div>
