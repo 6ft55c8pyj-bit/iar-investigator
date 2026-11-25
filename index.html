@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="IAR" />
   <title>АРМ Следователя — Автоматизированное рабочее место</title>
   <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='26' fill='%230d1b3e'/%3E%3Cpath d='M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z' fill='none' stroke='%23ffffff' stroke-width='6' stroke-linejoin='round'/%3E%3Cpath d='M36 66 L54 48 L65 58 L84 39' fill='none' stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70 39 H84 V53' fill='none' stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='60' y='88' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-weight='800' font-size='22' letter-spacing='1' fill='%23ffffff'%3EIAR%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='26' fill='%230d1b3e'/%3E%3Cpath d='M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z' fill='none' stroke='%23ffffff' stroke-width='6' stroke-linejoin='round'/%3E%3Cpath d='M36 66 L54 48 L65 58 L84 39' fill='none' stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70 39 H84 V53' fill='none' stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='60' y='88' text-anchor='middle' fill='%23ffffff' font-family='Inter, Arial, sans-serif' font-weight='800' font-size='22' letter-spacing='1'%3EIAR%3C/text%3E%3C/svg%3E" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1048,34 +1048,84 @@
 
     const KB_CATEGORIES = ['УПК', 'Учебники', 'Запросы', 'Постановления', 'Экспертизы'];
 
-    const defaultWorkspace = () => {
-      const t = getTodayIso();
-      return {
-        eventsData: [
-          { id: 'e1', title: 'Допрос свидетеля', caseNum: 'УД № 116611', dt: `${t}T10:30`, color: 'work' },
-          { id: 'e2', title: 'Уведомл. прокурору', caseNum: 'УД № 116611', dt: `${t}T15:00`, color: 'court' }
-        ],
-        casesData: [],
-        kbMaterials: [
-          {
-            title: 'Криминалистика и тактика следственных действий (учебное пособие)',
-            cats: ['Учебники', 'Экспертизы'],
-            notes: 'Тактика допроса, выемки и постановки вопросов при назначении судебных экспертиз.'
-          },
-          {
-            title: 'Сроки предварительного следствия и ходатайства по УПК РФ',
-            cats: ['УПК', 'Постановления'],
-            notes: 'Расчёт сроков по ст. 162 УПК РФ и порядок уведомления прокурора и руководителя СО.'
-          }
-        ],
-        profile: {
-          org: 'СО ОП № 4 СУ УМВД России',
-          rank: 'следователь лейтенант юстиции',
-          fio: ''
+    const defaultWorkspace = () => ({
+      eventsData: [],
+      casesData: [],
+      kbMaterials: [
+        {
+          title: 'Криминалистика и тактика следственных действий (учебное пособие)',
+          cats: ['Учебники', 'Экспертизы'],
+          notes: 'Тактика допроса, выемки и постановки вопросов при назначении судебных экспертиз.'
         },
-        updatedAt: new Date().toISOString()
+        {
+          title: 'Сроки предварительного следствия и ходатайства по УПК РФ',
+          cats: ['УПК', 'Постановления'],
+          notes: 'Расчёт сроков по ст. 162 УПК РФ и порядок уведомления прокурора и руководителя СО.'
+        }
+      ],
+      profile: {
+        org: 'СО ОП № 4 СУ УМВД России',
+        rank: 'следователь лейтенант юстиции',
+        fio: ''
+      },
+      updatedAt: new Date().toISOString()
+    });
+
+    function normalizeWorkspacePayload(raw) {
+      const base = defaultWorkspace();
+      if (!raw || typeof raw !== 'object') return base;
+
+      let casesArr = Array.isArray(raw.casesData) ? raw.casesData : [];
+      if (!casesArr.length && Array.isArray(raw.cases) && raw.cases.length) {
+        casesArr = raw.cases.map((c, i) => {
+          const effDeadline = c.extendedUntil || c.deadlineDate || addMonthsIso(getTodayIso(), 2);
+          const arts = Array.isArray(c.qualifications) && c.qualifications.length
+            ? c.qualifications.map((q) => [q.point, q.part, q.article ? `ст. ${String(q.article).replace(/^ст\.?\s*/i, '')} УК РФ` : ''].filter(Boolean).join(' ')).filter(Boolean)
+            : (c.article ? [c.article] : ['ст. 158 УК РФ']);
+          return {
+            id: c.id || ('ud_mig_' + i),
+            number: c.number ? (String(c.number).startsWith('№') ? String(c.number) : '№ ' + c.number) : '№ —',
+            opened: c.startDate || getTodayIso(),
+            deadline: effDeadline,
+            leadDays: c.motionLeadDays || 10,
+            articles: arts.length ? arts : ['ст. 158 УК РФ'],
+            fabula: c.notes || c.extraInfo || 'Фабула не заполнена.',
+            participants: Array.isArray(c.participants) ? c.participants.map((p) => ({ name: p.name || '', role: p.role || 'Участник' })) : [],
+            plan: Array.isArray(c.planTasks) ? c.planTasks.map((t) => t.title || '').filter(Boolean) : [],
+            docs: Array.isArray(c.documents) && c.documents.length
+              ? c.documents.map((d) => ({ name: d.title || d.name || 'Документ', kind: d.kind || 'Фото / скан' }))
+              : [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }],
+            expanded: false
+          };
+        });
+      }
+
+      let eventsArr = Array.isArray(raw.eventsData) ? raw.eventsData : [];
+      if (!eventsArr.length && Array.isArray(raw.events) && raw.events.length) {
+        eventsArr = raw.events.map((ev, i) => ({
+          id: ev.id || ('ev_mig_' + i),
+          title: [ev.type, ev.person].filter(Boolean).join(' — ') || 'Следственное действие',
+          caseNum: ev.caseRef || '',
+          dt: ev.dateTime || `${getTodayIso()}T10:00`,
+          color: 'work'
+        }));
+      }
+
+      const legacyCfg = raw.docConfig || {};
+      const prof = {
+        org: (raw.profile && raw.profile.org) || legacyCfg.department || base.profile.org,
+        rank: (raw.profile && raw.profile.rank) || legacyCfg.rank || base.profile.rank,
+        fio: (raw.profile && raw.profile.fio) !== undefined ? raw.profile.fio : (legacyCfg.name || ''),
       };
-    };
+
+      return {
+        eventsData: eventsArr,
+        casesData: casesArr,
+        kbMaterials: Array.isArray(raw.kbMaterials) && raw.kbMaterials.length ? raw.kbMaterials : base.kbMaterials,
+        profile: prof,
+        updatedAt: raw.updatedAt || base.updatedAt
+      };
+    }
 
     let currentUser = null;
     let authMode = 'login';
@@ -1142,27 +1192,33 @@
       txt.textContent = label;
     }
 
-    function cacheKey() {
+    function newCacheKey() {
       return currentUser ? `iar_ws_cache_${currentUser.id}` : 'iar_ws_guest';
+    }
+
+    function oldCacheKey() {
+      return currentUser ? `iar_workspace_cache_${currentUser.id}` : 'iar_workspace_guest';
     }
 
     function saveLocal() {
       try {
-        localStorage.setItem(cacheKey(), JSON.stringify(ws));
+        localStorage.setItem(newCacheKey(), JSON.stringify(ws));
       } catch (e) {}
     }
 
     function loadLocal() {
       try {
-        const raw = localStorage.getItem(cacheKey());
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          const base = defaultWorkspace();
-          ws = {
-            ...base,
-            ...parsed,
-            profile: { ...base.profile, ...(parsed.profile || {}) }
-          };
+        const rawNew = localStorage.getItem(newCacheKey());
+        const rawOld = localStorage.getItem(oldCacheKey());
+        if (rawNew) {
+          ws = normalizeWorkspacePayload(JSON.parse(rawNew));
+          if (!ws.casesData.length && rawOld) {
+            const oldNorm = normalizeWorkspacePayload(JSON.parse(rawOld));
+            if (oldNorm.casesData.length) ws.casesData = oldNorm.casesData;
+            if (!ws.profile.fio && oldNorm.profile.fio) ws.profile.fio = oldNorm.profile.fio;
+          }
+        } else if (rawOld) {
+          ws = normalizeWorkspacePayload(JSON.parse(rawOld));
         }
       } catch (e) {}
     }
@@ -1183,15 +1239,10 @@
         if (error) throw error;
 
         if (data && data.workspace_data) {
-          const base = defaultWorkspace();
-          const cloudWs = {
-            ...base,
-            ...data.workspace_data,
-            profile: { ...base.profile, ...(data.workspace_data.profile || {}) }
-          };
+          const cloudWs = normalizeWorkspacePayload(data.workspace_data);
           const localTs = new Date(ws.updatedAt || 0).getTime();
           const cloudTs = new Date(data.updated_at || cloudWs.updatedAt || 0).getTime();
-          if (cloudTs >= localTs || !ws.casesData.length) {
+          if (cloudTs >= localTs || (!ws.casesData.length && cloudWs.casesData.length)) {
             ws = cloudWs;
             saveLocal();
           } else {
@@ -1200,6 +1251,7 @@
         } else {
           await pushToCloud();
         }
+        syncProfileInputs();
         setCloudIndicator('ok', 'Облако');
         document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
         renderAll();
@@ -1345,6 +1397,7 @@
         document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
         document.getElementById('tab-' + t).classList.toggle('active', t === tab);
       });
+      if (tab === 'profile') syncProfileInputs();
       if (tab === 'actions') renderAllActionsList();
     }
 
@@ -2057,4 +2110,3 @@
   </script>
 </body>
 </html>
-
