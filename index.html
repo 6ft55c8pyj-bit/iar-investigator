@@ -1,1036 +1,1893 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Автоматизированное рабочее место следователя</title>
-  <style>
-    :root {
-      --bg: #f6f8fc;
-      --surface: #ffffff;
-      --primary: #1a4fa3;
-      --primary-soft: rgba(26, 79, 163, 0.06);
-      --border: #1a4fa3;
-      --border-muted: #b8c8e6;
-      --text: #111c33;
-      --text-muted: #4b5d80;
-      --danger: #c62828;
-      --success: #1b7a43;
-      --radius: 14px;
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>АРМ следователя — Уголовные дела, Бланки и База знаний</title>
+<style>
+  :root {
+    --bg: #f3f5f8;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #dce2ea;
+    --border-strong: #c5ceda;
+    --text: #16202a;
+    --muted: #5c6b7a;
+    --accent: #1d4ed8;
+    --accent-hover: #1e40af;
+    --accent-soft: #eff6ff;
+    --success: #15803d;
+    --success-soft: #f0fdf4;
+    --warn: #b45309;
+    --warn-soft: #fffbeb;
+    --danger: #b91c1c;
+    --danger-soft: #fef2f2;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.45;
+  }
+
+  /* Header & Navigation */
+  .app-header {
+    background: #0f172a;
+    color: #fff;
+    padding: 14px 22px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.18);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-badge {
+    background: #2563eb;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    letter-spacing: 0.03em;
+  }
+
+  .brand-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .brand-sub {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 0;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .nav-tab {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 8px 16px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+
+  .nav-tab:hover {
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  .nav-tab.active {
+    background: #2563eb;
+    border-color: #3b82f6;
+    color: #fff;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Layout */
+  .container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 20px 22px 48px;
+  }
+
+  .view {
+    display: none;
+  }
+
+  .view.active {
+    display: block;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  @media (max-width: 1080px) {
+    .grid-2 {
+      grid-template-columns: 1fr;
     }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    .grid-3 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Cards & Buttons */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 13px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    text-decoration: none;
+  }
+
+  .btn:hover {
+    background: var(--surface-2);
+    border-color: #9fb0c3;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
+
+  .btn-success {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+  }
+
+  .btn-danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #fff;
+  }
+
+  .btn-soft {
+    background: var(--accent-soft);
+    border-color: #bfdbfe;
+    color: var(--accent);
+  }
+
+  .btn-sm {
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+
+  /* Form controls */
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  input[type="text"],
+  input[type="date"],
+  input[type="search"],
+  select,
+  textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 13.5px;
+    color: var(--text);
+    background: #fff;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+
+  textarea {
+    min-height: 82px;
+    resize: vertical;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .form-group {
+    margin-bottom: 10px;
+  }
+
+  /* Case List & Badges */
+  .case-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 12px;
+    margin-bottom: 9px;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    background: #fff;
+  }
+
+  .case-item:hover {
+    border-color: #93c5fd;
+    background: #f8fbff;
+  }
+
+  .case-item.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .case-num {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  .badge-blue {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  .badge-green {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .badge-warn {
+    background: #fef3c7;
+    color: #b45309;
+  }
+
+  .badge-red {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .deadline-banner {
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Sub-tabs inside case card */
+  .subtabs {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .subtab {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .subtab.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: #bfdbfe;
+  }
+
+  .subpanel {
+    display: none;
+  }
+
+  .subpanel.active {
+    display: block;
+  }
+
+  /* Tables & Lists */
+  .list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: var(--surface-2);
+  }
+
+  .list-row.done .row-title {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .row-title {
+    font-weight: 600;
+    font-size: 13.5px;
+  }
+
+  .row-meta {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Calendar summary */
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  .cal-item {
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: #fff;
+  }
+
+  .cal-item.urgent {
+    border-left-color: var(--danger);
+    background: #fffafa;
+  }
+
+  .cal-item.soon {
+    border-left-color: var(--warn);
+    background: #fffdf7;
+  }
+
+  /* Blanks & KB */
+  .filter-bar {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr auto;
+    gap: 10px;
+    margin-bottom: 14px;
+    align-items: end;
+  }
+
+  @media (max-width: 900px) {
+    .filter-bar {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .doc-catalog-list {
+    max-height: 540px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .doc-card {
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.14s ease;
+  }
+
+  .doc-card:hover {
+    border-color: #93c5fd;
+    background: #f8fbff;
+  }
+
+  .doc-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .mode-switch {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .mode-btn {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .mode-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .doc-preview {
+    background: #fff;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 20px;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 15px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    min-height: 340px;
+    max-height: 580px;
+    overflow-y: auto;
+  }
+
+  .hint-box {
+    background: var(--warn-soft);
+    border: 1px solid #fde68a;
+    color: #78350f;
+    border-radius: 9px;
+    padding: 11px 13px;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .hint-box ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+  }
+
+  .toast {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    background: #0f172a;
+    color: #fff;
+    padding: 11px 16px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 100;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media print {
+    .app-header, .no-print, .grid-2 > :first-child, .filter-bar, .mode-switch, .subtabs {
+      display: none !important;
+    }
     body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      padding-bottom: 84px;
+      background: #fff;
     }
-    .app-wrap {
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 12px;
-    }
-    .panel {
-      background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 14px;
-      margin-bottom: 12px;
-    }
-    .top-header {
-      background: var(--surface);
-      border: 1.75px solid var(--primary);
-      border-radius: var(--radius);
-      padding: 10px 14px;
-      margin-bottom: 12px;
-    }
-    .top-bar-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 6px;
-    }
-    .logo-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: 1.5px solid var(--primary);
-      color: var(--primary);
-      font-weight: 800;
-      font-size: 13px;
-      letter-spacing: 0.06em;
-      padding: 2px 10px;
-      border-radius: 999px;
-      background: var(--surface);
-    }
-    .user-email {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-    .status-pills {
-      display: flex;
-      gap: 6px;
-    }
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--primary);
-      color: var(--primary);
-      background: var(--surface);
-    }
-    .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--success);
-    }
-    .app-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--primary);
-      letter-spacing: 0.03em;
-      text-align: center;
-      margin: 2px 0 0;
-    }
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .kpi-card {
-      background: var(--surface);
-      border: 1.5px solid var(--primary);
-      border-radius: var(--radius);
-      padding: 10px 6px;
-      text-align: center;
-    }
-    .kpi-num {
-      font-size: 22px;
-      font-weight: 800;
-      color: var(--primary);
-      line-height: 1.1;
-    }
-    .kpi-label {
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--text);
-      margin-top: 4px;
-      letter-spacing: 0.02em;
-    }
-    .btn {
-      border: 1.4px solid var(--primary);
-      background: var(--surface);
-      color: var(--primary);
-      border-radius: 10px;
-      padding: 6px 11px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      transition: 0.15s;
-    }
-    .btn.active, .btn-primary {
-      background: var(--primary);
-      color: #ffffff;
-    }
-    .btn-sm {
-      padding: 4px 8px;
-      font-size: 11px;
-      border-radius: 8px;
-    }
-    .btn-danger {
-      border-color: var(--danger);
-      color: var(--danger);
-    }
-    .cal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-    .cal-month-title {
-      font-size: 15px;
-      font-weight: 800;
-      color: var(--primary);
-      letter-spacing: 0.04em;
-    }
-    .cal-modes {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-    .colors-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      align-items: center;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
-      border-bottom: 1px dashed var(--border-muted);
-    }
-    .color-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 9px;
-      border-radius: 999px;
-      border: 1.3px solid var(--border-muted);
-      background: var(--surface);
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      color: var(--text);
-    }
-    .color-chip.selected {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 1px var(--primary);
-    }
-    .color-swatch {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .cal-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
-      text-align: center;
-    }
-    .cal-dow {
-      font-size: 11px;
-      font-weight: 800;
-      color: var(--primary);
-      padding: 4px 0;
-      border-bottom: 1px solid var(--border-muted);
-    }
-    .cal-day {
-      min-height: 40px;
-      border: 1px solid var(--border-muted);
-      border-radius: 9px;
-      padding: 4px 2px;
-      font-size: 12px;
-      font-weight: 600;
-      background: var(--surface);
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .cal-day.empty {
-      border-color: transparent;
-      cursor: default;
-    }
-    .cal-day.today {
-      border: 1.6px solid var(--primary);
-      color: var(--primary);
-      font-weight: 800;
-    }
-    .cal-day.selected {
-      background: var(--primary-soft);
-      border: 2px solid var(--primary);
-    }
-    .day-dots {
-      display: flex;
-      gap: 2px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 2px;
-    }
-    .day-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-    }
-    .accordion-panel {
-      background: var(--surface);
-      border: 1.5px solid var(--primary);
-      border-radius: var(--radius);
-      margin-bottom: 10px;
-      overflow: hidden;
-    }
-    .accordion-header {
-      width: 100%;
-      background: var(--surface);
-      border: none;
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--primary);
-      letter-spacing: 0.03em;
-      cursor: pointer;
-    }
-    .accordion-body {
-      display: none;
-      padding: 0 14px 12px;
-      border-top: 1px solid var(--border-muted);
-    }
-    .accordion-panel.open .accordion-body {
+    .grid-2 {
       display: block;
     }
-    .accordion-panel.open .acc-arrow {
-      transform: rotate(180deg);
-    }
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: var(--surface);
-      border-top: 1.5px solid var(--primary);
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      padding: 6px 4px 10px;
-      z-index: 50;
-    }
-    .nav-btn {
-      background: none;
+    .doc-preview {
       border: none;
-      color: var(--text-muted);
-      font-size: 10px;
-      font-weight: 700;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 3px;
-      cursor: pointer;
-      padding: 4px 2px;
+      max-height: none;
+      padding: 0;
     }
-    .nav-btn.active {
-      color: var(--primary);
-    }
-    .nav-icon {
-      font-size: 16px;
-      line-height: 1;
-    }
-    .tab-view { display: none; }
-    .tab-view.active { display: block; }
-    input, select, textarea {
-      width: 100%;
-      border: 1.3px solid var(--border-muted);
-      border-radius: 9px;
-      padding: 8px 10px;
-      font-size: 13px;
-      font-family: inherit;
-      background: var(--surface);
-      color: var(--text);
-      margin-bottom: 8px;
-    }
-    input:focus, select:focus, textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(17, 28, 51, 0.35);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      z-index: 100;
-    }
-    .modal-backdrop.open { display: flex; }
-    .modal-box {
-      background: var(--surface);
-      border: 1.75px solid var(--primary);
-      border-radius: var(--radius);
-      padding: 16px;
-      width: 100%;
-      max-width: 440px;
-      max-height: 85vh;
-      overflow-y: auto;
-    }
-    .badge {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 999px;
-      border: 1px solid var(--primary);
-      color: var(--primary);
-    }
-    .item-row {
-      border: 1.2px solid var(--border-muted);
-      border-radius: 10px;
-      padding: 9px 11px;
-      margin-bottom: 8px;
-      background: var(--surface);
-    }
-    .row-between {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-  </style>
+  }
+</style>
 </head>
 <body>
-  <div class="app-wrap">
-    <header class="top-header">
-      <div class="top-bar-row">
-        <span class="user-email" id="headerEmail">irina.sled@icloud.com</span>
-        <span class="logo-badge">IAR</span>
-        <div class="status-pills">
-          <span class="status-pill"><span class="dot"></span>ОНЛАЙН</span>
-          <span class="status-pill"><span class="dot"></span>ОБЛАКО</span>
-        </div>
+
+<header class="app-header">
+  <div class="brand">
+    <div class="brand-badge">АРМ СЛЕДОВАТЕЛЯ</div>
+    <div>
+      <h1 class="brand-title">Автоматизированное рабочее место следователя</h1>
+      <p class="brand-sub">Уголовные дела • Календарь сроков • Бланки и генератор • База знаний</p>
+    </div>
+  </div>
+
+  <nav class="nav-tabs no-print" aria-label="Основные разделы">
+    <button class="nav-tab active" data-view="cases">1. Уголовные дела</button>
+    <button class="nav-tab" data-view="blanks">2. Бланки и генератор</button>
+    <button class="nav-tab" data-view="kb">3. База знаний</button>
+  </nav>
+
+  <div class="header-actions no-print">
+    <button class="btn btn-sm" id="btnExportJson" title="Скачать резервную копию данных в JSON">Экспорт JSON</button>
+    <button class="btn btn-sm" id="btnResetDemo" title="Восстановить демонстрационные данные">Сброс</button>
+  </div>
+</header>
+
+<main class="container">
+  <!-- ==================== РАЗДЕЛ 1: УГОЛОВНЫЕ ДЕЛА ==================== -->
+  <section id="view-cases" class="view active">
+    <div class="card">
+      <div class="card-title">
+        <span>Календарь контроля сроков расследования и мер пресечения</span>
+        <span class="badge badge-blue" id="calCountBadge">0 событий</span>
       </div>
-      <div class="app-title">АВТОМАТИЗИРОВАННОЕ РАБОЧЕЕ МЕСТО СЛЕДОВАТЕЛЯ</div>
-    </header>
+      <div id="deadlineCalendar" class="cal-grid"></div>
+    </div>
 
-    <section id="tab-summary" class="tab-view active">
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-num" id="kpiActive">1</div>
-          <div class="kpi-label">В ПРОИЗВОДСТВЕ</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-num" id="kpiUrgent">0</div>
-          <div class="kpi-label">СРОК &le; 10 ДН.</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-num" id="kpiToday">0</div>
-          <div class="kpi-label">НА СЕГОДНЯ</div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="cal-header">
-          <button class="btn btn-sm" onclick="shiftPeriod(-1)">&larr;</button>
-          <div class="cal-month-title" id="calTitle">НОЯБРЬ 2026</div>
-          <button class="btn btn-sm" onclick="shiftPeriod(1)">&rarr;</button>
-        </div>
-
-        <div class="cal-modes">
-          <button class="btn btn-sm" id="modeToday" onclick="goToday()">СЕГОДНЯ</button>
-          <button class="btn btn-sm" id="modeWeek" onclick="setCalMode('week')">НЕДЕЛЯ</button>
-          <button class="btn btn-sm active" id="modeMonth" onclick="setCalMode('month')">МЕСЯЦ</button>
-        </div>
-
-        <div class="colors-bar" id="colorsBar"></div>
-        <div style="display:flex; gap:6px; margin-bottom:10px;">
-          <button class="btn btn-sm" onclick="openColorManager()">&#9998; Цвета (как в iPhone)</button>
-          <button class="btn btn-sm btn-primary" style="flex:1;" onclick="openEventModal()">+ ДОБАВИТЬ СОБЫТИЕ</button>
-        </div>
-
-        <div class="cal-grid" id="calDowRow">
-          <div class="cal-dow">П</div><div class="cal-dow">В</div><div class="cal-dow">С</div>
-          <div class="cal-dow">Ч</div><div class="cal-dow">П</div><div class="cal-dow">С</div><div class="cal-dow">В</div>
-        </div>
-        <div class="cal-grid" id="calCells" style="margin-top:4px;"></div>
-      </div>
-
-      <div class="accordion-panel" id="accDayEvents">
-        <button class="accordion-header" onclick="toggleAcc('accDayEvents')">
-          <span>СОБЫТИЯ ВЫБРАННОГО ДНЯ (<span id="selectedDateLabel"></span>)</span>
-          <span class="acc-arrow">&#9660;</span>
-        </button>
-        <div class="accordion-body" id="dayEventsBody"></div>
-      </div>
-
-      <div class="accordion-panel" id="accDeadlines">
-        <button class="accordion-header" onclick="toggleAcc('accDeadlines')">
-          <span>КОНТРОЛЬ СРОКОВ</span>
-          <span class="acc-arrow">&#9660;</span>
-        </button>
-        <div class="accordion-body" id="deadlinesBody"></div>
-      </div>
-    </section>
-
-    <section id="tab-cases" class="tab-view">
-      <div class="panel">
-        <div class="row-between" style="margin-bottom:8px;">
-          <strong style="color:var(--primary);">УГОЛОВНЫЕ ДЕЛА В ПРОИЗВОДСТВЕ</strong>
-          <button class="btn btn-sm btn-primary" onclick="openCaseModal()">+ Новое УД</button>
-        </div>
-        <input type="text" id="caseSearch" placeholder="Поиск по номеру УД, статье УК РФ, ФИО..." oninput="renderCases()" />
-        <div id="casesList"></div>
-      </div>
-    </section>
-
-    <section id="tab-blanks" class="tab-view">
-      <div class="panel">
-        <strong style="color:var(--primary); display:block; margin-bottom:8px;">ПРОЦЕССУАЛЬНЫЕ БЛАНКИ (165 ВСТРОЕННЫХ + СВОИ)</strong>
-        <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px;" id="blankCatFilters"></div>
-        <input type="text" id="blankSearch" placeholder="Поиск по названию или номеру бланка..." oninput="renderBlanksTab()" />
-        <div id="blanksTabList"></div>
-      </div>
-    </section>
-
-    <section id="tab-hints" class="tab-view">
-      <div class="panel">
-        <strong style="color:var(--primary); display:block; margin-bottom:8px;">ПОДСКАЗКИ И АЛГОРИТМЫ СЛЕДОВАТЕЛЯ (УПК РФ)</strong>
-        <div class="item-row">
-          <strong>Срок проверки сообщения о преступлении (ст. 144 УПК РФ)</strong>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Базовый срок — 3 суток. Продление руководителем СО до 10 суток, при необходимости ревизий/экспертиз — до 30 суток.</div>
-        </div>
-        <div class="item-row">
-          <strong>Срок предварительного следствия (ст. 162 УПК РФ)</strong>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Базовый срок — 2 месяца со дня возбуждения УД. Продление до 3 месяцев — руководителем СО, до 12 месяцев — руководителем СО по субъекту РФ.</div>
-        </div>
-        <div class="item-row">
-          <strong>Задержание подозреваемого (ст. 91–94 УПК РФ)</strong>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Протокол составляется не позднее 3 часов после доставления. Допрос — не позднее 24 часов. Срок задержания без решения суда — 48 часов.</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="tab-profile" class="tab-view">
-      <div class="accordion-panel open" id="profInfo">
-        <button class="accordion-header" onclick="toggleAcc('profInfo')">
-          <span>ЛИЧНАЯ ИНФОРМАЦИЯ СЛЕДОВАТЕЛЯ</span>
-          <span class="acc-arrow">&#9660;</span>
-        </button>
-        <div class="accordion-body">
-          <input type="text" id="profFio" placeholder="ФИО следователя" value="Иванова Ирина Сергеевна" />
-          <input type="text" id="profRank" placeholder="Звание и должность" value="лейтенант юстиции, следователь СО" />
-          <input type="email" id="profMail" placeholder="Почта (@icloud.com)" value="irina.sled@icloud.com" onchange="updateHeaderEmail()" />
-          <button class="btn btn-sm btn-primary" onclick="saveProfile()">Сохранить профиль</button>
-        </div>
-      </div>
-
-      <div class="accordion-panel open" id="profKB">
-        <button class="accordion-header" onclick="toggleAcc('profKB')">
-          <span>БАЗА ЗНАНИЙ И ПРОЦЕССУАЛЬНЫЕ БЛАНКИ</span>
-          <span class="acc-arrow">&#9660;</span>
-        </button>
-        <div class="accordion-body">
-          <div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0;">
-            <button class="btn btn-sm btn-primary" onclick="openAddBlankModal()">+ Добавить свой бланк / файл</button>
-            <button class="btn btn-sm" onclick="restoreBuiltins()">Восстановить встроенные</button>
+    <div class="grid-2">
+      <!-- Левая колонка: список дел и создание -->
+      <div>
+        <div class="card">
+          <div class="card-title">
+            <span>Производства в работе</span>
+            <button class="btn btn-primary btn-sm" id="btnNewCase">+ Новое дело</button>
           </div>
-          <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px;" id="kbCatFilters"></div>
-          <input type="text" id="kbSearch" placeholder="Фильтр по названию или номеру бланка..." oninput="renderKB()" />
+          <div class="form-group">
+            <input type="search" id="caseSearch" placeholder="Поиск по № дела, статье УК РФ, фигуранту..." />
+          </div>
+          <div id="caseList"></div>
+        </div>
+      </div>
+
+      <!-- Правая колонка: карточка выбранного дела -->
+      <div id="caseWorkspace"></div>
+    </div>
+  </section>
+
+  <!-- ==================== РАЗДЕЛ 2: БЛАНКИ И ГЕНЕРАТОР ==================== -->
+  <section id="view-blanks" class="view">
+    <div class="card">
+      <div class="card-title">
+        <span>Каталог процессуальных бланков и генератор документов</span>
+        <span class="badge badge-blue" id="blankStatsBadge">0 бланков</span>
+      </div>
+      <div class="filter-bar">
+        <div>
+          <label for="blankSearch">Поиск по названию, статье или коду</label>
+          <input type="search" id="blankSearch" placeholder="Например: протокол допроса, осмотр, постановление о возбуждении..." />
+        </div>
+        <div>
+          <label for="blankCategory">Систематизация по виду документа</label>
+          <select id="blankCategory">
+            <option value="all">Все виды (Постановления, Протоколы, Иные)</option>
+            <option value="Постановление">Постановления</option>
+            <option value="Протокол">Протоколы</option>
+            <option value="Иной документ">Иные процессуальные документы</option>
+          </select>
+        </div>
+        <div>
+          <label for="blankCaseSelect">Привязать дело для генерации</label>
+          <select id="blankCaseSelect"></select>
+        </div>
+        <div>
+          <button class="btn btn-soft" id="btnClearBlankFilters">Сбросить</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">
+          <span>Найденные бланки</span>
+          <span class="badge" id="blankFilteredCount">0</span>
+        </div>
+        <div id="blankCatalogList" class="doc-catalog-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span id="selectedBlankTitle">Выберите бланк слева</span>
+          <div class="no-print" style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-sm" id="btnCopyDoc">Копировать</button>
+            <button class="btn btn-sm" id="btnDownloadDocTxt">Скачать .TXT</button>
+            <button class="btn btn-sm btn-success" id="btnDownloadDocWord">Скачать .DOC (Word)</button>
+            <button class="btn btn-sm" onclick="window.print()">Печать</button>
+          </div>
+        </div>
+
+        <label>Режим формирования документа</label>
+        <div class="mode-switch">
+          <button class="mode-btn active" data-mode="blank">1. Пустой образец</button>
+          <button class="mode-btn" data-mode="header">2. С шапкой следователя и дела</button>
+          <button class="mode-btn" data-mode="full">3. Полная генерация по делу</button>
+        </div>
+
+        <div id="blankHintsBox" class="hint-box" style="display:none;"></div>
+
+        <div class="form-group">
+          <label for="docEditor">Текст документа (можно редактировать вручную перед выгрузкой)</label>
+          <textarea id="docEditor" class="doc-preview"></textarea>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== РАЗДЕЛ 3: БАЗА ЗНАНИЙ ==================== -->
+  <section id="view-kb" class="view">
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <div class="card-title">
+            <span>Добавить материал в базу знаний и бланки</span>
+          </div>
+          <form id="kbAddForm">
+            <div class="form-group">
+              <label for="kbTitle">Наименование документа / материала</label>
+              <input type="text" id="kbTitle" required placeholder="Например: Протокол допроса свидетеля (ст. 189–190 УПК РФ)" />
+            </div>
+            <div class="form-row">
+              <div>
+                <label for="kbSysType">Систематизация</label>
+                <select id="kbSysType">
+                  <option value="Постановление">Постановление</option>
+                  <option value="Протокол">Протокол</option>
+                  <option value="Иной документ">Иной документ</option>
+                </select>
+              </div>
+              <div>
+                <label for="kbCategory">Раздел базы знаний</label>
+                <select id="kbCategory">
+                  <option value="Бланки и шаблоны">Бланки и шаблоны</option>
+                  <option value="Тактика и методички">Тактика и методички</option>
+                  <option value="Экспертизы и вопросы">Экспертизы и вопросы</option>
+                  <option value="УПК и нормы">УПК и нормы</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="kbArticles">Статьи УК / УПК РФ (через запятую)</label>
+              <input type="text" id="kbArticles" placeholder="ст. 158 УК РФ, ст. 189 УПК РФ" />
+            </div>
+            <div class="form-group">
+              <label for="kbHints">Тактические подсказки / контрольные пункты (каждый с новой строки)</label>
+              <textarea id="kbHints" placeholder="Уточнить время и место события с точностью до минут&#10;Проверить наличие защитника / законного представителя"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="kbBody">Шаблон текста / содержание материала (поддерживаются плейсхолдеры {{CASE_NUMBER}}, {{ARTICLES}}, {{SUMMARY}}, {{INVESTIGATOR}}, {{ORGAN}}, {{CITY}}, {{DATE}}, {{PARTICIPANTS}})</label>
+              <textarea id="kbBody" required style="min-height: 150px;" placeholder="ПРОТОКОЛ&#10;следственного действия по уголовному делу № {{CASE_NUMBER}}..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;">Сохранить в Базу знаний и Бланки</button>
+          </form>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-title">
+            <span>Материалы Базы знаний (основа генерации документов)</span>
+            <span class="badge badge-green" id="kbCountBadge">0 записей</span>
+          </div>
+          <div class="form-row" style="margin-bottom: 12px;">
+            <div>
+              <input type="search" id="kbSearch" placeholder="Поиск по базе знаний..." />
+            </div>
+            <div>
+              <select id="kbFilterCategory">
+                <option value="all">Все разделы</option>
+                <option value="Бланки и шаблоны">Бланки и шаблоны</option>
+                <option value="Тактика и методички">Тактика и методички</option>
+                <option value="Экспертизы и вопросы">Экспертизы и вопросы</option>
+                <option value="УПК и нормы">УПК и нормы</option>
+              </select>
+            </div>
+          </div>
           <div id="kbList"></div>
         </div>
       </div>
-    </section>
-  </div>
-
-  <nav class="bottom-nav">
-    <button class="nav-btn active" onclick="switchTab('summary', this)"><span class="nav-icon">&#128197;</span>СВОДКА</button>
-    <button class="nav-btn" onclick="switchTab('cases', this)"><span class="nav-icon">&#128193;</span>ДЕЛА</button>
-    <button class="nav-btn" onclick="switchTab('blanks', this)"><span class="nav-icon">&#128196;</span>БЛАНКИ</button>
-    <button class="nav-btn" onclick="switchTab('hints', this)"><span class="nav-icon">&#128161;</span>ПОДСКАЗКИ</button>
-    <button class="nav-btn" onclick="switchTab('profile', this)"><span class="nav-icon">&#128100;</span>ПРОФИЛЬ</button>
-  </nav>
-
-  <div class="modal-backdrop" id="colorModal">
-    <div class="modal-box">
-      <div class="row-between" style="margin-bottom:10px;">
-        <strong style="color:var(--primary);">Настройка цветов событий</strong>
-        <button class="btn btn-sm" onclick="closeModal('colorModal')">&#10005;</button>
-      </div>
-      <div id="colorEditList"></div>
-      <hr style="border:none; border-top:1px solid var(--border-muted); margin:10px 0;" />
-      <strong style="font-size:12px; color:var(--primary);">+ Новый цвет категории</strong>
-      <div style="display:flex; gap:6px; margin-top:6px;">
-        <input type="color" id="newColorHex" value="#1a4fa3" style="width:48px; height:36px; padding:2px;" />
-        <input type="text" id="newColorName" placeholder="Название (например: Вызов в суд)" style="flex:1;" />
-      </div>
-      <button class="btn btn-sm btn-primary" style="width:100%;" onclick="addNewColor()">Создать цвет</button>
     </div>
-  </div>
+  </section>
+</main>
 
-  <div class="modal-backdrop" id="eventModal">
-    <div class="modal-box">
-      <div class="row-between" style="margin-bottom:10px;">
-        <strong style="color:var(--primary);">Новое событие</strong>
-        <button class="btn btn-sm" onclick="closeModal('eventModal')">&#10005;</button>
+<div id="toast" class="toast"></div>
+
+<script>
+(function () {
+  const STORAGE_KEY = "arm_sledovatelya_state_v2026_11";
+
+  const DEFAULT_STATE = {
+    investigator: {
+      organ: "СО ОМВД России по Центральному району г. Волгограда",
+      rankAndName: "следователь СО майор юстиции Соколова И.А.",
+      city: "г. Волгоград"
+    },
+    cases: [
+      {
+        id: "case-101",
+        number: "12601480012000045",
+        articles: "ч. 2 ст. 158 УК РФ",
+        status: "В производстве",
+        openDate: "2026-10-12",
+        deadlineDate: "2026-12-12",
+        restraintMeasure: "Подписка о невыезде и надлежащем поведении (до 12.12.2026)",
+        summary: "11.10.2026 в период с 14:00 до 16:30 неустановленное лицо путем свободного доступа из раздевалки спортивного клуба тайно похитило рюкзак с ноутбуком и денежными средствами на сумму 68 000 рублей, принадлежащими гр. Морозову А.В.",
+        participants: [
+          { id: "p-1", role: "Потерпевший", fio: "Морозов Алексей Викторович", contacts: "+7 (904) 412-55-10, ул. Комсомольская, д. 14, кв. 8" },
+          { id: "p-2", role: "Подозреваемый", fio: "Волков Дмитрий Сергеевич, 19.04.1998 г.р.", contacts: "ул. Советская, д. 29, кв. 41" },
+          { id: "p-3", role: "Защитник", fio: "Орлова Елена Павловна (адвокат, ордер № 114)", contacts: "АП Волгоградской области" }
+        ],
+        plan: [
+          { id: "pl-1", title: "Допросить потерпевшего Морозова А.В. об обстоятельствах хищения и приметах", dueDate: "2026-11-28", done: true },
+          { id: "pl-2", title: "Истребовать видеозаписи с камер наблюдения спортклуба и прилегающей территории", dueDate: "2026-11-30", done: false },
+          { id: "pl-3", title: "Допросить подозреваемого Волкова Д.С. с участием защитника, предъявить улики", dueDate: "2026-12-03", done: false },
+          { id: "pl-4", title: "Направить товароведческую экспертизу для уточнения стоимости имущества", dueDate: "2026-12-06", done: false }
+        ],
+        documents: [
+          { id: "d-1", name: "Рапорт об обнаружении признаков преступления.doc", kind: "Word", addedAt: "2026-10-12" },
+          { id: "d-2", name: "Протокол осмотра места происшествия (спортклуб).doc", kind: "Word", addedAt: "2026-10-12" },
+          { id: "d-3", name: "Скан справки о стоимости похищенного.pdf", kind: "Скан", addedAt: "2026-10-18" }
+        ]
+      },
+      {
+        id: "case-102",
+        number: "12601480019000112",
+        articles: "ч. 1 ст. 228 УК РФ",
+        status: "В производстве",
+        openDate: "2026-11-01",
+        deadlineDate: "2026-12-01",
+        restraintMeasure: "Обязательство о явке",
+        summary: "01.11.2026 в ходе личного досмотра гражданина вблизи лесополосы обнаружен и изъят сверток с веществом растительного происхождения массой более значительного размера для личного употребления без цели сбыта.",
+        participants: [
+          { id: "p-4", role: "Подозреваемый", fio: "Громов Илья Андреевич, 03.09.2001 г.р.", contacts: "пр. Ленина, д. 82, кв. 19" },
+          { id: "p-5", role: "Специалист / Эксперт", fio: "Экспертно-криминалистический центр", contacts: "Постановление о назначении ФХЭ" }
+        ],
+        plan: [
+          { id: "pl-5", title: "Получить заключение физико-химической экспертизы изъятого вещества", dueDate: "2026-11-27", done: false },
+          { id: "pl-6", title: "Допросить подозреваемого Громова И.А. об источнике приобретения вещества", dueDate: "2026-11-29", done: false }
+        ],
+        documents: [
+          { id: "d-4", name: "Протокол личного досмотра и изъятия.doc", kind: "Word", addedAt: "2026-11-01" },
+          { id: "d-5", name: "Скан упаковок и бирок вещдоков.jpg", kind: "Скан", addedAt: "2026-11-02" }
+        ]
+      }
+    ],
+    kbItems: [
+      {
+        id: "kb-1",
+        title: "Постановление о возбуждении уголовного дела и принятии его к производству",
+        sysType: "Постановление",
+        category: "Бланки и шаблоны",
+        articles: "ст. 146, ст. 156 УПК РФ",
+        hints: [
+          "Указать повод и основание для возбуждения уголовного дела (ч. 1, 2 ст. 140 УПК РФ).",
+          "Проверить отсутствие обстоятельств, исключающих производство по делу (ст. 24 УПК РФ).",
+          "Направить копию постановления прокурору в течение 24 часов (ч. 4 ст. 146 УПК РФ)."
+        ],
+        body: "{{ORGAN}}
+
+ПОСТАНОВЛЕНИЕ
+о возбуждении уголовного дела и принятии его к производству
+
+{{CITY}}                                                                «{{DATE}}»
+
+{{INVESTIGATOR}}, рассмотрев материалы проверки сообщения о преступлении,
+
+УСТАНОВИЛ:
+{{SUMMARY}}
+
+Принимая во внимание, что имеются достаточные данные, указывающие на признаки преступления, предусмотренного {{ARTICLES}},
+
+ПОСТАНОВИЛ:
+1. Возбудить уголовное дело № {{CASE_NUMBER}} по признакам преступления, предусмотренного {{ARTICLES}}.
+2. Уголовное дело принять к своему производству и приступить к расследованию.
+3. Копию настоящего постановления направить прокурору.
+
+Следователь: _______________________ / {{INVESTIGATOR}} /"
+      },
+      {
+        id: "kb-2",
+        title: "Протокол допроса свидетеля / потерпевшего",
+        sysType: "Протокол",
+        category: "Бланки и шаблоны",
+        articles: "ст. 189, ст. 190 УПК РФ",
+        hints: [
+          "Разъяснить права и обязанности, а также ответственность по ст. 307 и ст. 308 УК РФ (кроме случаев свидетельского иммунитета по ст. 51 Конституции РФ).",
+          "Зафиксировать точное время начала и окончания допроса, а также перерывов.",
+          "Детализировать обстоятельства: где, когда, что именно видел/слышал, приметы, суммы, мотивы."
+        ],
+        body: "{{ORGAN}}
+
+ПРОТОКОЛ
+допроса по уголовному делу № {{CASE_NUMBER}} ({{ARTICLES}})
+
+{{CITY}}                                                                «{{DATE}}»
+Допрос начат в ___ ч ___ мин.
+Допрос окончен в ___ ч ___ мин.
+
+{{INVESTIGATOR}} с соблюдением требований ст. 164, 189 и 190 УПК РФ в помещении служебного кабинета произвел допрос по фабуле:
+{{SUMMARY}}
+
+Участники по делу: {{PARTICIPANTS}}.
+
+Показания допрашиваемого лица по существу дела:
+_____________________________________________________________________
+_____________________________________________________________________
+
+Протокол прочитан. Замечаний и дополнений не поступило.
+
+Допрашиваемое лицо: _______________________
+Следователь: _______________________ / {{INVESTIGATOR}} /"
+      },
+      {
+        id: "kb-3",
+        title: "Протокол осмотра места происшествия",
+        sysType: "Протокол",
+        category: "Бланки и шаблоны",
+        articles: "ст. 176, ст. 177 УПК РФ",
+        hints: [
+          "Обеспечить участие понятых либо применение технических средств фиксации хода и результатов осмотра (ч. 1.1, 3 ст. 170 УПК РФ).",
+          "Описать обстановку от общего к частному, указать условия освещения и погоды.",
+          "Подробно описать каждый изымаемый объект, способ упаковки и оттиск печати."
+        ],
+        body: "{{ORGAN}}
+
+ПРОТОКОЛ
+осмотра места происшествия по уголовному делу № {{CASE_NUMBER}} ({{ARTICLES}})
+
+{{CITY}}                                                                «{{DATE}}»
+Осмотр начат в ___ ч ___ мин.
+Осмотр окончен в ___ ч ___ мин.
+
+{{INVESTIGATOR}} на основании ст. 176 и 177 УПК РФ произвел осмотр места происшествия по материалам дела:
+{{SUMMARY}}
+
+Описание осматриваемого объекта и обнаруженных следов:
+_____________________________________________________________________
+
+Изъято при осмотре:
+_____________________________________________________________________
+
+Следователь: _______________________ / {{INVESTIGATOR}} /"
+      },
+      {
+        id: "kb-4",
+        title: "Постановление о назначении судебной экспертизы",
+        sysType: "Постановление",
+        category: "Экспертизы и вопросы",
+        articles: "ст. 195, ст. 199 УПК РФ",
+        hints: [
+          "Сформулировать четкие, не допускающие двусмысленного толкования вопросы эксперту.",
+          "Ознакомить подозреваемого, обвиняемого, защитника и потерпевшего с постановлением до направления в экспертное учреждение (ч. 3 ст. 195 УПК РФ).",
+          "Указать перечень направляемых объектов и материалов."
+        ],
+        body: "{{ORGAN}}
+
+ПОСТАНОВЛЕНИЕ
+о назначении судебной экспертизы
+
+{{CITY}}                                                                «{{DATE}}»
+
+{{INVESTIGATOR}}, рассмотрев материалы уголовного дела № {{CASE_NUMBER}} ({{ARTICLES}}),
+
+УСТАНОВИЛ:
+{{SUMMARY}}
+Для установления обстоятельств, имеющих значение для дела, требуются специальные знания.
+
+ПОСТАНОВИЛ:
+1. Назначить по уголовному делу № {{CASE_NUMBER}} судебную экспертизу, производство которой поручить экспертам экспертного учреждения.
+2. Поставить перед экспертом следующие вопросы:
+   - Каковы свойства, характеристики и состояние представленных объектов?
+   - Имеются ли на объектах следы, повреждения или иные признаки, связанные с событием по делу?
+3. Предоставить в распоряжение эксперта материалы и объекты согласно описи.
+
+Следователь: _______________________ / {{INVESTIGATOR}} /"
+      },
+      {
+        id: "kb-5",
+        title: "Уведомление о принятии уголовного дела к производству",
+        sysType: "Иной документ",
+        category: "Бланки и шаблоны",
+        articles: "ст. 156 УПК РФ",
+        hints: [
+          "Направляется участникам процесса и при необходимости руководителю органа / прокурору.",
+          "Проверьте актуальность почтовых и электронных адресов участников дела."
+        ],
+        body: "{{ORGAN}}
+
+УВЕДОМЛЕНИЕ
+о принятии уголовного дела к производству
+
+{{CITY}}                                                                «{{DATE}}»
+
+Уведомляю Вас о том, что уголовное дело № {{CASE_NUMBER}} по признакам преступления, предусмотренного {{ARTICLES}}, принято к производству должностным лицом: {{INVESTIGATOR}}.
+
+Фабула / сведения о производстве: {{SUMMARY}}
+Участники: {{PARTICIPANTS}}.
+
+Следователь: _______________________ / {{INVESTIGATOR}} /"
+      },
+      {
+        id: "kb-6",
+        title: "Методика подготовки к допросу при противоречивых показаниях",
+        sysType: "Тактика и методички",
+        category: "Тактика и методички",
+        articles: "ст. 189, ст. 192 УПК РФ",
+        hints: [
+          "Систематизируйте расхождения в показаниях допрашиваемого и других участников до начала допроса.",
+          "Предъявляйте доказательства последовательно — от менее значимых к более весомым.",
+          "При выявлении существенных противоречий рассмотрите проведение очной ставки (ст. 192 УПК РФ)."
+        ],
+        body: "МЕТОДИЧЕСКАЯ ПАМЯТКА: ТАКТИКА ДОПРОСА И ПРЕОДОЛЕНИЕ ПРОТИВОРЕЧИЙ
+
+1. Подготовка: изучите протоколы предыдущих следственных действий, заключения экспертов и характеристики личности.
+2. Установление психологического контакта: начните с нейтральных сведений, уточните хронологию.
+3. Детализация: задавайте конкретные вопросы («откуда стало известно», «кто еще присутствовал», «какие действия последовали далее»).
+4. Предъявление доказательств: фиксируйте реакцию и мотивировку изменений показаний."
+      }
+    ]
+  };
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return structuredClone(DEFAULT_STATE);
+      const parsed = JSON.parse(raw);
+      return {
+        investigator: { ...DEFAULT_STATE.investigator, ...(parsed.investigator || {}) },
+        cases: Array.isArray(parsed.cases) && parsed.cases.length ? parsed.cases : structuredClone(DEFAULT_STATE.cases),
+        kbItems: Array.isArray(parsed.kbItems) && parsed.kbItems.length ? parsed.kbItems : structuredClone(DEFAULT_STATE.kbItems)
+      };
+    } catch (e) {
+      return structuredClone(DEFAULT_STATE);
+    }
+  }
+
+  let state = loadState();
+  let activeCaseId = state.cases[0]?.id || null;
+  let activeCaseSubtab = "card";
+  let selectedBlankId = state.kbItems[0]?.id || null;
+  let genMode = "blank";
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.error("Ошибка сохранения в localStorage:", e);
+    }
+  }
+
+  function showToast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => el.classList.remove("show"), 2400);
+  }
+
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function daysUntil(dateStr) {
+    if (!dateStr) return null;
+    const target = new Date(dateStr + "T00:00:00");
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((target - today) / (1000 * 60 * 60 * 24));
+  }
+
+  function formatDeadlineBadge(dateStr) {
+    const d = daysUntil(dateStr);
+    if (d === null || Number.isNaN(d)) {
+      return { text: "Срок не задан", cls: "badge", bannerCls: "badge", urgency: "" };
+    }
+    if (d < 0) {
+      return {
+        text: `Просрочен на ${Math.abs(d)} дн. (${dateStr})`,
+        cls: "badge badge-red",
+        urgency: "urgent"
+      };
+    }
+    if (d <= 5) {
+      return {
+        text: `Осталось ${d} дн. (до ${dateStr})`,
+        cls: "badge badge-warn",
+        urgency: "soon"
+      };
+    }
+    return {
+      text: `До ${dateStr} (осталось ${d} дн.)`,
+      cls: "badge badge-green",
+      urgency: ""
+    };
+  }
+
+  /* Navigation */
+  document.querySelectorAll(".nav-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nav-tab").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("view-" + btn.dataset.view).classList.add("active");
+      if (btn.dataset.view === "blanks") renderBlanksView();
+      if (btn.dataset.view === "kb") renderKbView();
+      if (btn.dataset.view === "cases") renderCasesView();
+    });
+  });
+
+  document.getElementById("btnExportJson").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "arm-sledovatelya-backup.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Резервная копия JSON скачана");
+  });
+
+  document.getElementById("btnResetDemo").addEventListener("click", () => {
+    if (!confirm("Восстановить исходные демонстрационные дела и базу знаний?")) return;
+    state = structuredClone(DEFAULT_STATE);
+    activeCaseId = state.cases[0].id;
+    selectedBlankId = state.kbItems[0].id;
+    saveState();
+    renderAll();
+    showToast("Данные восстановлены");
+  });
+
+  /* ==================== РАЗДЕЛ 1: УГОЛОВНЫЕ ДЕЛА ==================== */
+  function renderDeadlineCalendar() {
+    const container = document.getElementById("deadlineCalendar");
+    const badge = document.getElementById("calCountBadge");
+    const sorted = [...state.cases].sort((a, b) => (a.deadlineDate || "9999-12-31").localeCompare(b.deadlineDate || "9999-12-31"));
+    badge.textContent = `${sorted.length} дел на контроле`;
+
+    container.innerHTML = sorted
+      .map((c) => {
+        const info = formatDeadlineBadge(c.deadlineDate);
+        return `
+          <div class="cal-item ${info.urgency}" style="cursor:pointer;" onclick="window.__selectCase('${escapeHtml(c.id)}')">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px;">
+              <strong>№ ${escapeHtml(c.number)}</strong>
+              <span class="${info.cls}">${escapeHtml(info.text)}</span>
+            </div>
+            <div class="row-meta"><strong>${escapeHtml(c.articles)}</strong> • ${escapeHtml(c.status)}</div>
+            <div class="row-meta" style="margin-top:4px;">МП: ${escapeHtml(c.restraintMeasure || "не указана")}</div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  function renderCaseList() {
+    const q = (document.getElementById("caseSearch").value || "").trim().toLowerCase();
+    const listEl = document.getElementById("caseList");
+    const filtered = state.cases.filter((c) => {
+      const partsText = (c.participants || []).map((p) => p.fio).join(" ");
+      return (
+        (c.number || "").toLowerCase().includes(q) ||
+        (c.articles || "").toLowerCase().includes(q) ||
+        (c.summary || "").toLowerCase().includes(q) ||
+        partsText.toLowerCase().includes(q)
+      );
+    });
+
+    if (!filtered.length) {
+      listEl.innerHTML = `<p class="row-meta">Дела по запросу не найдены.</p>`;
+      return;
+    }
+
+    listEl.innerHTML = filtered
+      .map((c) => {
+        const active = c.id === activeCaseId ? "active" : "";
+        const info = formatDeadlineBadge(c.deadlineDate);
+        const doneCount = (c.plan || []).filter((i) => i.done).length;
+        const totalCount = (c.plan || []).length;
+        return `
+          <div class="case-item ${active}" onclick="window.__selectCase('${escapeHtml(c.id)}')">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+              <span class="case-num">УД № ${escapeHtml(c.number)}</span>
+              <span class="${info.cls}">${escapeHtml(info.text)}</span>
+            </div>
+            <div style="margin-top:5px; display:flex; gap:6px; flex-wrap:wrap;">
+              <span class="badge badge-blue">${escapeHtml(c.articles)}</span>
+              <span class="badge">${escapeHtml(c.status)}</span>
+              <span class="badge">План: ${doneCount}/${totalCount}</span>
+            </div>
+            <div class="row-meta" style="margin-top:6px;">${escapeHtml((c.summary || "").slice(0, 95))}${(c.summary || "").length > 95 ? "…" : ""}</div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  function renderCaseWorkspace() {
+    const wrap = document.getElementById("caseWorkspace");
+    const c = state.cases.find((item) => item.id === activeCaseId) || state.cases[0];
+    if (!c) {
+      wrap.innerHTML = `<div class="card"><p>Нет активных уголовных дел. Создайте новое дело слева.</p></div>`;
+      return;
+    }
+    activeCaseId = c.id;
+    const dl = formatDeadlineBadge(c.deadlineDate);
+
+    wrap.innerHTML = `
+      <div class="card">
+        <div class="card-title">
+          <span>Карточка уголовного дела № ${escapeHtml(c.number)}</span>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span class="${dl.cls}">${escapeHtml(dl.text)}</span>
+            <button class="btn btn-sm btn-soft" onclick="window.__openCaseInBlanks('${escapeHtml(c.id)}')">Сформировать документ по делу</button>
+            <button class="btn btn-sm btn-danger" onclick="window.__deleteCase('${escapeHtml(c.id)}')">Удалить дело</button>
+          </div>
+        </div>
+
+        <div class="subtabs">
+          <button class="subtab ${activeCaseSubtab === "card" ? "active" : ""}" onclick="window.__setCaseSubtab('card')">Карточка, статьи и сроки</button>
+          <button class="subtab ${activeCaseSubtab === "participants" ? "active" : ""}" onclick="window.__setCaseSubtab('participants')">Участники (${(c.participants || []).length})</button>
+          <button class="subtab ${activeCaseSubtab === "plan" ? "active" : ""}" onclick="window.__setCaseSubtab('plan')">План расследования (${(c.plan || []).filter(x => x.done).length}/${(c.plan || []).length})</button>
+          <button class="subtab ${activeCaseSubtab === "docs" ? "active" : ""}" onclick="window.__setCaseSubtab('docs')">Документы дела (${(c.documents || []).length})</button>
+        </div>
+
+        <!-- Вкладка 1: Карточка -->
+        <div class="subpanel ${activeCaseSubtab === "card" ? "active" : ""}">
+          <form id="editCaseForm">
+            <div class="form-row">
+              <div>
+                <label>Номер уголовного дела</label>
+                <input type="text" name="number" value="${escapeHtml(c.number)}" required />
+              </div>
+              <div>
+                <label>Квалификация (статьи УК РФ)</label>
+                <input type="text" name="articles" value="${escapeHtml(c.articles)}" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <label>Дата возбуждения / принятия</label>
+                <input type="date" name="openDate" value="${escapeHtml(c.openDate || "")}" />
+              </div>
+              <div>
+                <label>Срок следствия / контроля (синхронизируется с календарем)</label>
+                <input type="date" name="deadlineDate" value="${escapeHtml(c.deadlineDate || "")}" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <label>Статус производства</label>
+                <select name="status">
+                  ${["В производстве", "Приостановлено", "Направлено прокурору / в суд", "Прекращено"]
+                    .map((st) => `<option value="${st}" ${c.status === st ? "selected" : ""}>${st}</option>`)
+                    .join("")}
+                </select>
+              </div>
+              <div>
+                <label>Мера пресечения / процессуальное принуждение</label>
+                <input type="text" name="restraintMeasure" value="${escapeHtml(c.restraintMeasure || "")}" placeholder="Подписка о невыезде, залог, домашний арест..." />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Фабула и краткие обстоятельства дела</label>
+              <textarea name="summary" style="min-height:110px;">${escapeHtml(c.summary || "")}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Сохранить изменения карточки</button>
+          </form>
+        </div>
+
+        <!-- Вкладка 2: Участники -->
+        <div class="subpanel ${activeCaseSubtab === "participants" ? "active" : ""}">
+          <div id="participantsList" style="margin-bottom:14px;">
+            ${(c.participants || []).length
+              ? c.participants
+                  .map(
+                    (p) => `
+                  <div class="list-row">
+                    <div>
+                      <div class="row-title"><span class="badge badge-blue">${escapeHtml(p.role)}</span> ${escapeHtml(p.fio)}</div>
+                      <div class="row-meta">${escapeHtml(p.contacts || "Контакты/адрес не указаны")}</div>
+                    </div>
+                    <button class="btn btn-sm" onclick="window.__removeParticipant('${escapeHtml(p.id)}')">Удалить</button>
+                  </div>
+                `
+                  )
+                  .join("")
+              : `<p class="row-meta">Участники пока не добавлены.</p>`}
+          </div>
+          <form id="addParticipantForm">
+            <div class="form-row">
+              <div>
+                <label>Процессуальный статус / роль</label>
+                <select name="role">
+                  <option value="Потерпевший">Потерпевший</option>
+                  <option value="Подозреваемый">Подозреваемый</option>
+                  <option value="Обвиняемый">Обвиняемый</option>
+                  <option value="Свидетель">Свидетель</option>
+                  <option value="Защитник">Защитник</option>
+                  <option value="Гражданский истец">Гражданский истец</option>
+                  <option value="Специалист / Эксперт">Специалист / Эксперт</option>
+                </select>
+              </div>
+              <div>
+                <label>ФИО и данные участника</label>
+                <input type="text" name="fio" required placeholder="Иванов Иван Иванович, 01.01.1990 г.р." />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Адрес, телефон, адвокатский ордер или примечание</label>
+              <input type="text" name="contacts" placeholder="г. Волгоград, ул. Мира, д. 10, +7..." />
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">+ Добавить участника</button>
+          </form>
+        </div>
+
+        <!-- Вкладка 3: План расследования -->
+        <div class="subpanel ${activeCaseSubtab === "plan" ? "active" : ""}">
+          <div id="planList" style="margin-bottom:14px;">
+            ${(c.plan || []).length
+              ? c.plan
+                  .map(
+                    (item) => `
+                  <div class="list-row ${item.done ? "done" : ""}">
+                    <label style="display:flex; align-items:center; gap:10px; margin:0; cursor:pointer; color:var(--text); flex:1;">
+                      <input type="checkbox" ${item.done ? "checked" : ""} onchange="window.__togglePlan('${escapeHtml(item.id)}')" />
+                      <span>
+                        <span class="row-title">${escapeHtml(item.title)}</span>
+                        ${item.dueDate ? `<span class="row-meta"> • срок: ${escapeHtml(item.dueDate)}</span>` : ""}
+                      </span>
+                    </label>
+                    <button class="btn btn-sm" onclick="window.__deletePlan('${escapeHtml(item.id)}')">Удалить</button>
+                  </div>
+                `
+                  )
+                  .join("")
+              : `<p class="row-meta">План расследования пуст.</p>`}
+          </div>
+          <form id="addPlanForm">
+            <div class="form-row">
+              <div>
+                <label>Следственное действие / мероприятие</label>
+                <input type="text" name="title" required placeholder="Например: Провести очную ставку, направить запрос..." />
+              </div>
+              <div>
+                <label>Контрольный срок</label>
+                <input type="date" name="dueDate" />
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">+ Добавить пункт плана</button>
+          </form>
+        </div>
+
+        <!-- Вкладка 4: Документы дела (сканы, Word, порядок) -->
+        <div class="subpanel ${activeCaseSubtab === "docs" ? "active" : ""}">
+          <div id="caseDocsList" style="margin-bottom:14px;">
+            ${(c.documents || []).length
+              ? c.documents
+                  .map(
+                    (doc, idx) => `
+                  <div class="list-row">
+                    <div>
+                      <div class="row-title">
+                        <span class="badge">${idx + 1}</span>
+                        <span class="badge ${doc.kind === "Скан" ? "badge-warn" : "badge-blue"}">${escapeHtml(doc.kind)}</span>
+                        ${escapeHtml(doc.name)}
+                      </div>
+                      <div class="row-meta">Добавлено: ${escapeHtml(doc.addedAt || "")}</div>
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                      <button class="btn btn-sm" title="Переместить выше" onclick="window.__moveDoc('${escapeHtml(doc.id)}', -1)">↑</button>
+                      <button class="btn btn-sm" title="Переместить ниже" onclick="window.__moveDoc('${escapeHtml(doc.id)}', 1)">↓</button>
+                      <button class="btn btn-sm" onclick="window.__deleteCaseDoc('${escapeHtml(doc.id)}')">Удалить</button>
+                    </div>
+                  </div>
+                `
+                  )
+                  .join("")
+              : `<p class="row-meta">К делу пока не прикреплены документы или сканы.</p>`}
+          </div>
+
+          <form id="addCaseDocForm">
+            <div class="form-row">
+              <div>
+                <label>Наименование файла / скана / документа</label>
+                <input type="text" name="name" required placeholder="Например: Протокол выемки.doc или Скан ответа из банка.pdf" />
+              </div>
+              <div>
+                <label>Тип материала</label>
+                <select name="kind">
+                  <option value="Word">Word / процессуальный документ</option>
+                  <option value="Скан">Скан / фото / PDF</option>
+                  <option value="Вещдок / приложение">Вещдок / приложение</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">+ Прикрепить документ к делу</button>
+          </form>
+        </div>
       </div>
-      <input type="date" id="evDate" />
-      <input type="time" id="evTime" value="13:00" />
-      <input type="text" id="evTitle" placeholder="Описание события (например: Допрос свидетеля)" />
-      <select id="evColorSelect"></select>
-      <button class="btn btn-sm btn-primary" style="width:100%;" onclick="saveEvent()">Сохранить событие</button>
-    </div>
-  </div>
+    `;
 
-  <div class="modal-backdrop" id="blankModal">
-    <div class="modal-box">
-      <div class="row-between" style="margin-bottom:10px;">
-        <strong style="color:var(--primary);" id="blankModalTitle">Добавить / изменить бланк</strong>
-        <button class="btn btn-sm" onclick="closeModal('blankModal')">&#10005;</button>
-      </div>
-      <input type="hidden" id="editBlankId" />
-      <select id="editBlankCat">
-        <option value="Постановления">Постановления</option>
-        <option value="Протоколы">Протоколы</option>
-        <option value="Иные документы">Иные документы</option>
-        <option value="Свои">Свои</option>
-      </select>
-      <input type="text" id="editBlankName" placeholder="Наименование документа и номер бланка" />
-      <textarea id="editBlankText" rows="5" placeholder="Текст шаблона или загрузите файл ниже..."></textarea>
-      <input type="file" accept=".txt,.md,.html,.json" onchange="handleFileUpload(event)" />
-      <button class="btn btn-sm btn-primary" style="width:100%;" onclick="saveBlank()">Сохранить в Базу знаний</button>
-    </div>
-  </div>
+    // Bind forms inside active case
+    document.getElementById("editCaseForm")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      c.number = String(fd.get("number") || "").trim();
+      c.articles = String(fd.get("articles") || "").trim();
+      c.openDate = String(fd.get("openDate") || "");
+      c.deadlineDate = String(fd.get("deadlineDate") || "");
+      c.status = String(fd.get("status") || "В производстве");
+      c.restraintMeasure = String(fd.get("restraintMeasure") || "").trim();
+      c.summary = String(fd.get("summary") || "").trim();
+      saveState();
+      renderCasesView();
+      showToast("Карточка уголовного дела и календарь сроков обновлены");
+    });
 
-  <div class="modal-backdrop" id="caseModal">
-    <div class="modal-box">
-      <div class="row-between" style="margin-bottom:10px;">
-        <strong style="color:var(--primary);">Новое уголовное дело</strong>
-        <button class="btn btn-sm" onclick="closeModal('caseModal')">&#10005;</button>
-      </div>
-      <input type="text" id="cNum" placeholder="№ УД (например: 12601180001000273)" />
-      <input type="text" id="cArt" placeholder="Статья УК РФ (например: ч. 1 ст. 158 УК РФ)" />
-      <input type="date" id="cDeadline" />
-      <button class="btn btn-sm btn-primary" style="width:100%;" onclick="saveCase()">Добавить дело</button>
-    </div>
-  </div>
+    document.getElementById("addParticipantForm")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      c.participants = c.participants || [];
+      c.participants.push({
+        id: "p-" + Date.now(),
+        role: String(fd.get("role") || "Участник"),
+        fio: String(fd.get("fio") || "").trim(),
+        contacts: String(fd.get("contacts") || "").trim()
+      });
+      saveState();
+      renderCaseWorkspace();
+      showToast("Участник добавлен в дело");
+    });
 
-  <script>
-    const BUILTIN_BLANKS = [{"id": "pos_1", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о разрешении производства осмотра жилища. Бланк 1.", "builtin": true}, {"id": "pos_2", "category": "Постановления", "title": "Постановление о возбуждении перед руководителем следственного органа ходатайства о продлении срока проверки сообщения о преступлении. Бланк 2.", "builtin": true}, {"id": "pos_3", "category": "Постановления", "title": "Постановление о передаче сообщения о преступлении по подследственности. Бланк 3.", "builtin": true}, {"id": "pos_4", "category": "Постановления", "title": "Постановление о передаче сообщения о преступлении в суд. Бланк 4.", "builtin": true}, {"id": "pos_5", "category": "Постановления", "title": "Уведомление о передаче сообщения о преступлении в суд. Бланк 5.", "builtin": true}, {"id": "pos_6", "category": "Постановления", "title": "Постановление о возбуждении уголовного дела и принятии его к производству. Бланк 6.", "builtin": true}, {"id": "pos_7", "category": "Постановления", "title": "Постановление о принятии уголовного дела к производству. Бланк 7.", "builtin": true}, {"id": "pos_8", "category": "Постановления", "title": "Постановление о возбуждении уголовного дела и передаче его руководителю следственного органа для определения подследственности. Бланк 8.", "builtin": true}, {"id": "pos_9", "category": "Постановления", "title": "Постановление о передаче уголовного дела руководителю следственного органа для направления по подследственности. Бланк 9.", "builtin": true}, {"id": "pos_10", "category": "Постановления", "title": "Постановление об отказе в возбуждении уголовного дела. Бланк 10.", "builtin": true}, {"id": "pos_11", "category": "Постановления", "title": "Постановление о неразглашении факта задержания подозреваемого. Бланк 11.", "builtin": true}, {"id": "pos_12", "category": "Постановления", "title": "Постановление о производстве личного обыска подозреваемого (обвиняемого) в случаях, не терпящих отлагательства. Бланк 12.", "builtin": true}, {"id": "pos_13", "category": "Постановления", "title": "Постановление о переводе подозреваемого (обвиняемого) из следственного изолятора в изолятор временного содержания. Бланк 13.", "builtin": true}, {"id": "pos_14", "category": "Постановления", "title": "Постановление о приводе (подозреваемого, обвиняемого, потерпевшего, свидетеля). Бланк 14.", "builtin": true}, {"id": "pos_15", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о помещении подозреваемого (обвиняемого), не находящегося под стражей, в медицинский (психиатрический) стационар для производства судебно-медицинской (судебно-психиатрической) экспертизы. Бланк 15.", "builtin": true}, {"id": "pos_16", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о разрешении извлечения трупа (эксгумации). Бланк 16.", "builtin": true}, {"id": "pos_17", "category": "Постановления", "title": "Постановление об извлечении трупа (эксгумации). Бланк 17.", "builtin": true}, {"id": "pos_18", "category": "Постановления", "title": "Постановление о выделении уголовного дела. Бланк 18.", "builtin": true}, {"id": "pos_19", "category": "Постановления", "title": "Постановление о выделении в отдельное производство материалов уголовного дела. Бланк 19.", "builtin": true}, {"id": "pos_20", "category": "Постановления", "title": "Постановление о признании и приобщении к уголовному делу вещественных доказательств. Бланк 20.", "builtin": true}, {"id": "pos_21", "category": "Постановления", "title": "Постановление о признании потерпевшим. Бланк 21.", "builtin": true}, {"id": "pos_22", "category": "Постановления", "title": "Постановление о сохранении в тайне данных о личности. Бланк 22.", "builtin": true}, {"id": "pos_23", "category": "Постановления", "title": "Постановление о допуске для участия в уголовном деле представителя (законного представителя) потерпевшего, гражданского истца. Бланк 23.", "builtin": true}, {"id": "pos_24", "category": "Постановления", "title": "Постановление о назначении переводчика. Бланк 24.", "builtin": true}, {"id": "pos_25", "category": "Постановления", "title": "Постановление о производстве освидетельствования. Бланк 25.", "builtin": true}, {"id": "pos_26", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о наложении ареста на (имущество, включая денежные средства физических и юридических лиц, находящиеся на счетах и во вкладах или на хранении в банках и иных кредитных организациях, ценные бумаги) (от имени следователя). Бланк 26.", "builtin": true}, {"id": "pos_27", "category": "Постановления", "title": "Постановление о наложении ареста на имущество, указанное в части первой статьи 141 Уголовного кодекса Российской Федерации в случаях, не терпящих отлагательства. Бланк 27.", "builtin": true}, {"id": "pos_28", "category": "Постановления", "title": "Постановление об отмене наложения ареста на (имущество, включая денежные средства физических и юридических лиц, находящиеся на счетах и во вкладах или на хранении в банках и иных кредитных организациях, ценные бумаги). Бланк 28.", "builtin": true}, {"id": "pos_29", "category": "Постановления", "title": "Постановление о производстве обыска (выемки). Бланк 29.", "builtin": true}, {"id": "pos_30", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве выемки предметов и документов, содержащих государственную или иную охраняемую федеральным законом тайну. Бланк 30.", "builtin": true}, {"id": "pos_31", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве выемки в банках (иных кредитных организациях) предметов и документов, содержащих информацию о вкладах и счетах граждан. Бланк 31.", "builtin": true}, {"id": "pos_32", "category": "Постановления", "title": "Постановление о производстве обыска (выемки) в жилище в случаях, не терпящих отлагательства. Бланк 32.", "builtin": true}, {"id": "pos_33", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве обыска (выемки) в жилище. Бланк 33.", "builtin": true}, {"id": "pos_34", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве осмотра жилища (от имени следователя). Бланк 34.", "builtin": true}, {"id": "pos_35", "category": "Постановления", "title": "Постановление о производстве осмотра жилища в случаях, не терпящих отлагательства. Бланк 35.", "builtin": true}, {"id": "pos_36", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о наложении ареста на почтово-телеграфные отправления и производстве их осмотра и выемки (от имени следователя). Бланк 36.", "builtin": true}, {"id": "pos_37", "category": "Постановления", "title": "Постановление об отмене ареста на почтово-телеграфные отправления. Бланк 37.", "builtin": true}, {"id": "pos_38", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве контроля и записи телефонных и иных переговоров (от имени следователя). Бланк 38.", "builtin": true}, {"id": "pos_39", "category": "Постановления", "title": "Постановление о прекращении контроля и записи телефонных и иных переговоров. Бланк 39.", "builtin": true}, {"id": "pos_40", "category": "Постановления", "title": "Постановление о привлечении в качестве обвиняемого. Бланк 40.", "builtin": true}, {"id": "pos_41", "category": "Постановления", "title": "Постановление о розыске подозреваемого (обвиняемого). Бланк 41.", "builtin": true}, {"id": "pos_42", "category": "Постановления", "title": "Постановление об избрании меры пресечения в виде (какой именно). Бланк 42.", "builtin": true}, {"id": "pos_43", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства об избрании меры пресечения в виде домашнего ареста (от имени следователя). Бланк 43.", "builtin": true}, {"id": "pos_44", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства об избрании меры пресечения в виде заключения под стражу (от имени следователя). Бланк 44.", "builtin": true}, {"id": "pos_45", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о продлении срока содержания обвиняемого под стражей (от имени следователя). Бланк 45.", "builtin": true}, {"id": "pos_46", "category": "Постановления", "title": "Постановление об отмене (изменении) меры пресечения. Бланк 46.", "builtin": true}, {"id": "pos_47", "category": "Постановления", "title": "Постановление об отмене (изменении) меры пресечения, избранной следователем с согласия руководителя следственного органа. Бланк 47.", "builtin": true}, {"id": "pos_48", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о временном отстранении подозреваемого (обвиняемого) от должности (от имени следователя). Бланк 48.", "builtin": true}, {"id": "pos_49", "category": "Постановления", "title": "Постановление об отмене временного отстранения подозреваемого (обвиняемого) от должности. Бланк 49.", "builtin": true}, {"id": "pos_50", "category": "Постановления", "title": "Постановление о допуске законного представителя несовершеннолетнего обвиняемого (подозреваемого). Бланк 50.", "builtin": true}, {"id": "pos_51", "category": "Постановления", "title": "Постановление об отстранении от участия в уголовном деле законного представителя несовершеннолетнего обвиняемого (подозреваемого). Бланк 51.", "builtin": true}, {"id": "pos_52", "category": "Постановления", "title": "Постановление о признании гражданским истцом. Бланк 52.", "builtin": true}, {"id": "pos_53", "category": "Постановления", "title": "Постановление о привлечении в качестве гражданского ответчика. Бланк 53.", "builtin": true}, {"id": "pos_54", "category": "Постановления", "title": "Постановление о назначении (какой именно) судебной экспертизы. Бланк 54.", "builtin": true}, {"id": "pos_55", "category": "Постановления", "title": "Постановление о назначении комиссионной (какой именно) судебной экспертизы. Бланк 55.", "builtin": true}, {"id": "pos_56", "category": "Постановления", "title": "Постановление о назначении комплексной судебной экспертизы. Бланк 56.", "builtin": true}, {"id": "pos_57", "category": "Постановления", "title": "Постановление о назначении (повторной, дополнительной) судебной экспертизы. Бланк 57.", "builtin": true}, {"id": "pos_58", "category": "Постановления", "title": "Постановление о получении образцов для сравнительного исследования. Бланк 58.", "builtin": true}, {"id": "pos_59", "category": "Постановления", "title": "Постановление о приостановлении предварительного следствия (дознания) в связи с (п. 1 или 2 части первой ст. 208 УПК РФ). Бланк 59.", "builtin": true}, {"id": "pos_60", "category": "Постановления", "title": "Постановление о приостановлении предварительного следствия (дознания) в связи с (п. 3 или 4 части первой ст. 208 УПК РФ). Бланк 60.", "builtin": true}, {"id": "pos_61", "category": "Постановления", "title": "Постановление о возобновлении предварительного следствия. Бланк 61.", "builtin": true}, {"id": "pos_62", "category": "Постановления", "title": "Постановление о возбуждении ходатайства перед руководителем следственного органа о продлении срока предварительного следствия. Бланк 62.", "builtin": true}, {"id": "pos_63", "category": "Постановления", "title": "Постановление о прекращении уголовного дела (уголовного преследования). Бланк 63.", "builtin": true}, {"id": "pos_64", "category": "Постановления", "title": "Постановление о прекращении уголовного дела (уголовного преследования) в связи с примирением сторон (в связи с деятельным раскаянием) [от имени следователя]. Бланк 64.", "builtin": true}, {"id": "pos_65", "category": "Постановления", "title": "Постановление о частичном прекращении уголовного преследования. Бланк 65.", "builtin": true}, {"id": "pos_66", "category": "Постановления", "title": "Постановление о прекращении уголовного дела (уголовного преследования) в отношении лица, совершившего запрещенное уголовным законом деяние в состоянии невменяемости. Бланк 66.", "builtin": true}, {"id": "pos_67", "category": "Постановления", "title": "Постановление о направлении уголовного дела в суд для применения принудительной меры медицинского характера. Бланк 67.", "builtin": true}, {"id": "pos_68", "category": "Постановления", "title": "Постановление о прекращении уголовного преследования и возбуждении перед судом ходатайства о применении к несовершеннолетнему обвиняемому принудительной меры воспитательного воздействия. Бланк 68.", "builtin": true}, {"id": "pos_69", "category": "Постановления", "title": "Постановление о выплате процессуальных издержек. Бланк 69.", "builtin": true}, {"id": "pos_70", "category": "Постановления", "title": "Постановление о производстве выплат в возмещение реабилитированному имущественного вреда. Бланк 70.", "builtin": true}, {"id": "pos_71", "category": "Постановления", "title": "Постановление о производстве выплат в возмещение имущественного вреда юридическому лицу. Бланк 71.", "builtin": true}, {"id": "pos_72", "category": "Постановления", "title": "Постановление о возвращении вещественных доказательств. Бланк 72.", "builtin": true}, {"id": "pos_73", "category": "Постановления", "title": "Постановление о передаче вещественных доказательств для реализации. Бланк 73.", "builtin": true}, {"id": "pos_74", "category": "Постановления", "title": "Постановление о непредъявлении несовершеннолетнему обвиняемому для ознакомления тех материалов уголовного дела, которые могут оказать на него отрицательное воздействие. Бланк 74.", "builtin": true}, {"id": "pos_75", "category": "Постановления", "title": "Постановление о (об отказе в) восстановлении пропущенного срока. Бланк 75.", "builtin": true}, {"id": "pos_76", "category": "Постановления", "title": "Постановление (об удовлетворении ходатайства либо о полном или частичном отказе в его удовлетворении). Бланк 76.", "builtin": true}, {"id": "pos_77", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства об избрании меры пресечения в виде залога (от имени следователя). Бланк 77.", "builtin": true}, {"id": "pos_78", "category": "Постановления", "title": "Постановление об оставлении осужденного в следственном изоляторе для производства следственных и иных процессуальных действий (от имени следователя). Бланк 78.", "builtin": true}, {"id": "pos_79", "category": "Постановления", "title": "Постановление о переводе осужденного из исправительного учреждения в следственный изолятор для производства следственных и иных процессуальных действий (от имени следователя). Бланк 79.", "builtin": true}, {"id": "pos_80", "category": "Постановления", "title": "Постановление о рассмотрении заявления об отводе. Бланк 80.", "builtin": true}, {"id": "pos_81", "category": "Постановления", "title": "Постановление о рассмотрении заявления о самоотводе. Бланк 81.", "builtin": true}, {"id": "pos_82", "category": "Постановления", "title": "Постановление о принятии мер попечения о детях, иждивенцах подозреваемого или обвиняемого, задержанного или заключенного под стражу. Бланк 82.", "builtin": true}, {"id": "pos_83", "category": "Постановления", "title": "Постановление о принятии мер по обеспечению сохранности имущества и жилища подозреваемого или обвиняемого, задержанного или заключенного под стражу. Бланк 83.", "builtin": true}, {"id": "pos_84", "category": "Постановления", "title": "Постановление о признании невозможным предъявления вещественных доказательств. Бланк 84.", "builtin": true}, {"id": "pos_85", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства об установлении определенного срока для ознакомления обвиняемого и (или) его защитника с материалами уголовного дела (от имени следователя). Бланк 85.", "builtin": true}, {"id": "pos_86", "category": "Постановления", "title": "Постановление об окончании производства ознакомления обвиняемого и (или) его защитника с материалами уголовного дела. Бланк 86.", "builtin": true}, {"id": "pos_87", "category": "Постановления", "title": "Постановление об избрании меры пресечения в виде присмотра за несовершеннолетним обвиняемым (подозреваемым). Бланк 87.", "builtin": true}, {"id": "pos_88", "category": "Постановления", "title": "Постановление об избрании меры пресечения в виде личного поручительства. Бланк 88.", "builtin": true}, {"id": "pos_89", "category": "Постановления", "title": "Постановление об избрании меры пресечения в виде наблюдения командования воинской части. Бланк 89.", "builtin": true}, {"id": "prot_1", "category": "Протоколы", "title": "Протокол принятия устного заявления о преступлении. Бланк 1.", "builtin": true}, {"id": "prot_2", "category": "Протоколы", "title": "Протокол явки с повинной. Бланк 2.", "builtin": true}, {"id": "prot_3", "category": "Протоколы", "title": "Протокол осмотра места происшествия. Бланк 3.", "builtin": true}, {"id": "prot_4", "category": "Протоколы", "title": "Протокол осмотра трупа. Бланк 4.", "builtin": true}, {"id": "prot_5", "category": "Протоколы", "title": "Протокол задержания подозреваемого. Бланк 5.", "builtin": true}, {"id": "prot_6", "category": "Протоколы", "title": "Протокол личного обыска. Бланк 6.", "builtin": true}, {"id": "prot_7", "category": "Протоколы", "title": "Протокол допроса подозреваемого. Бланк 7.", "builtin": true}, {"id": "prot_8", "category": "Протоколы", "title": "Протокол эксгумации и осмотра трупа. Бланк 8.", "builtin": true}, {"id": "prot_9", "category": "Протоколы", "title": "Протокол осмотра предметов (документов). Бланк 9.", "builtin": true}, {"id": "prot_10", "category": "Протоколы", "title": "Протокол допроса потерпевшего. Бланк 10.", "builtin": true}, {"id": "prot_11", "category": "Протоколы", "title": "Протокол допроса свидетеля. Бланк 11.", "builtin": true}, {"id": "prot_12", "category": "Протоколы", "title": "Протокол допроса свидетеля (потерпевшего) с участием переводчика. Бланк 12.", "builtin": true}, {"id": "prot_13", "category": "Протоколы", "title": "Протокол очной ставки. Бланк 13.", "builtin": true}, {"id": "prot_14", "category": "Протоколы", "title": "Протокол предъявления лица для опознания. Бланк 14.", "builtin": true}, {"id": "prot_15", "category": "Протоколы", "title": "Протокол предъявления лица для опознания в условиях, исключающих визуальное наблюдение им опознающего. Бланк 15.", "builtin": true}, {"id": "prot_16", "category": "Протоколы", "title": "Протокол предъявления для опознания по фотографии. Бланк 16.", "builtin": true}, {"id": "prot_17", "category": "Протоколы", "title": "Протокол предъявления трупа для опознания. Бланк 17.", "builtin": true}, {"id": "prot_18", "category": "Протоколы", "title": "Протокол предъявления предмета для опознания. Бланк 18.", "builtin": true}, {"id": "prot_19", "category": "Протоколы", "title": "Протокол освидетельствования. Бланк 19.", "builtin": true}, {"id": "prot_20", "category": "Протоколы", "title": "Протокол наложения ареста на имущество. Бланк 20.", "builtin": true}, {"id": "prot_21", "category": "Протоколы", "title": "Протокол наложения ареста на ценные бумаги. Бланк 21.", "builtin": true}, {"id": "prot_22", "category": "Протоколы", "title": "Протокол наложения ареста на денежные средства и иные ценности, находящиеся на счете, во вкладе или на хранении в банках и иных кредитных организациях. Бланк 22.", "builtin": true}, {"id": "prot_23", "category": "Протоколы", "title": "Протокол обыска (выемки). Бланк 23.", "builtin": true}, {"id": "prot_24", "category": "Протоколы", "title": "Протокол осмотра местности, жилища, иного помещения. Бланк 24.", "builtin": true}, {"id": "prot_25", "category": "Протоколы", "title": "Протокол осмотра и прослушивания фонограммы. Бланк 25.", "builtin": true}, {"id": "prot_26", "category": "Протоколы", "title": "Постановление о привлечении в качестве обвиняемого. Бланк 26.", "builtin": true}, {"id": "prot_27", "category": "Протоколы", "title": "Протокол допроса обвиняемого. Бланк 27.", "builtin": true}, {"id": "prot_28", "category": "Протоколы", "title": "Протокол дополнительного допроса обвиняемого. Бланк 28.", "builtin": true}, {"id": "prot_29", "category": "Протоколы", "title": "Протокол о принятии залога. Бланк 29.", "builtin": true}, {"id": "prot_30", "category": "Протоколы", "title": "Протокол о нарушении участниками уголовного судопроизводства процессуальных обязанностей и (или) невыполнении обязательств, связанных с внесенным залогом. Бланк 30.", "builtin": true}, {"id": "prot_31", "category": "Протоколы", "title": "Протокол следственного эксперимента. Бланк 31.", "builtin": true}, {"id": "prot_32", "category": "Протоколы", "title": "Протокол проверки показаний на месте. Бланк 32.", "builtin": true}, {"id": "prot_33", "category": "Протоколы", "title": "Протокол допроса несовершеннолетнего подозреваемого. Бланк 33.", "builtin": true}, {"id": "prot_34", "category": "Протоколы", "title": "Протокол допроса несовершеннолетнего обвиняемого. Бланк 34.", "builtin": true}, {"id": "prot_35", "category": "Протоколы", "title": "Протокол допроса несовершеннолетнего потерпевшего (свидетеля). Бланк 35.", "builtin": true}, {"id": "prot_36", "category": "Протоколы", "title": "Протокол получения образцов для сравнительного исследования. Бланк 36.", "builtin": true}, {"id": "prot_37", "category": "Протоколы", "title": "Протокол ознакомления (потерпевшего и (или) его представителя) с постановлением о назначении судебной экспертизы. Бланк 37.", "builtin": true}, {"id": "prot_38", "category": "Протоколы", "title": "Протокол ознакомления (обвиняемого, подозреваемого, защитника) с постановлением о назначении судебной экспертизы. Бланк 38.", "builtin": true}, {"id": "prot_39", "category": "Протоколы", "title": "Протокол ознакомления (кого именно) с заключением эксперта. Бланк 39.", "builtin": true}, {"id": "prot_40", "category": "Протоколы", "title": "Протокол допроса эксперта. Бланк 40.", "builtin": true}, {"id": "prot_41", "category": "Протоколы", "title": "Протокол предъявления для ознакомления защитнику материалов уголовного дела в ходе предварительного расследования. Бланк 41.", "builtin": true}, {"id": "prot_42", "category": "Протоколы", "title": "Протокол уничтожения вещественных доказательств. Бланк 42.", "builtin": true}, {"id": "prot_43", "category": "Протоколы", "title": "Протокол уведомления об окончании следственных действий. Бланк 43.", "builtin": true}, {"id": "prot_44", "category": "Протоколы", "title": "Протокол ознакомления (потерпевшего, гражданского истца, гражданского ответчика, их представителей) с материалами уголовного дела. Бланк 44.", "builtin": true}, {"id": "prot_45", "category": "Протоколы", "title": "Протокол ознакомления обвиняемого и (или) его защитника с материалами уголовного дела. Бланк 45.", "builtin": true}, {"id": "prot_46", "category": "Протоколы", "title": "Протокол ознакомления законного представителя и (или) защитника лица, в отношении которого осуществляется производство о применении принудительных мер медицинского характера, с материалами уголовного дела. Бланк 46.", "builtin": true}, {"id": "prot_47", "category": "Протоколы", "title": "Протокол разъяснения подозреваемому прав, предусмотренных ст. 46 УПК РФ. Бланк 47.", "builtin": true}, {"id": "prot_48", "category": "Протоколы", "title": "Протокол разъяснения подозреваемому права на уведомление родственников о задержании. Бланк 48.", "builtin": true}, {"id": "prot_49", "category": "Протоколы", "title": "Протокол ознакомления с сообщением эксперта о невозможности дать заключение. Бланк 49.", "builtin": true}, {"id": "prot_50", "category": "Протоколы", "title": "Протокол ознакомления (потерпевшего, гражданского истца, гражданского ответчика, их представителей) с дополнительными материалами уголовного дела. Бланк 50.", "builtin": true}, {"id": "prot_51", "category": "Протоколы", "title": "Протокол передачи средством массовой информации материалов и документов, подтверждающих сообщение о преступлении, а также данных о лице, предоставившем информацию. Бланк 51.", "builtin": true}, {"id": "prot_52", "category": "Протоколы", "title": "Протокол осмотра и выемки почтово-телеграфной корреспонденции. Бланк 52.", "builtin": true}, {"id": "prot_53", "category": "Протоколы", "title": "Протокол разъяснения подозреваемому права пользоваться помощью защитника. Бланк 53.", "builtin": true}, {"id": "other_1", "category": "Иные документы", "title": "Рапорт об обнаружении признаков преступления. Бланк 1.", "builtin": true}, {"id": "other_2", "category": "Иные документы", "title": "Уведомление о передаче сообщения о преступлении по подследственности. Бланк 2.", "builtin": true}, {"id": "other_3", "category": "Иные документы", "title": "Уведомление о передаче сообщения о преступлении в суд. Бланк 3.", "builtin": true}, {"id": "other_4", "category": "Иные документы", "title": "Сообщение о задержании подозреваемого. Бланк 4.", "builtin": true}, {"id": "other_5", "category": "Иные документы", "title": "Разрешение на встречу сотрудника органа дознания с подозреваемым (обвиняемым). Бланк 5.", "builtin": true}, {"id": "other_6", "category": "Иные документы", "title": "Уведомление о производстве личного обыска (от имени следователя). Бланк 6.", "builtin": true}, {"id": "other_7", "category": "Иные документы", "title": "Уведомление о производстве личного обыска (от имени дознавателя). Бланк 7.", "builtin": true}, {"id": "other_8", "category": "Иные документы", "title": "Справка об освобождении подозреваемого. Бланк 8.", "builtin": true}, {"id": "other_9", "category": "Иные документы", "title": "Поручение о производстве отдельных следственных действий (оперативно-розыскных, розыскных мероприятий). Бланк 9.", "builtin": true}, {"id": "other_10", "category": "Иные документы", "title": "Подписка о неразглашении данных предварительного расследования. Бланк 10.", "builtin": true}, {"id": "other_11", "category": "Иные документы", "title": "Повестка о вызове на допрос. Бланк 11.", "builtin": true}, {"id": "other_12", "category": "Иные документы", "title": "Обязательство о явке. Бланк 12.", "builtin": true}, {"id": "other_13", "category": "Иные документы", "title": "Уведомление о производстве (осмотра жилища, обыска (выемки) в жилище). Бланк 13.", "builtin": true}, {"id": "other_14", "category": "Иные документы", "title": "Уведомление о производстве (осмотра жилища, обыска (выемки) в жилище, личного обыска, наложения ареста на имущество, указанное в части первой статьи 1041 Уголовного кодекса Российской Федерации). Бланк 14.", "builtin": true}, {"id": "other_15", "category": "Иные документы", "title": "Подписка о невыезде и надлежащем поведении. Бланк 15.", "builtin": true}, {"id": "other_16", "category": "Иные документы", "title": "Повестка о вызове на допрос лица, не достигшего шестнадцати лет. Бланк 16.", "builtin": true}, {"id": "other_17", "category": "Иные документы", "title": "Извещение о праве на реабилитацию. Бланк 17.", "builtin": true}, {"id": "other_18", "category": "Иные документы", "title": "График ознакомления с материалами уголовного дела (в порядке ст. 216 - 218 УПК РФ). Бланк 18.", "builtin": true}, {"id": "other_19", "category": "Иные документы", "title": "Представление о принятии мер по устранению обстоятельств, способствовавших совершению преступления (других нарушений закона). Бланк 19.", "builtin": true}, {"id": "other_20", "category": "Иные документы", "title": "Объяснение. Бланк 20.", "builtin": true}, {"id": "other_21", "category": "Иные документы", "title": "Уведомление об исключительном праве подачи заявления о привлечении к уголовному преследованию. Бланк 21.", "builtin": true}, {"id": "other_22", "category": "Иные документы", "title": "Уведомление о задержании по подозрению в совершении преступления. Бланк 22.", "builtin": true}, {"id": "other_23", "category": "Иные документы", "title": "Требование о передаче редакцией (главным редактором) средства массовой информации документов и материалов, подтверждающих сообщение о преступлении, а также данных о лице, предоставившем указанную информацию. Бланк 23.", "builtin": true}];
-    const MONTHS_RU = ["ЯНВАРЬ","ФЕВРАЛЬ","МАРТ","АПРЕЛЬ","МАЙ","ИЮНЬ","ИЮЛЬ","АВГУСТ","СЕНТЯБРЬ","ОКТЯБРЬ","НОЯБРЬ","ДЕКАБРЬ"];
+    document.getElementById("addPlanForm")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      c.plan = c.plan || [];
+      c.plan.push({
+        id: "pl-" + Date.now(),
+        title: String(fd.get("title") || "").trim(),
+        dueDate: String(fd.get("dueDate") || ""),
+        done: false
+      });
+      saveState();
+      renderCasesView();
+      showToast("Пункт добавлен в план расследования");
+    });
 
-    let state = {
-      calMode: "month",
-      viewYear: 2026,
-      viewMonth: 10,
-      selectedDate: "2026-11-26",
-      activeColorFilter: "all",
-      kbCatFilter: "Все",
-      blankTabCatFilter: "Все",
-      colors: JSON.parse(localStorage.getItem("arm_colors") || "null") || [
-        { id: "c1", name: "Суд / Прокурор", hex: "#1a4fa3" },
-        { id: "c2", name: "Следств. действия", hex: "#1b7a43" },
-        { id: "c3", name: "Экспертизы", hex: "#b45309" },
-        { id: "c4", name: "Сроки УД", hex: "#c62828" }
-      ],
-      events: JSON.parse(localStorage.getItem("arm_events") || "null") || [
-        { id: "e1", date: "2026-11-26", time: "13:00", title: "Допрос свидетеля по УД № 273", colorId: "c2" },
-        { id: "e2", date: "2026-11-28", time: "10:30", title: "Ходатайство в суд (Бланк 1)", colorId: "c1" }
-      ],
-      cases: JSON.parse(localStorage.getItem("arm_cases") || "null") || [
-        { id: "u1", num: "УД № 273", art: "ч. 1 ст. 158 УК РФ", deadline: "2026-12-27" }
-      ],
-      customBlanks: JSON.parse(localStorage.getItem("arm_custom_blanks") || "[]"),
-      editedBuiltins: JSON.parse(localStorage.getItem("arm_edited_builtins") || "{}"),
-      dismissedBuiltins: JSON.parse(localStorage.getItem("arm_dismissed_builtins") || "[]")
+    document.getElementById("addCaseDocForm")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      c.documents = c.documents || [];
+      c.documents.push({
+        id: "d-" + Date.now(),
+        name: String(fd.get("name") || "").trim(),
+        kind: String(fd.get("kind") || "Word"),
+        addedAt: new Date().toISOString().slice(0, 10)
+      });
+      saveState();
+      renderCaseWorkspace();
+      showToast("Документ прикреплен к делу");
+    });
+  }
+
+  document.getElementById("btnNewCase").addEventListener("click", () => {
+    const num = prompt("Введите номер уголовного дела:", "12601480025000088");
+    if (!num || !num.trim()) return;
+    const articles = prompt("Введите статью УК РФ:", "ч. 1 ст. 158 УК РФ") || "ст. 158 УК РФ";
+    const today = new Date().toISOString().slice(0, 10);
+    const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const newCase = {
+      id: "case-" + Date.now(),
+      number: num.trim(),
+      articles: articles.trim(),
+      status: "В производстве",
+      openDate: today,
+      deadlineDate: nextMonth,
+      restraintMeasure: "Подписка о невыезде",
+      summary: "Краткие обстоятельства преступления уточняются в ходе предварительного расследования.",
+      participants: [],
+      plan: [{ id: "pl-" + Date.now(), title: "Допросить потерпевшего и свидетелей", dueDate: nextMonth, done: false }],
+      documents: []
+    };
+    state.cases.unshift(newCase);
+    activeCaseId = newCase.id;
+    activeCaseSubtab = "card";
+    saveState();
+    renderCasesView();
+    showToast("Новое уголовное дело создано");
+  });
+
+  document.getElementById("caseSearch").addEventListener("input", renderCaseList);
+
+  window.__selectCase = (id) => {
+    activeCaseId = id;
+    renderCasesView();
+  };
+
+  window.__setCaseSubtab = (sub) => {
+    activeCaseSubtab = sub;
+    renderCaseWorkspace();
+  };
+
+  window.__deleteCase = (id) => {
+    if (!confirm("Удалить выбранное уголовное дело из базы?")) return;
+    state.cases = state.cases.filter((c) => c.id !== id);
+    activeCaseId = state.cases[0]?.id || null;
+    saveState();
+    renderCasesView();
+    showToast("Дело удалено");
+  };
+
+  window.__removeParticipant = (pid) => {
+    const c = state.cases.find((x) => x.id === activeCaseId);
+    if (!c) return;
+    c.participants = (c.participants || []).filter((p) => p.id !== pid);
+    saveState();
+    renderCaseWorkspace();
+  };
+
+  window.__togglePlan = (plId) => {
+    const c = state.cases.find((x) => x.id === activeCaseId);
+    if (!c) return;
+    const item = (c.plan || []).find((x) => x.id === plId);
+    if (item) item.done = !item.done;
+    saveState();
+    renderCasesView();
+  };
+
+  window.__deletePlan = (plId) => {
+    const c = state.cases.find((x) => x.id === activeCaseId);
+    if (!c) return;
+    c.plan = (c.plan || []).filter((x) => x.id !== plId);
+    saveState();
+    renderCasesView();
+  };
+
+  window.__moveDoc = (docId, delta) => {
+    const c = state.cases.find((x) => x.id === activeCaseId);
+    if (!c || !Array.isArray(c.documents)) return;
+    const idx = c.documents.findIndex((d) => d.id === docId);
+    const targetIdx = idx + delta;
+    if (idx < 0 || targetIdx < 0 || targetIdx >= c.documents.length) return;
+    const [moved] = c.documents.splice(idx, 1);
+    c.documents.splice(targetIdx, 0, moved);
+    saveState();
+    renderCaseWorkspace();
+  };
+
+  window.__deleteCaseDoc = (docId) => {
+    const c = state.cases.find((x) => x.id === activeCaseId);
+    if (!c) return;
+    c.documents = (c.documents || []).filter((d) => d.id !== docId);
+    saveState();
+    renderCaseWorkspace();
+  };
+
+  window.__openCaseInBlanks = (caseId) => {
+    activeCaseId = caseId;
+    genMode = "full";
+    document.querySelectorAll(".nav-tab").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+    document.querySelector('.nav-tab[data-view="blanks"]').classList.add("active");
+    document.getElementById("view-blanks").classList.add("active");
+    renderBlanksView();
+  };
+
+  function renderCasesView() {
+    renderDeadlineCalendar();
+    renderCaseList();
+    renderCaseWorkspace();
+  }
+
+  /* ==================== РАЗДЕЛ 2: БЛАНКИ И ГЕНЕРАТОР ==================== */
+  function getBlankItems() {
+    return state.kbItems.filter((item) => item.category === "Бланки и шаблоны" || item.category === "Экспертизы и вопросы" || Boolean(item.body));
+  }
+
+  function populateBlankCaseSelect() {
+    const sel = document.getElementById("blankCaseSelect");
+    const current = activeCaseId || (state.cases[0] && state.cases[0].id) || "";
+    sel.innerHTML = state.cases
+      .map(
+        (c) =>
+          `<option value="${escapeHtml(c.id)}" ${c.id === current ? "selected" : ""}>УД № ${escapeHtml(c.number)} (${escapeHtml(c.articles)})</option>`
+      )
+      .join("");
+  }
+
+  function buildGeneratedDocumentText(item, caseObj, mode) {
+    const todayStr = new Date().toLocaleDateString("ru-RU");
+    const inv = state.investigator;
+    const participantsStr =
+      caseObj && Array.isArray(caseObj.participants) && caseObj.participants.length
+        ? caseObj.participants.map((p) => `${p.role}: ${p.fio}`).join("; ")
+        : "_________________________";
+
+    if (mode === "blank") {
+      return (item.body || "")
+        .replace(/\{\{ORGAN\}\}/g, "____________________________________________________")
+        .replace(/\{\{CITY\}\}/g, "________________")
+        .replace(/\{\{DATE\}\}/g, "«___» _____________ 202_ г.")
+        .replace(/\{\{INVESTIGATOR\}\}/g, "________________________________________")
+        .replace(/\{\{CASE_NUMBER\}\}/g, "_____________________")
+        .replace(/\{\{ARTICLES\}\}/g, "__________________")
+        .replace(/\{\{SUMMARY\}\}/g, "
+_____________________________________________________________________
+_____________________________________________________________________")
+        .replace(/\{\{PARTICIPANTS\}\}/g, "_____________________________________________________");
+    }
+
+    if (mode === "header") {
+      return (item.body || "")
+        .replace(/\{\{ORGAN\}\}/g, inv.organ)
+        .replace(/\{\{CITY\}\}/g, inv.city)
+        .replace(/\{\{DATE\}\}/g, todayStr)
+        .replace(/\{\{INVESTIGATOR\}\}/g, inv.rankAndName)
+        .replace(/\{\{CASE_NUMBER\}\}/g, caseObj ? caseObj.number : "_____________________")
+        .replace(/\{\{ARTICLES\}\}/g, caseObj ? caseObj.articles : "__________________")
+        .replace(/\{\{SUMMARY\}\}/g, "
+_____________________________________________________________________
+_____________________________________________________________________")
+        .replace(/\{\{PARTICIPANTS\}\}/g, "_____________________________________________________");
+    }
+
+    // mode === 'full'
+    return (item.body || "")
+      .replace(/\{\{ORGAN\}\}/g, inv.organ)
+      .replace(/\{\{CITY\}\}/g, inv.city)
+      .replace(/\{\{DATE\}\}/g, todayStr)
+      .replace(/\{\{INVESTIGATOR\}\}/g, inv.rankAndName)
+      .replace(/\{\{CASE_NUMBER\}\}/g, caseObj ? caseObj.number : "_____________________")
+      .replace(/\{\{ARTICLES\}\}/g, caseObj ? caseObj.articles : "__________________")
+      .replace(/\{\{SUMMARY\}\}/g, caseObj ? caseObj.summary : "")
+      .replace(/\{\{PARTICIPANTS\}\}/g, participantsStr);
+  }
+
+  function renderBlanksView() {
+    populateBlankCaseSelect();
+    const search = (document.getElementById("blankSearch").value || "").trim().toLowerCase();
+    const cat = document.getElementById("blankCategory").value;
+    const allBlanks = getBlankItems();
+
+    document.getElementById("blankStatsBadge").textContent = `${allBlanks.length} бланков в системе`;
+
+    const filtered = allBlanks.filter((item) => {
+      const matchCat = cat === "all" || item.sysType === cat;
+      const matchText =
+        (item.title || "").toLowerCase().includes(search) ||
+        (item.articles || "").toLowerCase().includes(search) ||
+        (item.sysType || "").toLowerCase().includes(search);
+      return matchCat && matchText;
+    });
+
+    document.getElementById("blankFilteredCount").textContent = String(filtered.length);
+    const listEl = document.getElementById("blankCatalogList");
+
+    if (!filtered.length) {
+      listEl.innerHTML = `<p class="row-meta">Бланки по заданным параметрам не найдены.</p>`;
+      return;
+    }
+
+    if (!filtered.some((x) => x.id === selectedBlankId)) {
+      selectedBlankId = filtered[0].id;
+    }
+
+    listEl.innerHTML = filtered
+      .map((item) => {
+        const isSel = item.id === selectedBlankId;
+        const badgeCls =
+          item.sysType === "Постановление"
+            ? "badge-blue"
+            : item.sysType === "Протокол"
+            ? "badge-green"
+            : "badge-warn";
+        return `
+          <div class="doc-card ${isSel ? "selected" : ""}" onclick="window.__selectBlank('${escapeHtml(item.id)}')">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span class="badge ${badgeCls}">${escapeHtml(item.sysType || "Иной документ")}</span>
+              <span class="row-meta">${escapeHtml(item.articles || "")}</span>
+            </div>
+            <div class="row-title" style="margin-top:5px;">${escapeHtml(item.title)}</div>
+          </div>
+        `;
+      })
+      .join("");
+
+    renderSelectedBlankEditor();
+  }
+
+  function renderSelectedBlankEditor() {
+    const item = state.kbItems.find((x) => x.id === selectedBlankId) || state.kbItems[0];
+    if (!item) return;
+    selectedBlankId = item.id;
+
+    document.querySelectorAll(".mode-btn").forEach((b) => {
+      b.classList.toggle("active", b.dataset.mode === genMode);
+    });
+
+    document.getElementById("selectedBlankTitle").textContent = `${item.sysType}: ${item.title}`;
+
+    const hintsBox = document.getElementById("blankHintsBox");
+    if (Array.isArray(item.hints) && item.hints.length) {
+      hintsBox.style.display = "block";
+      hintsBox.innerHTML = `
+        <strong>Тактические подсказки и контрольные пункты из Базы знаний:</strong>
+        <ul>${item.hints.map((h) => `<li>${escapeHtml(h)}</li>`).join("")}</ul>
+      `;
+    } else {
+      hintsBox.style.display = "none";
+    }
+
+    const caseId = document.getElementById("blankCaseSelect").value || activeCaseId;
+    const caseObj = state.cases.find((c) => c.id === caseId) || state.cases[0];
+    document.getElementById("docEditor").value = buildGeneratedDocumentText(item, caseObj, genMode);
+  }
+
+  window.__selectBlank = (id) => {
+    selectedBlankId = id;
+    renderBlanksView();
+  };
+
+  document.querySelectorAll(".mode-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      genMode = btn.dataset.mode;
+      renderSelectedBlankEditor();
+    });
+  });
+
+  document.getElementById("blankSearch").addEventListener("input", renderBlanksView);
+  document.getElementById("blankCategory").addEventListener("change", renderBlanksView);
+  document.getElementById("blankCaseSelect").addEventListener("change", (e) => {
+    activeCaseId = e.target.value;
+    renderSelectedBlankEditor();
+  });
+
+  document.getElementById("btnClearBlankFilters").addEventListener("click", () => {
+    document.getElementById("blankSearch").value = "";
+    document.getElementById("blankCategory").value = "all";
+    renderBlanksView();
+  });
+
+  document.getElementById("btnCopyDoc").addEventListener("click", async () => {
+    const text = document.getElementById("docEditor").value;
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("Текст документа скопирован в буфер обмена");
+    } catch (e) {
+      showToast("Выделите текст в окне и нажмите Ctrl+C");
+    }
+  });
+
+  document.getElementById("btnDownloadDocTxt").addEventListener("click", () => {
+    const item = state.kbItems.find((x) => x.id === selectedBlankId);
+    const title = (item?.title || "dokument").replace(/[^a-zA-Zа-яА-Я0-9_-]+/g, "_").slice(0, 40);
+    const blob = new Blob([document.getElementById("docEditor").value], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Файл .TXT скачан");
+  });
+
+  document.getElementById("btnDownloadDocWord").addEventListener("click", () => {
+    const item = state.kbItems.find((x) => x.id === selectedBlankId);
+    const title = (item?.title || "dokument").replace(/[^a-zA-Zа-яА-Я0-9_-]+/g, "_").slice(0, 40);
+    const paragraphs = document
+      .getElementById("docEditor")
+      .value.split("
+")
+      .map((line) => `<p style="margin:0 0 8pt 0; font-family:'Times New Roman',Times,serif; font-size:14pt;">${escapeHtml(line) || "&nbsp;"}</p>`)
+      .join("");
+    const htmlDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${paragraphs}</body></html>`;
+    const blob = new Blob(["﻿", htmlDoc], { type: "application/msword;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Документ выгружен в формат .DOC");
+  });
+
+  /* ==================== РАЗДЕЛ 3: БАЗА ЗНАНИЙ ==================== */
+  document.getElementById("kbAddForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const title = document.getElementById("kbTitle").value.trim();
+    const sysType = document.getElementById("kbSysType").value;
+    const category = document.getElementById("kbCategory").value;
+    const articles = document.getElementById("kbArticles").value.trim();
+    const hintsRaw = document.getElementById("kbHints").value;
+    const body = document.getElementById("kbBody").value.trim();
+
+    const hints = hintsRaw
+      .split("
+")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const newItem = {
+      id: "kb-" + Date.now(),
+      title,
+      sysType,
+      category,
+      articles,
+      hints,
+      body
     };
 
-    function persist() {
-      localStorage.setItem("arm_colors", JSON.stringify(state.colors));
-      localStorage.setItem("arm_events", JSON.stringify(state.events));
-      localStorage.setItem("arm_cases", JSON.stringify(state.cases));
-      localStorage.setItem("arm_custom_blanks", JSON.stringify(state.customBlanks));
-      localStorage.setItem("arm_edited_builtins", JSON.stringify(state.editedBuiltins));
-      localStorage.setItem("arm_dismissed_builtins", JSON.stringify(state.dismissedBuiltins));
+    state.kbItems.unshift(newItem);
+    selectedBlankId = newItem.id;
+    saveState();
+    e.target.reset();
+    renderKbView();
+    renderBlanksView();
+    showToast("Материал добавлен в Базу знаний и доступен в Бланках");
+  });
+
+  document.getElementById("kbSearch").addEventListener("input", renderKbView);
+  document.getElementById("kbFilterCategory").addEventListener("change", renderKbView);
+
+  function renderKbView() {
+    const q = (document.getElementById("kbSearch").value || "").trim().toLowerCase();
+    const cat = document.getElementById("kbFilterCategory").value;
+    const listEl = document.getElementById("kbList");
+
+    const filtered = state.kbItems.filter((item) => {
+      const matchCat = cat === "all" || item.category === cat;
+      const matchText =
+        (item.title || "").toLowerCase().includes(q) ||
+        (item.articles || "").toLowerCase().includes(q) ||
+        (item.body || "").toLowerCase().includes(q);
+      return matchCat && matchText;
+    });
+
+    document.getElementById("kbCountBadge").textContent = `${state.kbItems.length} записей`;
+
+    if (!filtered.length) {
+      listEl.innerHTML = `<p class="row-meta">Записи в базе знаний не найдены.</p>`;
+      return;
     }
 
-    function getAllBlanks() {
-      const activeBuiltins = BUILTIN_BLANKS
-        .filter(b => !state.dismissedBuiltins.includes(b.id))
-        .map(b => state.editedBuiltins[b.id] ? { ...b, ...state.editedBuiltins[b.id] } : b);
-      return [...state.customBlanks, ...activeBuiltins];
-    }
-
-    function toggleAcc(id) {
-      document.getElementById(id).classList.toggle("open");
-    }
-
-    function switchTab(tabName, btn) {
-      document.querySelectorAll(".tab-view").forEach(el => el.classList.remove("active"));
-      document.querySelectorAll(".nav-btn").forEach(el => el.classList.remove("active"));
-      document.getElementById("tab-" + tabName).classList.add("active");
-      btn.classList.add("active");
-    }
-
-    function setCalMode(mode) {
-      state.calMode = mode;
-      document.getElementById("modeWeek").classList.toggle("active", mode === "week");
-      document.getElementById("modeMonth").classList.toggle("active", mode === "month");
-      renderCalendar();
-    }
-
-    function goToday() {
-      state.viewYear = 2026;
-      state.viewMonth = 10;
-      state.selectedDate = "2026-11-26";
-      renderCalendar();
-      renderDayEvents();
-    }
-
-    function shiftPeriod(delta) {
-      state.viewMonth += delta;
-      if (state.viewMonth < 0) { state.viewMonth = 11; state.viewYear--; }
-      if (state.viewMonth > 11) { state.viewMonth = 0; state.viewYear++; }
-      renderCalendar();
-    }
-
-    function renderColorsBar() {
-      const bar = document.getElementById("colorsBar");
-      let html = `<button class="color-chip ${state.activeColorFilter === 'all' ? 'selected' : ''}" onclick="filterColor('all')">Все (${state.events.length})</button>`;
-      state.colors.forEach(c => {
-        html += `<button class="color-chip ${state.activeColorFilter === c.id ? 'selected' : ''}" onclick="filterColor('${c.id}')">
-          <span class="color-swatch" style="background:${c.hex}"></span>${c.name}
-        </button>`;
-      });
-      bar.innerHTML = html;
-    }
-
-    function filterColor(id) {
-      state.activeColorFilter = id;
-      renderColorsBar();
-      renderCalendar();
-      renderDayEvents();
-    }
-
-    function renderCalendar() {
-      document.getElementById("calTitle").textContent = `${MONTHS_RU[state.viewMonth]} ${state.viewYear}`;
-      const cells = document.getElementById("calCells");
-      const firstDay = new Date(state.viewYear, state.viewMonth, 1);
-      let startDow = (firstDay.getDay() + 6) % 7;
-      const daysInMonth = new Date(state.viewYear, state.viewMonth + 1, 0).getDate();
-
-      let allDays = [];
-      for (let i = 0; i < startDow; i++) allDays.push(null);
-      for (let d = 1; d <= daysInMonth; d++) allDays.push(d);
-
-      if (state.calMode === "week") {
-        const selDay = parseInt(state.selectedDate.split("-")[2], 10) || 1;
-        const idx = allDays.indexOf(selDay);
-        const weekStart = idx >= 0 ? Math.floor(idx / 7) * 7 : 0;
-        allDays = allDays.slice(weekStart, weekStart + 7);
-      }
-
-      let html = "";
-      allDays.forEach(d => {
-        if (!d) {
-          html += `<div class="cal-day empty"></div>`;
-          return;
-        }
-        const iso = `${state.viewYear}-${String(state.viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-        const dayEvs = state.events.filter(e => e.date === iso && (state.activeColorFilter === "all" || e.colorId === state.activeColorFilter));
-        const dots = dayEvs.map(e => {
-          const col = state.colors.find(c => c.id === e.colorId);
-          return `<span class="day-dot" style="background:${col ? col.hex : '#1a4fa3'}"></span>`;
-        }).join("");
-        const isToday = iso === "2026-11-26";
-        const isSel = iso === state.selectedDate;
-        html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''}" onclick="selectDate('${iso}')">
-          <span>${d}</span>
-          <div class="day-dots">${dots}</div>
-        </div>`;
-      });
-      cells.innerHTML = html;
-    }
-
-    function selectDate(iso) {
-      state.selectedDate = iso;
-      renderCalendar();
-      renderDayEvents();
-      document.getElementById("accDayEvents").classList.add("open");
-    }
-
-    function renderDayEvents() {
-      document.getElementById("selectedDateLabel").textContent = state.selectedDate.split("-").reverse().join(".");
-      const list = state.events.filter(e => e.date === state.selectedDate && (state.activeColorFilter === "all" || e.colorId === state.activeColorFilter));
-      const box = document.getElementById("dayEventsBody");
-      if (!list.length) {
-        box.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding-top:8px;">Событий на выбранный день нет.</div>`;
-      } else {
-        box.innerHTML = list.map(e => {
-          const col = state.colors.find(c => c.id === e.colorId);
-          return `<div class="item-row" style="margin-top:8px;">
-            <div class="row-between">
-              <span><span class="color-swatch" style="display:inline-block; background:${col ? col.hex : '#1a4fa3'}; margin-right:6px;"></span><strong>${e.time}</strong> — ${e.title}</span>
-              <button class="btn btn-sm btn-danger" onclick="deleteEvent('${e.id}')">&#10005;</button>
-            </div>
-          </div>`;
-        }).join("");
-      }
-      document.getElementById("kpiToday").textContent = state.events.filter(e => e.date === "2026-11-26").length;
-    }
-
-    function deleteEvent(id) {
-      state.events = state.events.filter(e => e.id !== id);
-      persist();
-      renderCalendar();
-      renderDayEvents();
-    }
-
-    function renderDeadlines() {
-      const box = document.getElementById("deadlinesBody");
-      document.getElementById("kpiActive").textContent = state.cases.length;
-      if (!state.cases.length) {
-        box.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding-top:8px;">Нет активных дел на контроле.</div>`;
-        return;
-      }
-      box.innerHTML = state.cases.map(c => `
-        <div class="item-row" style="margin-top:8px;">
-          <div class="row-between">
-            <div><strong>${c.num}</strong> (${c.art})</div>
-            <span class="badge">Срок до ${c.deadline.split("-").reverse().join(".")}</span>
-          </div>
-        </div>
-      `).join("");
-    }
-
-    function openColorManager() {
-      renderColorEditList();
-      document.getElementById("colorModal").classList.add("open");
-    }
-    function renderColorEditList() {
-      const box = document.getElementById("colorEditList");
-      box.innerHTML = state.colors.map((c, idx) => `
-        <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
-          <input type="color" value="${c.hex}" style="width:42px; height:34px; padding:2px; margin:0;" onchange="updateColor(${idx}, 'hex', this.value)" />
-          <input type="text" value="${c.name}" style="flex:1; margin:0;" onchange="updateColor(${idx}, 'name', this.value)" />
-          ${state.colors.length > 1 ? `<button class="btn btn-sm btn-danger" onclick="removeColor('${c.id}')">&#10005;</button>` : ''}
-        </div>
-      `).join("");
-    }
-    function updateColor(idx, field, val) {
-      state.colors[idx][field] = val;
-      persist();
-      renderColorsBar();
-      renderCalendar();
-      renderDayEvents();
-    }
-    function addNewColor() {
-      const hex = document.getElementById("newColorHex").value;
-      const name = document.getElementById("newColorName").value.trim() || "Новая категория";
-      state.colors.push({ id: "c_" + Date.now(), name, hex });
-      document.getElementById("newColorName").value = "";
-      persist();
-      renderColorEditList();
-      renderColorsBar();
-    }
-    function removeColor(id) {
-      const fallback = state.colors.find(c => c.id !== id).id;
-      state.events.forEach(e => { if (e.colorId === id) e.colorId = fallback; });
-      state.colors = state.colors.filter(c => c.id !== id);
-      if (state.activeColorFilter === id) state.activeColorFilter = "all";
-      persist();
-      renderColorEditList();
-      renderColorsBar();
-      renderCalendar();
-      renderDayEvents();
-    }
-
-    function openEventModal() {
-      document.getElementById("evDate").value = state.selectedDate;
-      document.getElementById("evColorSelect").innerHTML = state.colors.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-      document.getElementById("eventModal").classList.add("open");
-    }
-    function saveEvent() {
-      const date = document.getElementById("evDate").value;
-      const time = document.getElementById("evTime").value || "12:00";
-      const title = document.getElementById("evTitle").value.trim();
-      const colorId = document.getElementById("evColorSelect").value;
-      if (!title) return;
-      state.events.push({ id: "ev_" + Date.now(), date, time, title, colorId });
-      document.getElementById("evTitle").value = "";
-      persist();
-      closeModal("eventModal");
-      renderColorsBar();
-      renderCalendar();
-      renderDayEvents();
-    }
-
-    function openCaseModal() { document.getElementById("caseModal").classList.add("open"); }
-    function saveCase() {
-      const num = document.getElementById("cNum").value.trim();
-      const art = document.getElementById("cArt").value.trim();
-      const deadline = document.getElementById("cDeadline").value || "2026-12-30";
-      if (!num) return;
-      state.cases.push({ id: "u_" + Date.now(), num, art, deadline });
-      persist();
-      closeModal("caseModal");
-      renderCases();
-      renderDeadlines();
-    }
-    function renderCases() {
-      const q = (document.getElementById("caseSearch").value || "").toLowerCase();
-      const list = state.cases.filter(c => (c.num + " " + c.art).toLowerCase().includes(q));
-      document.getElementById("casesList").innerHTML = list.map(c => `
-        <div class="item-row">
-          <div class="row-between">
-            <strong>${c.num}</strong>
-            <span class="badge">Срок до ${c.deadline.split("-").reverse().join(".")}</span>
-          </div>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">${c.art}</div>
-        </div>
-      `).join("");
-    }
-
-    function renderCatChips(containerId, currentCat, onSelectFnName) {
-      const all = getAllBlanks();
-      const cats = ["Все", "Постановления", "Протоколы", "Иные документы", "Свои"];
-      document.getElementById(containerId).innerHTML = cats.map(cat => {
-        const cnt = cat === "Все" ? all.length : all.filter(b => b.category === cat).length;
-        return `<button class="btn btn-sm ${currentCat === cat ? 'active' : ''}" onclick="${onSelectFnName}('${cat}')">${cat} (${cnt})</button>`;
-      }).join("");
-    }
-
-    function setKbCat(cat) { state.kbCatFilter = cat; renderKB(); }
-    function setBlankTabCat(cat) { state.blankTabCatFilter = cat; renderBlanksTab(); }
-
-    function renderKB() {
-      renderCatChips("kbCatFilters", state.kbCatFilter, "setKbCat");
-      const q = (document.getElementById("kbSearch").value || "").toLowerCase();
-      const list = getAllBlanks().filter(b =>
-        (state.kbCatFilter === "Все" || b.category === state.kbCatFilter) &&
-        b.title.toLowerCase().includes(q)
-      );
-      document.getElementById("kbList").innerHTML = list.map(b => `
-        <div class="item-row">
-          <div style="font-size:12px; font-weight:600; margin-bottom:5px;">${b.title}</div>
-          <div class="row-between">
+    listEl.innerHTML = filtered
+      .map(
+        (item) => `
+        <div class="doc-card" style="cursor:default;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
             <div>
-              <span class="badge">${b.builtin ? "Встроенный" : "Свой"}</span>
-              <span class="badge">${b.category}</span>
+              <span class="badge badge-blue">${escapeHtml(item.sysType)}</span>
+              <span class="badge">${escapeHtml(item.category)}</span>
+              ${item.articles ? `<span class="badge badge-green">${escapeHtml(item.articles)}</span>` : ""}
             </div>
-            <div style="display:flex; gap:5px;">
-              <button class="btn btn-sm" onclick="openEditBlankModal('${b.id}')">Ред.</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteBlank('${b.id}', ${!!b.builtin})">Удалить</button>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-sm btn-soft" onclick="window.__useKbInGenerator('${escapeHtml(item.id)}')">В генератор</button>
+              <button class="btn btn-sm" onclick="window.__deleteKbItem('${escapeHtml(item.id)}')">Удалить</button>
             </div>
           </div>
+          <div class="row-title" style="margin-top:6px;">${escapeHtml(item.title)}</div>
+          ${
+            Array.isArray(item.hints) && item.hints.length
+              ? `<div class="row-meta" style="margin-top:4px;">Подсказки: ${escapeHtml(item.hints.join(" • "))}</div>`
+              : ""
+          }
+          <div class="row-meta" style="margin-top:6px; white-space:pre-wrap; background:var(--surface-2); padding:8px; border-radius:6px; border:1px solid var(--border);">${escapeHtml((item.body || "").slice(0, 260))}${(item.body || "").length > 260 ? "…" : ""}</div>
         </div>
-      `).join("");
-    }
+      `
+      )
+      .join("");
+  }
 
-    function renderBlanksTab() {
-      renderCatChips("blankCatFilters", state.blankTabCatFilter, "setBlankTabCat");
-      const q = (document.getElementById("blankSearch").value || "").toLowerCase();
-      const list = getAllBlanks().filter(b =>
-        (state.blankTabCatFilter === "Все" || b.category === state.blankTabCatFilter) &&
-        b.title.toLowerCase().includes(q)
-      );
-      document.getElementById("blanksTabList").innerHTML = list.map(b => `
-        <div class="item-row">
-          <div style="font-size:12px; font-weight:600; margin-bottom:5px;">${b.title}</div>
-          <div class="row-between">
-            <span class="badge">${b.category}</span>
-            <button class="btn btn-sm btn-primary" onclick="downloadDoc('${b.id}')">Скачать .DOC</button>
-          </div>
-        </div>
-      `).join("");
-    }
+  window.__useKbInGenerator = (id) => {
+    selectedBlankId = id;
+    document.querySelectorAll(".nav-tab").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+    document.querySelector('.nav-tab[data-view="blanks"]').classList.add("active");
+    document.getElementById("view-blanks").classList.add("active");
+    renderBlanksView();
+  };
 
-    function openAddBlankModal() {
-      document.getElementById("blankModalTitle").textContent = "Добавить свой бланк / файл";
-      document.getElementById("editBlankId").value = "";
-      document.getElementById("editBlankCat").value = "Свои";
-      document.getElementById("editBlankName").value = "";
-      document.getElementById("editBlankText").value = "";
-      document.getElementById("blankModal").classList.add("open");
-    }
+  window.__deleteKbItem = (id) => {
+    if (!confirm("Удалить запись из Базы знаний?")) return;
+    state.kbItems = state.kbItems.filter((x) => x.id !== id);
+    if (selectedBlankId === id) selectedBlankId = state.kbItems[0]?.id || null;
+    saveState();
+    renderKbView();
+    renderBlanksView();
+    showToast("Запись удалена");
+  };
 
-    function openEditBlankModal(id) {
-      const item = getAllBlanks().find(b => b.id === id);
-      if (!item) return;
-      document.getElementById("blankModalTitle").textContent = "Изменить бланк";
-      document.getElementById("editBlankId").value = item.id;
-      document.getElementById("editBlankCat").value = item.category;
-      document.getElementById("editBlankName").value = item.title;
-      document.getElementById("editBlankText").value = item.content || "";
-      document.getElementById("blankModal").classList.add("open");
-    }
+  function renderAll() {
+    renderCasesView();
+    renderBlanksView();
+    renderKbView();
+  }
 
-    function handleFileUpload(ev) {
-      const file = ev.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e => {
-        if (!document.getElementById("editBlankName").value) {
-          document.getElementById("editBlankName").value = file.name.replace(/\.[^.]+$/, "");
-        }
-        document.getElementById("editBlankText").value = e.target.result;
-      };
-      reader.readAsText(file);
-    }
-
-    function saveBlank() {
-      const id = document.getElementById("editBlankId").value;
-      const category = document.getElementById("editBlankCat").value;
-      const title = document.getElementById("editBlankName").value.trim();
-      const content = document.getElementById("editBlankText").value;
-      if (!title) return;
-
-      if (!id) {
-        state.customBlanks.unshift({ id: "cust_" + Date.now(), category, title, content, builtin: false });
-      } else if (BUILTIN_BLANKS.some(b => b.id === id)) {
-        state.editedBuiltins[id] = { category, title, content };
-      } else {
-        const idx = state.customBlanks.findIndex(b => b.id === id);
-        if (idx >= 0) state.customBlanks[idx] = { ...state.customBlanks[idx], category, title, content };
-      }
-      persist();
-      closeModal("blankModal");
-      renderKB();
-      renderBlanksTab();
-    }
-
-    function deleteBlank(id, isBuiltin) {
-      if (isBuiltin) {
-        if (!state.dismissedBuiltins.includes(id)) state.dismissedBuiltins.push(id);
-      } else {
-        state.customBlanks = state.customBlanks.filter(b => b.id !== id);
-      }
-      persist();
-      renderKB();
-      renderBlanksTab();
-    }
-
-    function restoreBuiltins() {
-      state.dismissedBuiltins = [];
-      state.editedBuiltins = {};
-      persist();
-      renderKB();
-      renderBlanksTab();
-    }
-
-    function downloadDoc(id) {
-      const item = getAllBlanks().find(b => b.id === id);
-      if (!item) return;
-      const fio = document.getElementById("profFio").value || "Следователь";
-      const rank = document.getElementById("profRank").value || "";
-      const body = item.content || `${item.title}\n\nСледователь: ${rank} ${fio}\nДата: ${state.selectedDate.split("-").reverse().join(".")}`;
-      const blob = new Blob(["\ufeff" + body], { type: "application/msword;charset=utf-8" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = item.title.slice(0, 60) + ".doc";
-      a.click();
-    }
-
-    function updateHeaderEmail() {
-      document.getElementById("headerEmail").textContent = document.getElementById("profMail").value;
-    }
-    function saveProfile() {
-      updateHeaderEmail();
-      alert("Профиль сохранён");
-    }
-    function closeModal(id) { document.getElementById(id).classList.remove("open"); }
-
-    renderColorsBar();
-    renderCalendar();
-    renderDayEvents();
-    renderDeadlines();
-    renderCases();
-    renderKB();
-    renderBlanksTab();
-  </script>
+  renderAll();
+})();
+</script>
 </body>
 </html>
