@@ -3,2356 +3,1034 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#f6f8fc" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="IAR" />
-  <title>АРМ Следователя — Автоматизированное рабочее место</title>
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='26' fill='%230d1b3e'/%3E%3Cpath d='M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z' fill='none' stroke='%23ffffff' stroke-width='6' stroke-linejoin='round'/%3E%3Cpath d='M36 66 L54 48 L65 58 L84 39' fill="none" stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70 39 H84 V53' fill="none" stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='60' y='88' text-anchor='middle' fill='%23ffffff' font-family='Inter, Arial, sans-serif' font-weight='800' font-size='22' letter-spacing='1'%3EIAR%3C/text%3E%3C/svg%3E" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-      window.supabase = {
-        createClient: function(url) {
-          const projectRef = (url || '').replace(/^https?:\/\//, '').split('.')[0] || 'local';
-          const sessionKey = 'sb-' + projectRef + '-auth-token';
-
-          function readSession() {
-            try {
-              const raw = localStorage.getItem(sessionKey);
-              if (!raw) return null;
-              const parsed = JSON.parse(raw);
-              const s = parsed && parsed.currentSession ? parsed.currentSession : parsed;
-              if (s && s.user) return s;
-              return null;
-            } catch (e) {
-              return null;
-            }
-          }
-
-          function writeSession(user) {
-            const session = {
-              access_token: 'offline_token',
-              token_type: 'bearer',
-              user: user
-            };
-            try {
-              localStorage.setItem(sessionKey, JSON.stringify(session));
-            } catch (e) {}
-            return session;
-          }
-
-          return {
-            auth: {
-              async getSession() {
-                return { data: { session: readSession() }, error: null };
-              },
-              async signInWithPassword({ email }) {
-                if (!navigator.onLine) {
-                  const existing = readSession();
-                  if (existing && existing.user && existing.user.email === email) {
-                    return { data: { session: existing, user: existing.user }, error: null };
-                  }
-                  const offlineUser = {
-                    id: 'offline_' + btoa(unescape(encodeURIComponent(email))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24),
-                    email: email
-                  };
-                  const s = writeSession(offlineUser);
-                  return { data: { session: s, user: offlineUser }, error: null };
-                }
-                return { data: { session: null, user: null }, error: { message: 'Нет соединения с сервером авторизации' } };
-              },
-              async signUp() {
-                return { data: { session: null, user: null }, error: { message: 'Регистрация требует подключения к сети' } };
-              },
-              async signOut() {
-                try { localStorage.removeItem(sessionKey); } catch (e) {}
-                return { error: null };
-              }
-            },
-            from() {
-              return {
-                select() {
-                  return {
-                    eq() {
-                      return {
-                        async maybeSingle() {
-                          return { data: null, error: { code: 'OFFLINE', message: 'Офлайн-режим' } };
-                        }
-                      };
-                    }
-                  };
-                },
-                async upsert() {
-                  return { error: { code: 'OFFLINE', message: 'Офлайн-режим' } };
-                }
-              };
-            }
-          };
-        }
-      };
-    }
-  </script>
+  <title>Автоматизированное рабочее место следователя</title>
   <style>
     :root {
       --bg: #f6f8fc;
       --surface: #ffffff;
-      --surface-soft: #f9fbff;
-      --primary: #334e7b;
-      --primary-soft: #eef3fb;
-      --accent: #5b7bb2;
-      --accent-soft: #e6eefc;
-      --text: #1e293b;
-      --muted: #64748b;
-      --border: #e6ebf2;
-
-      --cat-court-bg: #fdf2f2;
-      --cat-court-border: #f5d0d0;
-      --cat-court-text: #9b3b3b;
-      --cat-court-dot: #d97777;
-
-      --cat-work-bg: #eff6ff;
-      --cat-work-border: #cfe0fc;
-      --cat-work-text: #2c5282;
-      --cat-work-dot: #5b7bb2;
-
-      --cat-expert-bg: #f0f9f4;
-      --cat-expert-border: #cbe8d6;
-      --cat-expert-text: #276749;
-      --cat-expert-dot: #489c73;
-
-      --cat-term-bg: #fffbeb;
-      --cat-term-border: #f6e0a6;
-      --cat-term-text: #8c5a19;
-      --cat-term-dot: #d69e2e;
-
-      --shadow-soft: 0 4px 20px rgba(51, 78, 123, 0.05);
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      --radius-sm: 10px;
+      --primary: #1a4fa3;
+      --primary-soft: rgba(26, 79, 163, 0.06);
+      --border: #1a4fa3;
+      --border-muted: #b8c8e6;
+      --text: #111c33;
+      --text-muted: #4b5d80;
+      --danger: #c62828;
+      --success: #1b7a43;
+      --radius: 14px;
     }
-
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       margin: 0;
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      padding-bottom: 96px;
-      line-height: 1.45;
+      padding-bottom: 84px;
     }
-
-    .auth-screen {
-      min-height: 100vh;
+    .app-wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 12px;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .top-header {
+      background: var(--surface);
+      border: 1.75px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+    .top-bar-row {
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: var(--bg);
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
     }
-
-    .auth-card {
-      width: 100%;
-      max-width: 410px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 26px 22px;
-      box-shadow: 0 14px 36px rgba(51, 78, 123, 0.1);
-    }
-
-    .auth-tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      background: var(--bg);
-      padding: 4px;
-      border-radius: 12px;
-      margin-bottom: 16px;
-    }
-
-    .auth-tab {
-      border: none;
-      background: transparent;
-      padding: 8px;
-      border-radius: 9px;
-      font-weight: 600;
-      font-size: 13px;
-      color: var(--muted);
-      cursor: pointer;
-    }
-
-    .auth-tab.active {
-      background: var(--surface);
-      color: var(--primary);
-      box-shadow: 0 2px 6px rgba(51, 78, 123, 0.08);
-    }
-
-    .auth-msg {
-      font-size: 12.5px;
-      padding: 10px 12px;
-      border-radius: 11px;
-      margin-bottom: 12px;
-      display: none;
-    }
-
-    .auth-msg.error { display: block; background: #fef2f2; color: #b91c1c; }
-    .auth-msg.success { display: block; background: #ecfdf5; color: #047857; }
-
-    .app-container {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 12px 14px 28px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 15px;
-      box-shadow: var(--shadow-soft);
-      margin-bottom: 12px;
-    }
-
-    .status-chip {
+    .logo-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 5px 11px;
-      border-radius: 999px;
-      font-size: 11.5px;
-      font-weight: 600;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .brand-hero {
-      text-align: center;
-      padding: 6px 8px 16px;
-    }
-
-    .brand-emblem {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 12px;
-      border-radius: 18px;
-      background: #0d1b3e;
-      border: 1.5px solid #1e356b;
-      display: flex;
-      align-items: center;
       justify-content: center;
-      box-shadow: 0 8px 20px rgba(13, 27, 62, 0.16);
-    }
-
-    .metric-tile {
+      border: 1.5px solid var(--primary);
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      padding: 2px 10px;
+      border-radius: 999px;
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 10px 6px;
-      text-align: center;
-      box-shadow: var(--shadow-soft);
-      cursor: pointer;
-      transition: all 0.15s ease;
     }
-
-    .metric-tile.active {
-      border-color: var(--accent);
-      background: var(--primary-soft);
+    .user-email {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
     }
-
-    .ios-week-grid {
-      display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 4px;
-    }
-
-    .ios-day-col {
-      background: var(--surface-soft);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 5px 3px 6px;
-      min-height: 138px;
+    .status-pills {
       display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 4px;
-      cursor: pointer;
-      transition: background 0.15s ease, border-color 0.15s ease;
+      gap: 6px;
     }
-
-    .ios-day-col.selected {
-      background: #ffffff;
-      border-color: var(--accent);
-      box-shadow: 0 2px 10px rgba(91, 123, 178, 0.12);
-    }
-
-    .ios-day-letter {
-      text-align: center;
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       font-size: 10px;
       font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-    }
-
-    .ios-day-num {
-      width: 24px;
-      height: 24px;
-      margin: 1px auto 3px;
+      letter-spacing: 0.04em;
+      padding: 2px 8px;
       border-radius: 999px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      background: var(--surface);
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+    .app-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 0.03em;
+      text-align: center;
+      margin: 2px 0 0;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 10px 6px;
+      text-align: center;
+    }
+    .kpi-num {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.1;
+    }
+    .kpi-label {
+      font-size: 10px;
       font-weight: 700;
       color: var(--text);
+      margin-top: 4px;
+      letter-spacing: 0.02em;
     }
-
-    .ios-day-num.today {
-      background: #e06c6c;
+    .btn {
+      border: 1.4px solid var(--primary);
+      background: var(--surface);
+      color: var(--primary);
+      border-radius: 10px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: 0.15s;
+    }
+    .btn.active, .btn-primary {
+      background: var(--primary);
       color: #ffffff;
     }
-
-    .ios-mini-event {
-      border-radius: 7px;
-      padding: 3px 4px;
-      font-size: 9.5px;
-      line-height: 1.2;
-      font-weight: 600;
-      text-align: left;
-      overflow: hidden;
-      border: 1px solid transparent;
-      cursor: pointer;
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 8px;
     }
-
-    .ios-mini-event .ev-title {
-      display: block;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .btn-danger {
+      border-color: var(--danger);
+      color: var(--danger);
     }
-
-    .ios-mini-event .ev-time {
-      display: block;
-      font-size: 8.5px;
-      opacity: 0.82;
-      margin-top: 1px;
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
     }
-
-    .ev-court {
-      background: var(--cat-court-bg);
-      border-color: var(--cat-court-border);
-      color: var(--cat-court-text);
+    .cal-month-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 0.04em;
     }
-
-    .ev-work {
-      background: var(--cat-work-bg);
-      border-color: var(--cat-work-border);
-      color: var(--cat-work-text);
+    .cal-modes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
     }
-
-    .ev-expert {
-      background: var(--cat-expert-bg);
-      border-color: var(--cat-expert-border);
-      color: var(--cat-expert-text);
+    .colors-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--border-muted);
     }
-
-    .ev-term {
-      background: var(--cat-term-bg);
-      border-color: var(--cat-term-border);
-      color: var(--cat-term-text);
-    }
-
-    .inner-accordion {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
+    .color-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1.3px solid var(--border-muted);
       background: var(--surface);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .color-chip.selected {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px var(--primary);
+    }
+    .color-swatch {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+    .cal-dow {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--primary);
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border-muted);
+    }
+    .cal-day {
+      min-height: 40px;
+      border: 1px solid var(--border-muted);
+      border-radius: 9px;
+      padding: 4px 2px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--surface);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .cal-day.empty {
+      border-color: transparent;
+      cursor: default;
+    }
+    .cal-day.today {
+      border: 1.6px solid var(--primary);
+      color: var(--primary);
+      font-weight: 800;
+    }
+    .cal-day.selected {
+      background: var(--primary-soft);
+      border: 2px solid var(--primary);
+    }
+    .day-dots {
+      display: flex;
+      gap: 2px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .day-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+    }
+    .accordion-panel {
+      background: var(--surface);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius);
       margin-bottom: 10px;
       overflow: hidden;
-      box-shadow: var(--shadow-soft);
     }
-
     .accordion-header {
       width: 100%;
       background: var(--surface);
       border: none;
-      padding: 13px 15px;
+      padding: 12px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 0.03em;
       cursor: pointer;
-      text-align: left;
     }
-
     .accordion-body {
-      padding: 0 15px 14px;
-      border-top: 1px solid var(--border);
-      background: var(--surface-soft);
+      display: none;
+      padding: 0 14px 12px;
+      border-top: 1px solid var(--border-muted);
     }
-
-    .chevron-icon {
-      transition: transform 0.2s ease;
-      color: var(--muted);
+    .accordion-panel.open .accordion-body {
+      display: block;
     }
-
-    .chevron-icon.open {
+    .accordion-panel.open .acc-arrow {
       transform: rotate(180deg);
     }
-
-    .soft-input, .soft-select, .soft-textarea {
-      width: 100%;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 13.5px;
-      color: var(--text);
-      background: #ffffff;
-      font-family: inherit;
-    }
-
-    .soft-input:focus, .soft-select:focus, .soft-textarea:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(91, 123, 178, 0.14);
-    }
-
-    .btn-soft-primary {
-      background: var(--primary);
-      color: #ffffff;
-      border: none;
-      border-radius: 12px;
-      padding: 11px 15px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: opacity 0.15s ease;
-    }
-
-    .btn-soft-secondary {
-      background: var(--primary-soft);
-      color: var(--primary);
-      border: 1px solid #d7e3f7;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    .btn-soft-ghost {
-      background: #ffffff;
-      color: var(--muted);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 9px 12px;
-      font-size: 12.5px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(30, 41, 59, 0.35);
-      backdrop-filter: blur(3px);
-      z-index: 60;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      padding: 10px;
-    }
-
-    @media (min-width: 640px) {
-      .modal-overlay {
-        align-items: center;
-      }
-    }
-
-    .modal-sheet {
-      width: 100%;
-      max-width: 540px;
-      background: #ffffff;
-      border-radius: 22px;
-      padding: 18px;
-      border: 1px solid var(--border);
-      box-shadow: 0 20px 45px rgba(30, 41, 59, 0.16);
-      max-height: 88vh;
-      overflow-y: auto;
-    }
-
     .bottom-nav {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      background: rgba(255, 255, 255, 0.96);
-      backdrop-filter: blur(12px);
-      border-top: 1px solid var(--border);
-      box-shadow: 0 -4px 20px rgba(51, 78, 123, 0.06);
+      background: var(--surface);
+      border-top: 1.5px solid var(--primary);
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      padding: 8px 4px 12px;
-      z-index: 45;
+      grid-template-columns: repeat(5, 1fr);
+      padding: 6px 4px 10px;
+      z-index: 50;
     }
-
-    .nav-tab {
+    .nav-btn {
+      background: none;
       border: none;
-      background: transparent;
-      border-radius: 13px;
-      padding: 6px 2px;
-      min-height: 54px;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 700;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 4px;
-      color: var(--muted);
-      font-size: 10.5px;
-      font-weight: 600;
+      gap: 3px;
       cursor: pointer;
-      transition: all 0.15s ease;
+      padding: 4px 2px;
     }
-
-    .nav-tab.active {
-      background: var(--primary-soft);
+    .nav-btn.active {
       color: var(--primary);
-      font-weight: 700;
     }
-
-    .toast-bar {
+    .nav-icon {
+      font-size: 16px;
+      line-height: 1;
+    }
+    .tab-view { display: none; }
+    .tab-view.active { display: block; }
+    input, select, textarea {
+      width: 100%;
+      border: 1.3px solid var(--border-muted);
+      border-radius: 9px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .modal-backdrop {
       position: fixed;
-      top: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--primary);
-      color: #ffffff;
-      padding: 9px 16px;
+      inset: 0;
+      background: rgba(17, 28, 51, 0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      background: var(--surface);
+      border: 1.75px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 16px;
+      width: 100%;
+      max-width: 440px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
       border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      z-index: 80;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-      max-width: 92vw;
-      text-align: center;
+      border: 1px solid var(--primary);
+      color: var(--primary);
     }
-
-    .toast-bar.show {
-      opacity: 1;
+    .item-row {
+      border: 1.2px solid var(--border-muted);
+      border-radius: 10px;
+      padding: 9px 11px;
+      margin-bottom: 8px;
+      background: var(--surface);
     }
-
-    @media (max-width: 440px) {
-      .nav-tab {
-        font-size: 9.5px;
-      }
-      .ios-day-col {
-        padding: 4px 2px 5px;
-        min-height: 126px;
-      }
-      .ios-mini-event {
-        padding: 2.5px 3px;
-        font-size: 9px;
-      }
+    .row-between {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
     }
   </style>
 </head>
 <body>
-  <div id="authScreen" class="auth-screen">
-    <div class="auth-card">
-      <div class="text-center mb-4">
-        <div class="brand-emblem" aria-label="Логотип IAR">
-          <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-            <path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="#0d1b3e" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
-            <path d="M60 19 L93 32 V59 C93 81 78 96 60 103 C42 96 27 81 27 59 V32 Z" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
-            <path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M70 39 H84 V53" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="60" y="88" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="22" letter-spacing="1">IAR</text>
-          </svg>
+  <div class="app-wrap">
+    <header class="top-header">
+      <div class="top-bar-row">
+        <span class="user-email" id="headerEmail">irina.sled@icloud.com</span>
+        <span class="logo-badge">IAR</span>
+        <div class="status-pills">
+          <span class="status-pill"><span class="dot"></span>ОНЛАЙН</span>
+          <span class="status-pill"><span class="dot"></span>ОБЛАКО</span>
         </div>
-        <h1 class="text-base font-extrabold text-[#1e3a6e] uppercase m-0">АВТОМАТИЗИРОВАННОЕ РАБОЧЕЕ МЕСТО СЛЕДОВАТЕЛЯ</h1>
-        <p class="text-xs text-slate-500 mt-1 mb-0">Облачная синхронизация дел, календаря и бланков</p>
+      </div>
+      <div class="app-title">АВТОМАТИЗИРОВАННОЕ РАБОЧЕЕ МЕСТО СЛЕДОВАТЕЛЯ</div>
+    </header>
+
+    <section id="tab-summary" class="tab-view active">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-num" id="kpiActive">1</div>
+          <div class="kpi-label">В ПРОИЗВОДСТВЕ</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-num" id="kpiUrgent">0</div>
+          <div class="kpi-label">СРОК &le; 10 ДН.</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-num" id="kpiToday">0</div>
+          <div class="kpi-label">НА СЕГОДНЯ</div>
+        </div>
       </div>
 
-      <div class="auth-tabs">
-        <button type="button" id="tabLogin" class="auth-tab active">Вход</button>
-        <button type="button" id="tabRegister" class="auth-tab">Регистрация</button>
+      <div class="panel">
+        <div class="cal-header">
+          <button class="btn btn-sm" onclick="shiftPeriod(-1)">&larr;</button>
+          <div class="cal-month-title" id="calTitle">НОЯБРЬ 2026</div>
+          <button class="btn btn-sm" onclick="shiftPeriod(1)">&rarr;</button>
+        </div>
+
+        <div class="cal-modes">
+          <button class="btn btn-sm" id="modeToday" onclick="goToday()">СЕГОДНЯ</button>
+          <button class="btn btn-sm" id="modeWeek" onclick="setCalMode('week')">НЕДЕЛЯ</button>
+          <button class="btn btn-sm active" id="modeMonth" onclick="setCalMode('month')">МЕСЯЦ</button>
+        </div>
+
+        <div class="colors-bar" id="colorsBar"></div>
+        <div style="display:flex; gap:6px; margin-bottom:10px;">
+          <button class="btn btn-sm" onclick="openColorManager()">&#9998; Цвета (как в iPhone)</button>
+          <button class="btn btn-sm btn-primary" style="flex:1;" onclick="openEventModal()">+ ДОБАВИТЬ СОБЫТИЕ</button>
+        </div>
+
+        <div class="cal-grid" id="calDowRow">
+          <div class="cal-dow">П</div><div class="cal-dow">В</div><div class="cal-dow">С</div>
+          <div class="cal-dow">Ч</div><div class="cal-dow">П</div><div class="cal-dow">С</div><div class="cal-dow">В</div>
+        </div>
+        <div class="cal-grid" id="calCells" style="margin-top:4px;"></div>
       </div>
 
-      <div id="authMsg" class="auth-msg"></div>
+      <div class="accordion-panel" id="accDayEvents">
+        <button class="accordion-header" onclick="toggleAcc('accDayEvents')">
+          <span>СОБЫТИЯ ВЫБРАННОГО ДНЯ (<span id="selectedDateLabel"></span>)</span>
+          <span class="acc-arrow">&#9660;</span>
+        </button>
+        <div class="accordion-body" id="dayEventsBody"></div>
+      </div>
 
-      <form id="authForm" class="space-y-3">
-        <div>
-          <label for="authEmail" class="block text-xs font-semibold text-slate-600 mb-1">Электронная почта</label>
-          <input type="email" id="authEmail" class="soft-input" placeholder="name@example.com" required autocomplete="email" />
+      <div class="accordion-panel" id="accDeadlines">
+        <button class="accordion-header" onclick="toggleAcc('accDeadlines')">
+          <span>КОНТРОЛЬ СРОКОВ</span>
+          <span class="acc-arrow">&#9660;</span>
+        </button>
+        <div class="accordion-body" id="deadlinesBody"></div>
+      </div>
+    </section>
+
+    <section id="tab-cases" class="tab-view">
+      <div class="panel">
+        <div class="row-between" style="margin-bottom:8px;">
+          <strong style="color:var(--primary);">УГОЛОВНЫЕ ДЕЛА В ПРОИЗВОДСТВЕ</strong>
+          <button class="btn btn-sm btn-primary" onclick="openCaseModal()">+ Новое УД</button>
         </div>
-        <div>
-          <label for="authPassword" class="block text-xs font-semibold text-slate-600 mb-1">Пароль (от 6 символов)</label>
-          <input type="password" id="authPassword" class="soft-input" placeholder="••••••••" minlength="6" required autocomplete="current-password" />
+        <input type="text" id="caseSearch" placeholder="Поиск по номеру УД, статье УК РФ, ФИО..." oninput="renderCases()" />
+        <div id="casesList"></div>
+      </div>
+    </section>
+
+    <section id="tab-blanks" class="tab-view">
+      <div class="panel">
+        <strong style="color:var(--primary); display:block; margin-bottom:8px;">ПРОЦЕССУАЛЬНЫЕ БЛАНКИ (165 ВСТРОЕННЫХ + СВОИ)</strong>
+        <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px;" id="blankCatFilters"></div>
+        <input type="text" id="blankSearch" placeholder="Поиск по названию или номеру бланка..." oninput="renderBlanksTab()" />
+        <div id="blanksTabList"></div>
+      </div>
+    </section>
+
+    <section id="tab-hints" class="tab-view">
+      <div class="panel">
+        <strong style="color:var(--primary); display:block; margin-bottom:8px;">ПОДСКАЗКИ И АЛГОРИТМЫ СЛЕДОВАТЕЛЯ (УПК РФ)</strong>
+        <div class="item-row">
+          <strong>Срок проверки сообщения о преступлении (ст. 144 УПК РФ)</strong>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Базовый срок — 3 суток. Продление руководителем СО до 10 суток, при необходимости ревизий/экспертиз — до 30 суток.</div>
         </div>
-        <button type="submit" id="authSubmitBtn" class="btn-soft-primary w-full">Войти в рабочее место</button>
-      </form>
+        <div class="item-row">
+          <strong>Срок предварительного следствия (ст. 162 УПК РФ)</strong>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Базовый срок — 2 месяца со дня возбуждения УД. Продление до 3 месяцев — руководителем СО, до 12 месяцев — руководителем СО по субъекту РФ.</div>
+        </div>
+        <div class="item-row">
+          <strong>Задержание подозреваемого (ст. 91–94 УПК РФ)</strong>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Протокол составляется не позднее 3 часов после доставления. Допрос — не позднее 24 часов. Срок задержания без решения суда — 48 часов.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-profile" class="tab-view">
+      <div class="accordion-panel open" id="profInfo">
+        <button class="accordion-header" onclick="toggleAcc('profInfo')">
+          <span>ЛИЧНАЯ ИНФОРМАЦИЯ СЛЕДОВАТЕЛЯ</span>
+          <span class="acc-arrow">&#9660;</span>
+        </button>
+        <div class="accordion-body">
+          <input type="text" id="profFio" placeholder="ФИО следователя" value="Иванова Ирина Сергеевна" />
+          <input type="text" id="profRank" placeholder="Звание и должность" value="лейтенант юстиции, следователь СО" />
+          <input type="email" id="profMail" placeholder="Почта (@icloud.com)" value="irina.sled@icloud.com" onchange="updateHeaderEmail()" />
+          <button class="btn btn-sm btn-primary" onclick="saveProfile()">Сохранить профиль</button>
+        </div>
+      </div>
+
+      <div class="accordion-panel open" id="profKB">
+        <button class="accordion-header" onclick="toggleAcc('profKB')">
+          <span>БАЗА ЗНАНИЙ И ПРОЦЕССУАЛЬНЫЕ БЛАНКИ</span>
+          <span class="acc-arrow">&#9660;</span>
+        </button>
+        <div class="accordion-body">
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0;">
+            <button class="btn btn-sm btn-primary" onclick="openAddBlankModal()">+ Добавить свой бланк / файл</button>
+            <button class="btn btn-sm" onclick="restoreBuiltins()">Восстановить встроенные</button>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px;" id="kbCatFilters"></div>
+          <input type="text" id="kbSearch" placeholder="Фильтр по названию или номеру бланка..." oninput="renderKB()" />
+          <div id="kbList"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="switchTab('summary', this)"><span class="nav-icon">&#128197;</span>СВОДКА</button>
+    <button class="nav-btn" onclick="switchTab('cases', this)"><span class="nav-icon">&#128193;</span>ДЕЛА</button>
+    <button class="nav-btn" onclick="switchTab('blanks', this)"><span class="nav-icon">&#128196;</span>БЛАНКИ</button>
+    <button class="nav-btn" onclick="switchTab('hints', this)"><span class="nav-icon">&#128161;</span>ПОДСКАЗКИ</button>
+    <button class="nav-btn" onclick="switchTab('profile', this)"><span class="nav-icon">&#128100;</span>ПРОФИЛЬ</button>
+  </nav>
+
+  <div class="modal-backdrop" id="colorModal">
+    <div class="modal-box">
+      <div class="row-between" style="margin-bottom:10px;">
+        <strong style="color:var(--primary);">Настройка цветов событий</strong>
+        <button class="btn btn-sm" onclick="closeModal('colorModal')">&#10005;</button>
+      </div>
+      <div id="colorEditList"></div>
+      <hr style="border:none; border-top:1px solid var(--border-muted); margin:10px 0;" />
+      <strong style="font-size:12px; color:var(--primary);">+ Новый цвет категории</strong>
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <input type="color" id="newColorHex" value="#1a4fa3" style="width:48px; height:36px; padding:2px;" />
+        <input type="text" id="newColorName" placeholder="Название (например: Вызов в суд)" style="flex:1;" />
+      </div>
+      <button class="btn btn-sm btn-primary" style="width:100%;" onclick="addNewColor()">Создать цвет</button>
     </div>
   </div>
 
-  <div id="appShell" class="hidden">
-    <div class="app-container">
-      <div class="flex items-center justify-between mb-2 gap-2">
-        <span id="userEmailSub" class="text-xs font-medium text-slate-400 truncate">IAR • Рабочее пространство</span>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <span id="netChip" class="status-chip" style="cursor:default;">
-            <span id="netDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span id="netText">Онлайн</span>
-          </span>
-          <button type="button" id="cloudChip" class="status-chip" onclick="pullFromCloud()" title="Синхронизировать с облаком">
-            <span id="cloudDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span id="cloudText">Облако</span>
-          </button>
-        </div>
+  <div class="modal-backdrop" id="eventModal">
+    <div class="modal-box">
+      <div class="row-between" style="margin-bottom:10px;">
+        <strong style="color:var(--primary);">Новое событие</strong>
+        <button class="btn btn-sm" onclick="closeModal('eventModal')">&#10005;</button>
       </div>
-
-      <!-- ==================== ВКЛАДКА 1: СВОДКА ==================== -->
-      <main id="view-svodka">
-        <header class="brand-hero">
-          <div class="brand-emblem" aria-label="Логотип IAR">
-            <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-              <path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="#0d1b3e" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
-              <path d="M60 19 L93 32 V59 C93 81 78 96 60 103 C42 96 27 81 27 59 V32 Z" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
-              <path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M70 39 H84 V53" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <text x="60" y="88" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="22" letter-spacing="1">IAR</text>
-            </svg>
-          </div>
-          <h1 class="text-base sm:text-lg font-extrabold text-[#1e3a6e] tracking-wide uppercase leading-snug max-w-md mx-auto m-0">
-            АВТОМАТИЗИРОВАННОЕ РАБОЧЕЕ МЕСТО СЛЕДОВАТЕЛЯ
-          </h1>
-        </header>
-
-        <section class="grid grid-cols-3 gap-2 mb-3" aria-label="Показатели">
-          <button type="button" id="tileCases" class="metric-tile" onclick="focusMetric('cases')">
-            <div id="statCasesCount" class="text-xl font-extrabold text-[#334e7b]">0</div>
-            <div class="text-[11px] font-semibold text-slate-500 mt-0.5">В производстве</div>
-          </button>
-          <button type="button" id="tileUrgent" class="metric-tile" onclick="focusMetric('urgent')">
-            <div id="statUrgentCount" class="text-xl font-extrabold text-[#b45353]">0</div>
-            <div class="text-[11px] font-semibold text-slate-500 mt-0.5">Срок &le; 10 дн.</div>
-          </button>
-          <button type="button" id="tileToday" class="metric-tile active" onclick="focusMetric('today')">
-            <div id="statTodayCount" class="text-xl font-extrabold text-[#4a6fa5]">0</div>
-            <div class="text-[11px] font-semibold text-slate-500 mt-0.5">На сегодня</div>
-          </button>
-        </section>
-
-        <section class="card" aria-label="Рабочий календарь на неделю">
-          <div class="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
-            <div class="flex items-center gap-1.5">
-              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" onclick="shiftWeek(-1)" aria-label="Предыдущая неделя">◀</button>
-              <span id="calendarMonthTitle" class="text-base font-extrabold text-[#243b61] px-1"></span>
-              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" onclick="shiftWeek(1)" aria-label="Следующая неделя">▶</button>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <button type="button" class="btn-soft-secondary py-1.5 px-3 text-xs" onclick="goToday()">Сегодня</button>
-              <button type="button" class="btn-soft-primary py-1.5 px-3 text-xs" onclick="openEventModal()">+ Событие</button>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-1.5 mb-3" id="calendarColorFilterBar"></div>
-          <div id="iosWeekGrid" class="ios-week-grid"></div>
-        </section>
-
-        <div class="grid grid-cols-2 gap-2.5 mb-3">
-          <button type="button" class="btn-soft-primary w-full" onclick="openEventModal()">
-            <span>+ Событие в календарь</span>
-          </button>
-          <button type="button" class="btn-soft-secondary w-full" onclick="switchTab('blanks')">
-            <span>Создать бланк</span>
-          </button>
-        </div>
-
-        <div class="inner-accordion">
-          <button type="button" class="accordion-header" onclick="toggleAccordion('accDayEvents')">
-            <div>
-              <div class="text-sm font-bold text-[#243b61]">События выбранного дня</div>
-              <div id="selectedDaySubtitle" class="text-xs text-slate-500"></div>
-            </div>
-            <svg id="chev-accDayEvents" class="chevron-icon open w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-            </svg>
-          </button>
-          <div id="accDayEvents" class="accordion-body pt-3">
-            <div id="selectedDayEventsList"></div>
-          </div>
-        </div>
-
-        <div class="inner-accordion">
-          <button type="button" class="accordion-header" onclick="toggleAccordion('accDeadlines')">
-            <div>
-              <div class="text-sm font-bold text-[#243b61]">Контроль процессуальных сроков</div>
-              <div class="text-xs text-slate-500">Нажмите, чтобы раскрыть сроки следствия и ходатайств</div>
-            </div>
-            <svg id="chev-accDeadlines" class="chevron-icon w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-            </svg>
-          </button>
-          <div id="accDeadlines" class="accordion-body hidden pt-3">
-            <div id="svodkaDeadlinesList"></div>
-          </div>
-        </div>
-      </main>
-
-      <!-- ==================== ВКЛАДКА 2: ДЕЛА ==================== -->
-      <main id="view-cases" class="hidden">
-        <div class="mb-3">
-          <h2 class="text-lg font-extrabold text-[#243b61] m-0">Уголовные дела</h2>
-          <p class="text-xs text-slate-500 mt-0.5 mb-0">Сначала отображаются дела в производстве; раскрывайте нужное дело для просмотра подразделов и редактирования.</p>
-        </div>
-
-        <div id="casesCardsContainer"></div>
-
-        <div id="addCaseTriggerWrap" class="mt-2 mb-3">
-          <button type="button" class="btn-soft-primary w-full py-3" onclick="toggleNewCaseForm(true)">
-            <span>+ Добавить дело</span>
-          </button>
-        </div>
-
-        <section id="newCaseFormCard" class="card hidden">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-base font-extrabold text-[#243b61] m-0">Новое уголовное дело</h3>
-            <button type="button" class="text-slate-400 font-bold px-2 py-1" onclick="toggleNewCaseForm(false)">✕</button>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Номер уголовного дела *</label>
-              <input type="text" id="ncNumber" class="soft-input" placeholder="Например: № 34901" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Дата возбуждения</label>
-              <input type="date" id="ncOpened" class="soft-input" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Срок окончания следствия до</label>
-              <input type="date" id="ncDeadline" class="soft-input" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Напомнить о ходатайстве за (дн.)</label>
-              <input type="number" id="ncLeadDays" class="soft-input" value="10" min="1" max="60" />
-            </div>
-          </div>
-
-          <div class="mb-2.5">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Квалификация (статьи УК РФ)</label>
-            <div class="flex gap-2 mb-1.5">
-              <input type="text" id="ncArticleInput" class="soft-input" placeholder="Например: ч. 2 ст. 158 УК РФ" />
-              <button type="button" class="btn-soft-secondary shrink-0" onclick="addTempArticle()">+ Статья</button>
-            </div>
-            <div id="tempArticlesList" class="flex flex-wrap gap-1.5"></div>
-          </div>
-
-          <div class="mb-2.5">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Фабула дела</label>
-            <textarea id="ncFabula" class="soft-textarea" rows="2" placeholder="Краткие обстоятельства преступления..."></textarea>
-          </div>
-
-          <div class="mb-2.5">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Участники (ФИО и процессуальный статус)</label>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-1.5">
-              <input type="text" id="ncPartName" class="soft-input sm:col-span-2" placeholder="ФИО участника" />
-              <div class="flex gap-1.5">
-                <select id="ncPartRole" class="soft-select">
-                  <option value="Свидетель">Свидетель</option>
-                  <option value="Потерпевший">Потерпевший</option>
-                  <option value="Подозреваемый">Подозреваемый</option>
-                  <option value="Обвиняемый">Обвиняемый</option>
-                </select>
-                <button type="button" class="btn-soft-secondary shrink-0" onclick="addTempParticipant()">+</button>
-              </div>
-            </div>
-            <div id="tempParticipantsList" class="space-y-1"></div>
-          </div>
-
-          <div class="mb-3">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">План: что необходимо провести</label>
-            <div class="flex gap-2 mb-1.5">
-              <input type="text" id="ncPlanInput" class="soft-input" placeholder="Например: Допросить свидетеля / Назначить экспертизу" />
-              <button type="button" class="btn-soft-secondary shrink-0" onclick="addTempPlan()">+</button>
-            </div>
-            <div id="tempPlanList" class="space-y-1"></div>
-          </div>
-
-          <div class="flex justify-end gap-2">
-            <button type="button" class="btn-soft-ghost" onclick="toggleNewCaseForm(false)">Отмена</button>
-            <button type="button" class="btn-soft-primary" onclick="saveNewCase()">Сохранить дело</button>
-          </div>
-        </section>
-      </main>
-
-      <!-- ==================== ВКЛАДКА 3: БЛАНКИ ==================== -->
-      <main id="view-blanks" class="hidden">
-        <div class="card">
-          <h2 class="text-base font-extrabold text-[#243b61] mb-1">Процессуальные бланки</h2>
-          <p class="text-xs text-slate-500 mb-3">Форма сохраняется по образцу, а генерация по УД опирается на Базу знаний и материалы дела.</p>
-
-          <input type="text" id="blankSearch" class="soft-input mb-2.5" placeholder="Поиск бланка (выемка, допрос, экспертиза, запрос)..." oninput="renderBlankSelect()" />
-
-          <div class="grid grid-cols-3 gap-1.5 mb-3">
-            <button type="button" id="bGrp-Постановления" class="btn-soft-secondary text-xs py-2" onclick="setBlankGroup('Постановления')">Постановления</button>
-            <button type="button" id="bGrp-Протоколы" class="btn-soft-ghost text-xs py-2" onclick="setBlankGroup('Протоколы')">Протоколы</button>
-            <button type="button" id="bGrp-Иные документы" class="btn-soft-ghost text-xs py-2" onclick="setBlankGroup('Иные документы')">Иные документы</button>
-          </div>
-
-          <select id="blankPicker" class="soft-select mb-3" onchange="updateBlankDraft()"></select>
-
-          <div class="space-y-2 mb-3">
-            <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 text-xs font-semibold cursor-pointer">
-              <input type="radio" name="bMode" value="empty" onchange="updateBlankDraft()" />
-              <span>Пустой (по образцу)</span>
-            </label>
-            <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 text-xs font-semibold cursor-pointer">
-              <input type="radio" name="bMode" value="header" onchange="updateBlankDraft()" />
-              <span>Пустой с шапкой следователя</span>
-            </label>
-            <div class="p-2.5 rounded-xl border border-blue-200 bg-blue-50/40">
-              <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer mb-2">
-                <input type="radio" name="bMode" value="case" checked onchange="updateBlankDraft()" />
-                <span>Сгенерировать по УД (на основе Базы знаний и дела)</span>
-              </label>
-              <select id="blankCaseSelect" class="soft-select text-xs py-2" onchange="updateBlankDraft()"></select>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn-soft-primary flex-1" onclick="downloadBlankDocx()">Скачать .DOCX</button>
-            <button type="button" class="btn-soft-secondary flex-1" onclick="attachBlankToCase()">В документы дела</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="text-xs font-bold text-[#243b61] mb-2">Предпросмотр и правка перед скачиванием в Word</div>
-          <textarea id="blankEditor" class="soft-textarea" rows="10" style="font-family:'Times New Roman',serif;"></textarea>
-        </div>
-      </main>
-
-      <!-- ==================== ВКЛАДКА 4: БАЗА ЗНАНИЙ ==================== -->
-      <main id="view-kb" class="hidden">
-        <div class="card">
-          <h2 class="text-base font-extrabold text-[#243b61] mb-1">База знаний</h2>
-          <p class="text-xs text-slate-500 mb-3">Загружайте учебные пособия, образцы бланков и материалы для расчёта сроков по УПК и вопросов экспертиз.</p>
-
-          <div class="flex flex-wrap gap-1.5 mb-2.5" id="kbCatChips"></div>
-          <input type="text" id="kbNewTitle" class="soft-input mb-2" placeholder="Название пособия или бланка..." />
-          <textarea id="kbNewNotes" class="soft-textarea mb-2.5" rows="2" placeholder="Ключевые положения, сроки по УПК или примерные вопросы для экспертизы..."></textarea>
-          <button type="button" class="btn-soft-primary w-full" onclick="addKbMaterial()">+ Вставить материал в Базу знаний</button>
-        </div>
-
-        <div id="kbMaterialList"></div>
-      </main>
-
-      <!-- ==================== ВКЛАДКА 5: ДЕЙСТВИЯ ==================== -->
-      <main id="view-actions" class="hidden">
-        <div class="card">
-          <h2 class="text-base font-extrabold text-[#243b61] mb-1">Следственные действия и экспертизы</h2>
-          <p class="text-xs text-slate-500 mb-3">Все запланированные действия и контрольные сроки с цветовым разделением по категориям.</p>
-          <div id="allActionsContainer"></div>
-        </div>
-      </main>
-
-      <!-- ==================== ВКЛАДКА 6: ПРОФИЛЬ ==================== -->
-      <main id="view-profile" class="hidden">
-        <div class="card">
-          <h2 class="text-base font-extrabold text-[#243b61] mb-3">Профиль следователя (шапка документов)</h2>
-          <div class="space-y-2.5">
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Следственный орган</label>
-              <input type="text" id="profOrg" class="soft-input" oninput="onProfileInput()" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Должность и звание</label>
-              <input type="text" id="profRank" class="soft-input" oninput="onProfileInput()" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">ФИО следователя</label>
-              <input type="text" id="profFio" class="soft-input" oninput="onProfileInput()" />
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="text-xs font-bold text-[#243b61] mb-1">Облачная синхронизация</div>
-          <div class="text-xs text-slate-500 mb-3">
-            Аккаунт: <strong id="settingsEmail">-</strong> • Синхронизация: <strong id="lastSyncTime">ожидание...</strong>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn-soft-secondary text-xs" onclick="pullFromCloud()">Обновить из облака</button>
-            <button type="button" class="btn-soft-ghost text-xs" onclick="exportBackupJson()">Экспорт .JSON</button>
-            <button type="button" class="btn-soft-ghost text-xs text-red-600" onclick="logoutUser()">Выйти</button>
-          </div>
-        </div>
-      </main>
-    </div>
-
-    <nav class="bottom-nav" aria-label="Навигация">
-      <button type="button" id="tab-svodka" class="nav-tab active" onclick="switchTab('svodka')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="3" />
-          <path d="M16 2v4M8 2v4M3 10h18" />
-        </svg>
-        <span>Сводка</span>
-      </button>
-      <button type="button" id="tab-cases" class="nav-tab" onclick="switchTab('cases')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-        </svg>
-        <span>Дела</span>
-      </button>
-      <button type="button" id="tab-blanks" class="nav-tab" onclick="switchTab('blanks')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-          <path d="M14 2v6h6M8 13h8M8 17h5" />
-        </svg>
-        <span>Бланки</span>
-      </button>
-      <button type="button" id="tab-kb" class="nav-tab" onclick="switchTab('kb')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-        </svg>
-        <span>База знаний</span>
-      </button>
-      <button type="button" id="tab-actions" class="nav-tab" onclick="switchTab('actions')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 3v18M5 7h14M5 7l-2 5h4l-2-5zM19 7l-2 5h4l-2-5z" />
-        </svg>
-        <span>Действия</span>
-      </button>
-      <button type="button" id="tab-profile" class="nav-tab" onclick="switchTab('profile')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 20c1.8-3.6 5-5 8-5s6.2 1.4 8 5" />
-        </svg>
-        <span>Профиль</span>
-      </button>
-    </nav>
-  </div>
-
-  <!-- Модалка редактирования уголовного дела -->
-  <div id="editCaseModal" class="modal-overlay hidden" onclick="if(event.target.id==='editCaseModal') closeEditCaseModal()">
-    <div class="modal-sheet">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-base font-extrabold text-[#243b61] m-0">Редактирование уголовного дела</h3>
-        <button type="button" class="text-slate-400 font-bold px-2 py-1" onclick="closeEditCaseModal()">✕</button>
-      </div>
-
-      <input type="hidden" id="ecId" />
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Номер уголовного дела *</label>
-          <input type="text" id="ecNumber" class="soft-input" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Дата возбуждения</label>
-          <input type="date" id="ecOpened" class="soft-input" />
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Срок окончания следствия до</label>
-          <input type="date" id="ecDeadline" class="soft-input" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Напомнить о ходатайстве за (дн.)</label>
-          <input type="number" id="ecLeadDays" class="soft-input" min="1" max="60" />
-        </div>
-      </div>
-
-      <div class="mb-2.5">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Квалификация (статьи УК РФ)</label>
-        <div class="flex gap-2 mb-1.5">
-          <input type="text" id="ecArticleInput" class="soft-input" placeholder="Например: ч. 2 ст. 158 УК РФ" />
-          <button type="button" class="btn-soft-secondary shrink-0" onclick="addEditArticle()">+ Статья</button>
-        </div>
-        <div id="editArticlesList" class="flex flex-wrap gap-1.5"></div>
-      </div>
-
-      <div class="mb-2.5">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Фабула дела</label>
-        <textarea id="ecFabula" class="soft-textarea" rows="2"></textarea>
-      </div>
-
-      <div class="mb-2.5">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Участники</label>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-1.5">
-          <input type="text" id="ecPartName" class="soft-input sm:col-span-2" placeholder="ФИО участника" />
-          <div class="flex gap-1.5">
-            <select id="ecPartRole" class="soft-select">
-              <option value="Свидетель">Свидетель</option>
-              <option value="Потерпевший">Потерпевший</option>
-              <option value="Подозреваемый">Подозреваемый</option>
-              <option value="Обвиняемый">Обвиняемый</option>
-            </select>
-            <button type="button" class="btn-soft-secondary shrink-0" onclick="addEditParticipant()">+</button>
-          </div>
-        </div>
-        <div id="editParticipantsList" class="space-y-1"></div>
-      </div>
-
-      <div class="mb-3">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">План: что необходимо провести</label>
-        <div class="flex gap-2 mb-1.5">
-          <input type="text" id="ecPlanInput" class="soft-input" placeholder="Новый пункт плана..." />
-          <button type="button" class="btn-soft-secondary shrink-0" onclick="addEditPlan()">+</button>
-        </div>
-        <div id="editPlanList" class="space-y-1"></div>
-      </div>
-
-      <div class="flex justify-end gap-2">
-        <button type="button" class="btn-soft-ghost" onclick="closeEditCaseModal()">Отмена</button>
-        <button type="button" class="btn-soft-primary" onclick="saveEditedCase()">Сохранить изменения</button>
-      </div>
+      <input type="date" id="evDate" />
+      <input type="time" id="evTime" value="13:00" />
+      <input type="text" id="evTitle" placeholder="Описание события (например: Допрос свидетеля)" />
+      <select id="evColorSelect"></select>
+      <button class="btn btn-sm btn-primary" style="width:100%;" onclick="saveEvent()">Сохранить событие</button>
     </div>
   </div>
 
-  <!-- Модалка добавления / редактирования события календаря с выбором цвета -->
-  <div id="eventModal" class="modal-overlay hidden" onclick="if(event.target.id==='eventModal') closeEventModal()">
-    <div class="modal-sheet">
-      <div class="flex items-center justify-between mb-3">
-        <h3 id="evModalHeading" class="text-base font-extrabold text-[#243b61] m-0">Событие календаря</h3>
-        <button type="button" class="text-slate-400 font-bold px-2 py-1" onclick="closeEventModal()">✕</button>
+  <div class="modal-backdrop" id="blankModal">
+    <div class="modal-box">
+      <div class="row-between" style="margin-bottom:10px;">
+        <strong style="color:var(--primary);" id="blankModalTitle">Добавить / изменить бланк</strong>
+        <button class="btn btn-sm" onclick="closeModal('blankModal')">&#10005;</button>
       </div>
-
-      <input type="hidden" id="evEditId" />
-
-      <div class="mb-2.5">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Краткое название для календаря</label>
-        <input type="text" id="evTitleInput" class="soft-input" placeholder="Например: Допрос свидетеля или Продление срока" />
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Дата и время</label>
-          <input type="datetime-local" id="evDtInput" class="soft-input" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Уголовное дело</label>
-          <input type="text" id="evCaseInput" class="soft-input" placeholder="УД № 116611" />
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Цветовое выделение категории</label>
-        <div class="grid grid-cols-2 gap-2" id="evColorChoices"></div>
-      </div>
-
-      <div class="flex items-center justify-between gap-2">
-        <button type="button" id="evDeleteBtn" class="btn-soft-ghost text-red-600 hidden" onclick="deleteCalendarEvent()">Удалить</button>
-        <div class="flex gap-2 ml-auto">
-          <button type="button" class="btn-soft-ghost" onclick="closeEventModal()">Отмена</button>
-          <button type="button" class="btn-soft-primary" onclick="saveCalendarEvent()">Сохранить</button>
-        </div>
-      </div>
+      <input type="hidden" id="editBlankId" />
+      <select id="editBlankCat">
+        <option value="Постановления">Постановления</option>
+        <option value="Протоколы">Протоколы</option>
+        <option value="Иные документы">Иные документы</option>
+        <option value="Свои">Свои</option>
+      </select>
+      <input type="text" id="editBlankName" placeholder="Наименование документа и номер бланка" />
+      <textarea id="editBlankText" rows="5" placeholder="Текст шаблона или загрузите файл ниже..."></textarea>
+      <input type="file" accept=".txt,.md,.html,.json" onchange="handleFileUpload(event)" />
+      <button class="btn btn-sm btn-primary" style="width:100%;" onclick="saveBlank()">Сохранить в Базу знаний</button>
     </div>
   </div>
 
-  <div id="toastBar" class="toast-bar" role="status"></div>
+  <div class="modal-backdrop" id="caseModal">
+    <div class="modal-box">
+      <div class="row-between" style="margin-bottom:10px;">
+        <strong style="color:var(--primary);">Новое уголовное дело</strong>
+        <button class="btn btn-sm" onclick="closeModal('caseModal')">&#10005;</button>
+      </div>
+      <input type="text" id="cNum" placeholder="№ УД (например: 12601180001000273)" />
+      <input type="text" id="cArt" placeholder="Статья УК РФ (например: ч. 1 ст. 158 УК РФ)" />
+      <input type="date" id="cDeadline" />
+      <button class="btn btn-sm btn-primary" style="width:100%;" onclick="saveCase()">Добавить дело</button>
+    </div>
+  </div>
 
   <script>
-    const SUPABASE_URL = 'https://xazxltujkizmnpkbqfgr.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_UssySBK5fWV_MZa2_RDmHA_Ksrwfvxz';
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const BUILTIN_BLANKS = [{"id": "pos_1", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о разрешении производства осмотра жилища. Бланк 1.", "builtin": true}, {"id": "pos_2", "category": "Постановления", "title": "Постановление о возбуждении перед руководителем следственного органа ходатайства о продлении срока проверки сообщения о преступлении. Бланк 2.", "builtin": true}, {"id": "pos_3", "category": "Постановления", "title": "Постановление о передаче сообщения о преступлении по подследственности. Бланк 3.", "builtin": true}, {"id": "pos_4", "category": "Постановления", "title": "Постановление о передаче сообщения о преступлении в суд. Бланк 4.", "builtin": true}, {"id": "pos_5", "category": "Постановления", "title": "Уведомление о передаче сообщения о преступлении в суд. Бланк 5.", "builtin": true}, {"id": "pos_6", "category": "Постановления", "title": "Постановление о возбуждении уголовного дела и принятии его к производству. Бланк 6.", "builtin": true}, {"id": "pos_7", "category": "Постановления", "title": "Постановление о принятии уголовного дела к производству. Бланк 7.", "builtin": true}, {"id": "pos_8", "category": "Постановления", "title": "Постановление о возбуждении уголовного дела и передаче его руководителю следственного органа для определения подследственности. Бланк 8.", "builtin": true}, {"id": "pos_9", "category": "Постановления", "title": "Постановление о передаче уголовного дела руководителю следственного органа для направления по подследственности. Бланк 9.", "builtin": true}, {"id": "pos_10", "category": "Постановления", "title": "Постановление об отказе в возбуждении уголовного дела. Бланк 10.", "builtin": true}, {"id": "pos_11", "category": "Постановления", "title": "Постановление о неразглашении факта задержания подозреваемого. Бланк 11.", "builtin": true}, {"id": "pos_12", "category": "Постановления", "title": "Постановление о производстве личного обыска подозреваемого (обвиняемого) в случаях, не терпящих отлагательства. Бланк 12.", "builtin": true}, {"id": "pos_13", "category": "Постановления", "title": "Постановление о переводе подозреваемого (обвиняемого) из следственного изолятора в изолятор временного содержания. Бланк 13.", "builtin": true}, {"id": "pos_14", "category": "Постановления", "title": "Постановление о приводе (подозреваемого, обвиняемого, потерпевшего, свидетеля). Бланк 14.", "builtin": true}, {"id": "pos_15", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о помещении подозреваемого (обвиняемого), не находящегося под стражей, в медицинский (психиатрический) стационар для производства судебно-медицинской (судебно-психиатрической) экспертизы. Бланк 15.", "builtin": true}, {"id": "pos_16", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о разрешении извлечения трупа (эксгумации). Бланк 16.", "builtin": true}, {"id": "pos_17", "category": "Постановления", "title": "Постановление об извлечении трупа (эксгумации). Бланк 17.", "builtin": true}, {"id": "pos_18", "category": "Постановления", "title": "Постановление о выделении уголовного дела. Бланк 18.", "builtin": true}, {"id": "pos_19", "category": "Постановления", "title": "Постановление о выделении в отдельное производство материалов уголовного дела. Бланк 19.", "builtin": true}, {"id": "pos_20", "category": "Постановления", "title": "Постановление о признании и приобщении к уголовному делу вещественных доказательств. Бланк 20.", "builtin": true}, {"id": "pos_21", "category": "Постановления", "title": "Постановление о признании потерпевшим. Бланк 21.", "builtin": true}, {"id": "pos_22", "category": "Постановления", "title": "Постановление о сохранении в тайне данных о личности. Бланк 22.", "builtin": true}, {"id": "pos_23", "category": "Постановления", "title": "Постановление о допуске для участия в уголовном деле представителя (законного представителя) потерпевшего, гражданского истца. Бланк 23.", "builtin": true}, {"id": "pos_24", "category": "Постановления", "title": "Постановление о назначении переводчика. Бланк 24.", "builtin": true}, {"id": "pos_25", "category": "Постановления", "title": "Постановление о производстве освидетельствования. Бланк 25.", "builtin": true}, {"id": "pos_26", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о наложении ареста на (имущество, включая денежные средства физических и юридических лиц, находящиеся на счетах и во вкладах или на хранении в банках и иных кредитных организациях, ценные бумаги) (от имени следователя). Бланк 26.", "builtin": true}, {"id": "pos_27", "category": "Постановления", "title": "Постановление о наложении ареста на имущество, указанное в части первой статьи 141 Уголовного кодекса Российской Федерации в случаях, не терпящих отлагательства. Бланк 27.", "builtin": true}, {"id": "pos_28", "category": "Постановления", "title": "Постановление об отмене наложения ареста на (имущество, включая денежные средства физических и юридических лиц, находящиеся на счетах и во вкладах или на хранении в банках и иных кредитных организациях, ценные бумаги). Бланк 28.", "builtin": true}, {"id": "pos_29", "category": "Постановления", "title": "Постановление о производстве обыска (выемки). Бланк 29.", "builtin": true}, {"id": "pos_30", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве выемки предметов и документов, содержащих государственную или иную охраняемую федеральным законом тайну. Бланк 30.", "builtin": true}, {"id": "pos_31", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве выемки в банках (иных кредитных организациях) предметов и документов, содержащих информацию о вкладах и счетах граждан. Бланк 31.", "builtin": true}, {"id": "pos_32", "category": "Постановления", "title": "Постановление о производстве обыска (выемки) в жилище в случаях, не терпящих отлагательства. Бланк 32.", "builtin": true}, {"id": "pos_33", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве обыска (выемки) в жилище. Бланк 33.", "builtin": true}, {"id": "pos_34", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве осмотра жилища (от имени следователя). Бланк 34.", "builtin": true}, {"id": "pos_35", "category": "Постановления", "title": "Постановление о производстве осмотра жилища в случаях, не терпящих отлагательства. Бланк 35.", "builtin": true}, {"id": "pos_36", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о наложении ареста на почтово-телеграфные отправления и производстве их осмотра и выемки (от имени следователя). Бланк 36.", "builtin": true}, {"id": "pos_37", "category": "Постановления", "title": "Постановление об отмене ареста на почтово-телеграфные отправления. Бланк 37.", "builtin": true}, {"id": "pos_38", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о производстве контроля и записи телефонных и иных переговоров (от имени следователя). Бланк 38.", "builtin": true}, {"id": "pos_39", "category": "Постановления", "title": "Постановление о прекращении контроля и записи телефонных и иных переговоров. Бланк 39.", "builtin": true}, {"id": "pos_40", "category": "Постановления", "title": "Постановление о привлечении в качестве обвиняемого. Бланк 40.", "builtin": true}, {"id": "pos_41", "category": "Постановления", "title": "Постановление о розыске подозреваемого (обвиняемого). Бланк 41.", "builtin": true}, {"id": "pos_42", "category": "Постановления", "title": "Постановление об избрании меры пресечения в виде (какой именно). Бланк 42.", "builtin": true}, {"id": "pos_43", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства об избрании меры пресечения в виде домашнего ареста (от имени следователя). Бланк 43.", "builtin": true}, {"id": "pos_44", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства об избрании меры пресечения в виде заключения под стражу (от имени следователя). Бланк 44.", "builtin": true}, {"id": "pos_45", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о продлении срока содержания обвиняемого под стражей (от имени следователя). Бланк 45.", "builtin": true}, {"id": "pos_46", "category": "Постановления", "title": "Постановление об отмене (изменении) меры пресечения. Бланк 46.", "builtin": true}, {"id": "pos_47", "category": "Постановления", "title": "Постановление об отмене (изменении) меры пресечения, избранной следователем с согласия руководителя следственного органа. Бланк 47.", "builtin": true}, {"id": "pos_48", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства о временном отстранении подозреваемого (обвиняемого) от должности (от имени следователя). Бланк 48.", "builtin": true}, {"id": "pos_49", "category": "Постановления", "title": "Постановление об отмене временного отстранения подозреваемого (обвиняемого) от должности. Бланк 49.", "builtin": true}, {"id": "pos_50", "category": "Постановления", "title": "Постановление о допуске законного представителя несовершеннолетнего обвиняемого (подозреваемого). Бланк 50.", "builtin": true}, {"id": "pos_51", "category": "Постановления", "title": "Постановление об отстранении от участия в уголовном деле законного представителя несовершеннолетнего обвиняемого (подозреваемого). Бланк 51.", "builtin": true}, {"id": "pos_52", "category": "Постановления", "title": "Постановление о признании гражданским истцом. Бланк 52.", "builtin": true}, {"id": "pos_53", "category": "Постановления", "title": "Постановление о привлечении в качестве гражданского ответчика. Бланк 53.", "builtin": true}, {"id": "pos_54", "category": "Постановления", "title": "Постановление о назначении (какой именно) судебной экспертизы. Бланк 54.", "builtin": true}, {"id": "pos_55", "category": "Постановления", "title": "Постановление о назначении комиссионной (какой именно) судебной экспертизы. Бланк 55.", "builtin": true}, {"id": "pos_56", "category": "Постановления", "title": "Постановление о назначении комплексной судебной экспертизы. Бланк 56.", "builtin": true}, {"id": "pos_57", "category": "Постановления", "title": "Постановление о назначении (повторной, дополнительной) судебной экспертизы. Бланк 57.", "builtin": true}, {"id": "pos_58", "category": "Постановления", "title": "Постановление о получении образцов для сравнительного исследования. Бланк 58.", "builtin": true}, {"id": "pos_59", "category": "Постановления", "title": "Постановление о приостановлении предварительного следствия (дознания) в связи с (п. 1 или 2 части первой ст. 208 УПК РФ). Бланк 59.", "builtin": true}, {"id": "pos_60", "category": "Постановления", "title": "Постановление о приостановлении предварительного следствия (дознания) в связи с (п. 3 или 4 части первой ст. 208 УПК РФ). Бланк 60.", "builtin": true}, {"id": "pos_61", "category": "Постановления", "title": "Постановление о возобновлении предварительного следствия. Бланк 61.", "builtin": true}, {"id": "pos_62", "category": "Постановления", "title": "Постановление о возбуждении ходатайства перед руководителем следственного органа о продлении срока предварительного следствия. Бланк 62.", "builtin": true}, {"id": "pos_63", "category": "Постановления", "title": "Постановление о прекращении уголовного дела (уголовного преследования). Бланк 63.", "builtin": true}, {"id": "pos_64", "category": "Постановления", "title": "Постановление о прекращении уголовного дела (уголовного преследования) в связи с примирением сторон (в связи с деятельным раскаянием) [от имени следователя]. Бланк 64.", "builtin": true}, {"id": "pos_65", "category": "Постановления", "title": "Постановление о частичном прекращении уголовного преследования. Бланк 65.", "builtin": true}, {"id": "pos_66", "category": "Постановления", "title": "Постановление о прекращении уголовного дела (уголовного преследования) в отношении лица, совершившего запрещенное уголовным законом деяние в состоянии невменяемости. Бланк 66.", "builtin": true}, {"id": "pos_67", "category": "Постановления", "title": "Постановление о направлении уголовного дела в суд для применения принудительной меры медицинского характера. Бланк 67.", "builtin": true}, {"id": "pos_68", "category": "Постановления", "title": "Постановление о прекращении уголовного преследования и возбуждении перед судом ходатайства о применении к несовершеннолетнему обвиняемому принудительной меры воспитательного воздействия. Бланк 68.", "builtin": true}, {"id": "pos_69", "category": "Постановления", "title": "Постановление о выплате процессуальных издержек. Бланк 69.", "builtin": true}, {"id": "pos_70", "category": "Постановления", "title": "Постановление о производстве выплат в возмещение реабилитированному имущественного вреда. Бланк 70.", "builtin": true}, {"id": "pos_71", "category": "Постановления", "title": "Постановление о производстве выплат в возмещение имущественного вреда юридическому лицу. Бланк 71.", "builtin": true}, {"id": "pos_72", "category": "Постановления", "title": "Постановление о возвращении вещественных доказательств. Бланк 72.", "builtin": true}, {"id": "pos_73", "category": "Постановления", "title": "Постановление о передаче вещественных доказательств для реализации. Бланк 73.", "builtin": true}, {"id": "pos_74", "category": "Постановления", "title": "Постановление о непредъявлении несовершеннолетнему обвиняемому для ознакомления тех материалов уголовного дела, которые могут оказать на него отрицательное воздействие. Бланк 74.", "builtin": true}, {"id": "pos_75", "category": "Постановления", "title": "Постановление о (об отказе в) восстановлении пропущенного срока. Бланк 75.", "builtin": true}, {"id": "pos_76", "category": "Постановления", "title": "Постановление (об удовлетворении ходатайства либо о полном или частичном отказе в его удовлетворении). Бланк 76.", "builtin": true}, {"id": "pos_77", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства об избрании меры пресечения в виде залога (от имени следователя). Бланк 77.", "builtin": true}, {"id": "pos_78", "category": "Постановления", "title": "Постановление об оставлении осужденного в следственном изоляторе для производства следственных и иных процессуальных действий (от имени следователя). Бланк 78.", "builtin": true}, {"id": "pos_79", "category": "Постановления", "title": "Постановление о переводе осужденного из исправительного учреждения в следственный изолятор для производства следственных и иных процессуальных действий (от имени следователя). Бланк 79.", "builtin": true}, {"id": "pos_80", "category": "Постановления", "title": "Постановление о рассмотрении заявления об отводе. Бланк 80.", "builtin": true}, {"id": "pos_81", "category": "Постановления", "title": "Постановление о рассмотрении заявления о самоотводе. Бланк 81.", "builtin": true}, {"id": "pos_82", "category": "Постановления", "title": "Постановление о принятии мер попечения о детях, иждивенцах подозреваемого или обвиняемого, задержанного или заключенного под стражу. Бланк 82.", "builtin": true}, {"id": "pos_83", "category": "Постановления", "title": "Постановление о принятии мер по обеспечению сохранности имущества и жилища подозреваемого или обвиняемого, задержанного или заключенного под стражу. Бланк 83.", "builtin": true}, {"id": "pos_84", "category": "Постановления", "title": "Постановление о признании невозможным предъявления вещественных доказательств. Бланк 84.", "builtin": true}, {"id": "pos_85", "category": "Постановления", "title": "Постановление о возбуждении перед судом ходатайства об установлении определенного срока для ознакомления обвиняемого и (или) его защитника с материалами уголовного дела (от имени следователя). Бланк 85.", "builtin": true}, {"id": "pos_86", "category": "Постановления", "title": "Постановление об окончании производства ознакомления обвиняемого и (или) его защитника с материалами уголовного дела. Бланк 86.", "builtin": true}, {"id": "pos_87", "category": "Постановления", "title": "Постановление об избрании меры пресечения в виде присмотра за несовершеннолетним обвиняемым (подозреваемым). Бланк 87.", "builtin": true}, {"id": "pos_88", "category": "Постановления", "title": "Постановление об избрании меры пресечения в виде личного поручительства. Бланк 88.", "builtin": true}, {"id": "pos_89", "category": "Постановления", "title": "Постановление об избрании меры пресечения в виде наблюдения командования воинской части. Бланк 89.", "builtin": true}, {"id": "prot_1", "category": "Протоколы", "title": "Протокол принятия устного заявления о преступлении. Бланк 1.", "builtin": true}, {"id": "prot_2", "category": "Протоколы", "title": "Протокол явки с повинной. Бланк 2.", "builtin": true}, {"id": "prot_3", "category": "Протоколы", "title": "Протокол осмотра места происшествия. Бланк 3.", "builtin": true}, {"id": "prot_4", "category": "Протоколы", "title": "Протокол осмотра трупа. Бланк 4.", "builtin": true}, {"id": "prot_5", "category": "Протоколы", "title": "Протокол задержания подозреваемого. Бланк 5.", "builtin": true}, {"id": "prot_6", "category": "Протоколы", "title": "Протокол личного обыска. Бланк 6.", "builtin": true}, {"id": "prot_7", "category": "Протоколы", "title": "Протокол допроса подозреваемого. Бланк 7.", "builtin": true}, {"id": "prot_8", "category": "Протоколы", "title": "Протокол эксгумации и осмотра трупа. Бланк 8.", "builtin": true}, {"id": "prot_9", "category": "Протоколы", "title": "Протокол осмотра предметов (документов). Бланк 9.", "builtin": true}, {"id": "prot_10", "category": "Протоколы", "title": "Протокол допроса потерпевшего. Бланк 10.", "builtin": true}, {"id": "prot_11", "category": "Протоколы", "title": "Протокол допроса свидетеля. Бланк 11.", "builtin": true}, {"id": "prot_12", "category": "Протоколы", "title": "Протокол допроса свидетеля (потерпевшего) с участием переводчика. Бланк 12.", "builtin": true}, {"id": "prot_13", "category": "Протоколы", "title": "Протокол очной ставки. Бланк 13.", "builtin": true}, {"id": "prot_14", "category": "Протоколы", "title": "Протокол предъявления лица для опознания. Бланк 14.", "builtin": true}, {"id": "prot_15", "category": "Протоколы", "title": "Протокол предъявления лица для опознания в условиях, исключающих визуальное наблюдение им опознающего. Бланк 15.", "builtin": true}, {"id": "prot_16", "category": "Протоколы", "title": "Протокол предъявления для опознания по фотографии. Бланк 16.", "builtin": true}, {"id": "prot_17", "category": "Протоколы", "title": "Протокол предъявления трупа для опознания. Бланк 17.", "builtin": true}, {"id": "prot_18", "category": "Протоколы", "title": "Протокол предъявления предмета для опознания. Бланк 18.", "builtin": true}, {"id": "prot_19", "category": "Протоколы", "title": "Протокол освидетельствования. Бланк 19.", "builtin": true}, {"id": "prot_20", "category": "Протоколы", "title": "Протокол наложения ареста на имущество. Бланк 20.", "builtin": true}, {"id": "prot_21", "category": "Протоколы", "title": "Протокол наложения ареста на ценные бумаги. Бланк 21.", "builtin": true}, {"id": "prot_22", "category": "Протоколы", "title": "Протокол наложения ареста на денежные средства и иные ценности, находящиеся на счете, во вкладе или на хранении в банках и иных кредитных организациях. Бланк 22.", "builtin": true}, {"id": "prot_23", "category": "Протоколы", "title": "Протокол обыска (выемки). Бланк 23.", "builtin": true}, {"id": "prot_24", "category": "Протоколы", "title": "Протокол осмотра местности, жилища, иного помещения. Бланк 24.", "builtin": true}, {"id": "prot_25", "category": "Протоколы", "title": "Протокол осмотра и прослушивания фонограммы. Бланк 25.", "builtin": true}, {"id": "prot_26", "category": "Протоколы", "title": "Постановление о привлечении в качестве обвиняемого. Бланк 26.", "builtin": true}, {"id": "prot_27", "category": "Протоколы", "title": "Протокол допроса обвиняемого. Бланк 27.", "builtin": true}, {"id": "prot_28", "category": "Протоколы", "title": "Протокол дополнительного допроса обвиняемого. Бланк 28.", "builtin": true}, {"id": "prot_29", "category": "Протоколы", "title": "Протокол о принятии залога. Бланк 29.", "builtin": true}, {"id": "prot_30", "category": "Протоколы", "title": "Протокол о нарушении участниками уголовного судопроизводства процессуальных обязанностей и (или) невыполнении обязательств, связанных с внесенным залогом. Бланк 30.", "builtin": true}, {"id": "prot_31", "category": "Протоколы", "title": "Протокол следственного эксперимента. Бланк 31.", "builtin": true}, {"id": "prot_32", "category": "Протоколы", "title": "Протокол проверки показаний на месте. Бланк 32.", "builtin": true}, {"id": "prot_33", "category": "Протоколы", "title": "Протокол допроса несовершеннолетнего подозреваемого. Бланк 33.", "builtin": true}, {"id": "prot_34", "category": "Протоколы", "title": "Протокол допроса несовершеннолетнего обвиняемого. Бланк 34.", "builtin": true}, {"id": "prot_35", "category": "Протоколы", "title": "Протокол допроса несовершеннолетнего потерпевшего (свидетеля). Бланк 35.", "builtin": true}, {"id": "prot_36", "category": "Протоколы", "title": "Протокол получения образцов для сравнительного исследования. Бланк 36.", "builtin": true}, {"id": "prot_37", "category": "Протоколы", "title": "Протокол ознакомления (потерпевшего и (или) его представителя) с постановлением о назначении судебной экспертизы. Бланк 37.", "builtin": true}, {"id": "prot_38", "category": "Протоколы", "title": "Протокол ознакомления (обвиняемого, подозреваемого, защитника) с постановлением о назначении судебной экспертизы. Бланк 38.", "builtin": true}, {"id": "prot_39", "category": "Протоколы", "title": "Протокол ознакомления (кого именно) с заключением эксперта. Бланк 39.", "builtin": true}, {"id": "prot_40", "category": "Протоколы", "title": "Протокол допроса эксперта. Бланк 40.", "builtin": true}, {"id": "prot_41", "category": "Протоколы", "title": "Протокол предъявления для ознакомления защитнику материалов уголовного дела в ходе предварительного расследования. Бланк 41.", "builtin": true}, {"id": "prot_42", "category": "Протоколы", "title": "Протокол уничтожения вещественных доказательств. Бланк 42.", "builtin": true}, {"id": "prot_43", "category": "Протоколы", "title": "Протокол уведомления об окончании следственных действий. Бланк 43.", "builtin": true}, {"id": "prot_44", "category": "Протоколы", "title": "Протокол ознакомления (потерпевшего, гражданского истца, гражданского ответчика, их представителей) с материалами уголовного дела. Бланк 44.", "builtin": true}, {"id": "prot_45", "category": "Протоколы", "title": "Протокол ознакомления обвиняемого и (или) его защитника с материалами уголовного дела. Бланк 45.", "builtin": true}, {"id": "prot_46", "category": "Протоколы", "title": "Протокол ознакомления законного представителя и (или) защитника лица, в отношении которого осуществляется производство о применении принудительных мер медицинского характера, с материалами уголовного дела. Бланк 46.", "builtin": true}, {"id": "prot_47", "category": "Протоколы", "title": "Протокол разъяснения подозреваемому прав, предусмотренных ст. 46 УПК РФ. Бланк 47.", "builtin": true}, {"id": "prot_48", "category": "Протоколы", "title": "Протокол разъяснения подозреваемому права на уведомление родственников о задержании. Бланк 48.", "builtin": true}, {"id": "prot_49", "category": "Протоколы", "title": "Протокол ознакомления с сообщением эксперта о невозможности дать заключение. Бланк 49.", "builtin": true}, {"id": "prot_50", "category": "Протоколы", "title": "Протокол ознакомления (потерпевшего, гражданского истца, гражданского ответчика, их представителей) с дополнительными материалами уголовного дела. Бланк 50.", "builtin": true}, {"id": "prot_51", "category": "Протоколы", "title": "Протокол передачи средством массовой информации материалов и документов, подтверждающих сообщение о преступлении, а также данных о лице, предоставившем информацию. Бланк 51.", "builtin": true}, {"id": "prot_52", "category": "Протоколы", "title": "Протокол осмотра и выемки почтово-телеграфной корреспонденции. Бланк 52.", "builtin": true}, {"id": "prot_53", "category": "Протоколы", "title": "Протокол разъяснения подозреваемому права пользоваться помощью защитника. Бланк 53.", "builtin": true}, {"id": "other_1", "category": "Иные документы", "title": "Рапорт об обнаружении признаков преступления. Бланк 1.", "builtin": true}, {"id": "other_2", "category": "Иные документы", "title": "Уведомление о передаче сообщения о преступлении по подследственности. Бланк 2.", "builtin": true}, {"id": "other_3", "category": "Иные документы", "title": "Уведомление о передаче сообщения о преступлении в суд. Бланк 3.", "builtin": true}, {"id": "other_4", "category": "Иные документы", "title": "Сообщение о задержании подозреваемого. Бланк 4.", "builtin": true}, {"id": "other_5", "category": "Иные документы", "title": "Разрешение на встречу сотрудника органа дознания с подозреваемым (обвиняемым). Бланк 5.", "builtin": true}, {"id": "other_6", "category": "Иные документы", "title": "Уведомление о производстве личного обыска (от имени следователя). Бланк 6.", "builtin": true}, {"id": "other_7", "category": "Иные документы", "title": "Уведомление о производстве личного обыска (от имени дознавателя). Бланк 7.", "builtin": true}, {"id": "other_8", "category": "Иные документы", "title": "Справка об освобождении подозреваемого. Бланк 8.", "builtin": true}, {"id": "other_9", "category": "Иные документы", "title": "Поручение о производстве отдельных следственных действий (оперативно-розыскных, розыскных мероприятий). Бланк 9.", "builtin": true}, {"id": "other_10", "category": "Иные документы", "title": "Подписка о неразглашении данных предварительного расследования. Бланк 10.", "builtin": true}, {"id": "other_11", "category": "Иные документы", "title": "Повестка о вызове на допрос. Бланк 11.", "builtin": true}, {"id": "other_12", "category": "Иные документы", "title": "Обязательство о явке. Бланк 12.", "builtin": true}, {"id": "other_13", "category": "Иные документы", "title": "Уведомление о производстве (осмотра жилища, обыска (выемки) в жилище). Бланк 13.", "builtin": true}, {"id": "other_14", "category": "Иные документы", "title": "Уведомление о производстве (осмотра жилища, обыска (выемки) в жилище, личного обыска, наложения ареста на имущество, указанное в части первой статьи 1041 Уголовного кодекса Российской Федерации). Бланк 14.", "builtin": true}, {"id": "other_15", "category": "Иные документы", "title": "Подписка о невыезде и надлежащем поведении. Бланк 15.", "builtin": true}, {"id": "other_16", "category": "Иные документы", "title": "Повестка о вызове на допрос лица, не достигшего шестнадцати лет. Бланк 16.", "builtin": true}, {"id": "other_17", "category": "Иные документы", "title": "Извещение о праве на реабилитацию. Бланк 17.", "builtin": true}, {"id": "other_18", "category": "Иные документы", "title": "График ознакомления с материалами уголовного дела (в порядке ст. 216 - 218 УПК РФ). Бланк 18.", "builtin": true}, {"id": "other_19", "category": "Иные документы", "title": "Представление о принятии мер по устранению обстоятельств, способствовавших совершению преступления (других нарушений закона). Бланк 19.", "builtin": true}, {"id": "other_20", "category": "Иные документы", "title": "Объяснение. Бланк 20.", "builtin": true}, {"id": "other_21", "category": "Иные документы", "title": "Уведомление об исключительном праве подачи заявления о привлечении к уголовному преследованию. Бланк 21.", "builtin": true}, {"id": "other_22", "category": "Иные документы", "title": "Уведомление о задержании по подозрению в совершении преступления. Бланк 22.", "builtin": true}, {"id": "other_23", "category": "Иные документы", "title": "Требование о передаче редакцией (главным редактором) средства массовой информации документов и материалов, подтверждающих сообщение о преступлении, а также данных о лице, предоставившем указанную информацию. Бланк 23.", "builtin": true}];
+    const MONTHS_RU = ["ЯНВАРЬ","ФЕВРАЛЬ","МАРТ","АПРЕЛЬ","МАЙ","ИЮНЬ","ИЮЛЬ","АВГУСТ","СЕНТЯБРЬ","ОКТЯБРЬ","НОЯБРЬ","ДЕКАБРЬ"];
 
-    function getTodayIso() {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    }
-
-    function addMonthsIso(isoStr, months) {
-      const [y, m, d] = isoStr.split('-').map(Number);
-      const dt = new Date(Date.UTC(y, m - 1 + months, d));
-      return dt.toISOString().slice(0, 10);
-    }
-
-    function shiftIsoDays(isoStr, days) {
-      const [y, m, d] = isoStr.split('-').map(Number);
-      const dt = new Date(Date.UTC(y, m - 1, d + days));
-      return dt.toISOString().slice(0, 10);
-    }
-
-    const EVENT_CATEGORIES = {
-      court: {
-        label: 'Суд / Прокурор / Рук. СО',
-        cls: 'ev-court',
-        dot: '#d97777'
-      },
-      work: {
-        label: 'Следств. действия (гибкие)',
-        cls: 'ev-work',
-        dot: '#5b7bb2'
-      },
-      expert: {
-        label: 'Экспертизы и запросы',
-        cls: 'ev-expert',
-        dot: '#489c73'
-      },
-      term: {
-        label: 'Контроль сроков',
-        cls: 'ev-term',
-        dot: '#d69e2e'
-      }
+    let state = {
+      calMode: "month",
+      viewYear: 2026,
+      viewMonth: 10,
+      selectedDate: "2026-11-26",
+      activeColorFilter: "all",
+      kbCatFilter: "Все",
+      blankTabCatFilter: "Все",
+      colors: JSON.parse(localStorage.getItem("arm_colors") || "null") || [
+        { id: "c1", name: "Суд / Прокурор", hex: "#1a4fa3" },
+        { id: "c2", name: "Следств. действия", hex: "#1b7a43" },
+        { id: "c3", name: "Экспертизы", hex: "#b45309" },
+        { id: "c4", name: "Сроки УД", hex: "#c62828" }
+      ],
+      events: JSON.parse(localStorage.getItem("arm_events") || "null") || [
+        { id: "e1", date: "2026-11-26", time: "13:00", title: "Допрос свидетеля по УД № 273", colorId: "c2" },
+        { id: "e2", date: "2026-11-28", time: "10:30", title: "Ходатайство в суд (Бланк 1)", colorId: "c1" }
+      ],
+      cases: JSON.parse(localStorage.getItem("arm_cases") || "null") || [
+        { id: "u1", num: "УД № 273", art: "ч. 1 ст. 158 УК РФ", deadline: "2026-12-27" }
+      ],
+      customBlanks: JSON.parse(localStorage.getItem("arm_custom_blanks") || "[]"),
+      editedBuiltins: JSON.parse(localStorage.getItem("arm_edited_builtins") || "{}"),
+      dismissedBuiltins: JSON.parse(localStorage.getItem("arm_dismissed_builtins") || "[]")
     };
 
-    const BLANKS_LIST = [
-      { id: 'b_vyemka', group: 'Постановления', title: 'Постановление о производстве выемки', ref: 'ст. 183 УПК РФ' },
-      { id: 'b_eksp', group: 'Постановления', title: 'Постановление о назначении судебной экспертизы', ref: 'ст. 195 УПК РФ' },
-      { id: 'b_dopros', group: 'Протоколы', title: 'Протокол допроса свидетеля', ref: 'ст. 189 УПК РФ' },
-      { id: 'b_zapros', group: 'Иные документы', title: 'Запрос в порядке ч. 4 ст. 21 УПК РФ', ref: 'ч. 4 ст. 21 УПК РФ' }
-    ];
-
-    const KB_CATEGORIES = ['УПК', 'Учебники', 'Запросы', 'Постановления', 'Экспертизы'];
-
-    const defaultWorkspace = () => ({
-      eventsData: [],
-      casesData: [],
-      kbMaterials: [
-        {
-          title: 'Криминалистика и тактика следственных действий (учебное пособие)',
-          cats: ['Учебники', 'Экспертизы'],
-          notes: 'Тактика допроса, выемки и постановки вопросов при назначении судебных экспертиз.'
-        },
-        {
-          title: 'Сроки предварительного следствия и ходатайства по УПК РФ',
-          cats: ['УПК', 'Постановления'],
-          notes: 'Расчёт сроков по ст. 162 УПК РФ и порядок уведомления прокурора и руководителя СО.'
-        }
-      ],
-      profile: {
-        org: 'СО ОП № 4 СУ УМВД России',
-        rank: 'следователь лейтенант юстиции',
-        fio: ''
-      },
-      updatedAt: new Date().toISOString()
-    });
-
-    function normalizeWorkspacePayload(raw) {
-      const base = defaultWorkspace();
-      if (!raw || typeof raw !== 'object') return base;
-
-      let casesArr = Array.isArray(raw.casesData) ? raw.casesData : [];
-      if (!casesArr.length && Array.isArray(raw.cases) && raw.cases.length) {
-        casesArr = raw.cases.map((c, i) => {
-          const effDeadline = c.extendedUntil || c.deadlineDate || addMonthsIso(getTodayIso(), 2);
-          const arts = Array.isArray(c.qualifications) && c.qualifications.length
-            ? c.qualifications.map((q) => [q.point, q.part, q.article ? `ст. ${String(q.article).replace(/^ст\.?\s*/i, '')} УК РФ` : ''].filter(Boolean).join(' ')).filter(Boolean)
-            : (c.article ? [c.article] : ['ст. 158 УК РФ']);
-          return {
-            id: c.id || ('ud_mig_' + i),
-            number: c.number ? (String(c.number).startsWith('№') ? String(c.number) : '№ ' + c.number) : '№ —',
-            opened: c.startDate || getTodayIso(),
-            deadline: effDeadline,
-            leadDays: c.motionLeadDays || 10,
-            articles: arts.length ? arts : ['ст. 158 УК РФ'],
-            fabula: c.notes || c.extraInfo || 'Фабула не заполнена.',
-            participants: Array.isArray(c.participants) ? c.participants.map((p) => ({ name: p.name || '', role: p.role || 'Участник' })) : [],
-            plan: Array.isArray(c.planTasks) ? c.planTasks.map((t) => t.title || '').filter(Boolean) : [],
-            docs: Array.isArray(c.documents) && c.documents.length
-              ? c.documents.map((d) => ({ name: d.title || d.name || 'Документ', kind: d.kind || 'Фото / скан' }))
-              : [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }],
-            expanded: false
-          };
-        });
-      }
-
-      let eventsArr = Array.isArray(raw.eventsData) ? raw.eventsData : [];
-      if (!eventsArr.length && Array.isArray(raw.events) && raw.events.length) {
-        eventsArr = raw.events.map((ev, i) => ({
-          id: ev.id || ('ev_mig_' + i),
-          title: [ev.type, ev.person].filter(Boolean).join(' — ') || 'Следственное действие',
-          caseNum: ev.caseRef || '',
-          dt: ev.dateTime || `${getTodayIso()}T10:00`,
-          color: 'work'
-        }));
-      }
-
-      const legacyCfg = raw.docConfig || {};
-      const prof = {
-        org: (raw.profile && raw.profile.org) || legacyCfg.department || base.profile.org,
-        rank: (raw.profile && raw.profile.rank) || legacyCfg.rank || base.profile.rank,
-        fio: (raw.profile && raw.profile.fio) !== undefined ? raw.profile.fio : (legacyCfg.name || ''),
-      };
-
-      return {
-        eventsData: eventsArr,
-        casesData: casesArr,
-        kbMaterials: Array.isArray(raw.kbMaterials) && raw.kbMaterials.length ? raw.kbMaterials : base.kbMaterials,
-        profile: prof,
-        updatedAt: raw.updatedAt || base.updatedAt
-      };
+    function persist() {
+      localStorage.setItem("arm_colors", JSON.stringify(state.colors));
+      localStorage.setItem("arm_events", JSON.stringify(state.events));
+      localStorage.setItem("arm_cases", JSON.stringify(state.cases));
+      localStorage.setItem("arm_custom_blanks", JSON.stringify(state.customBlanks));
+      localStorage.setItem("arm_edited_builtins", JSON.stringify(state.editedBuiltins));
+      localStorage.setItem("arm_dismissed_builtins", JSON.stringify(state.dismissedBuiltins));
     }
 
-    let currentUser = null;
-    let authMode = 'login';
-    let syncTimer = null;
-    let ws = defaultWorkspace();
-
-    let selectedDay = getTodayIso();
-    let weekDelta = 0;
-    let activeColorFilter = 'all';
-    let modalPickedColor = 'work';
-
-    let tempArticles = [];
-    let tempParticipants = [];
-    let tempPlans = [];
-
-    let editArticles = [];
-    let editParticipants = [];
-    let editPlans = [];
-
-    let currentBlankGrp = 'Постановления';
-    let kbSelectedCats = ['Учебники', 'УПК'];
-
-    function showToast(msg) {
-      const bar = document.getElementById('toastBar');
-      bar.textContent = msg;
-      bar.classList.add('show');
-      clearTimeout(bar._t);
-      bar._t = setTimeout(() => bar.classList.remove('show'), 2300);
+    function getAllBlanks() {
+      const activeBuiltins = BUILTIN_BLANKS
+        .filter(b => !state.dismissedBuiltins.includes(b.id))
+        .map(b => state.editedBuiltins[b.id] ? { ...b, ...state.editedBuiltins[b.id] } : b);
+      return [...state.customBlanks, ...activeBuiltins];
     }
 
-    function esc(s) {
-      return String(s || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    function toggleAcc(id) {
+      document.getElementById(id).classList.toggle("open");
     }
 
-    function parseDate(str) {
-      const [y, m, d] = str.split('-').map(Number);
-      return new Date(y, m - 1, d);
+    function switchTab(tabName, btn) {
+      document.querySelectorAll(".tab-view").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll(".nav-btn").forEach(el => el.classList.remove("active"));
+      document.getElementById("tab-" + tabName).classList.add("active");
+      btn.classList.add("active");
     }
 
-    function toIsoDate(d) {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-
-    function daysUntil(deadlineIso) {
-      if (!deadlineIso) return 999;
-      return Math.ceil((parseDate(deadlineIso) - parseDate(getTodayIso())) / (1000 * 60 * 60 * 24));
-    }
-
-    function syncCaseDeadlineInCalendar(kase) {
-      if (!kase || !kase.id || !kase.deadline) return;
-      const numClean = String(kase.number || '').replace(/^№\s*/, '').trim();
-      const caseLabel = `УД № ${numClean}`;
-      const deadlineEvId = `term_end_${kase.id}`;
-      const deadlineTitle = `Окончание срока • ${caseLabel}`;
-      const existingEnd = ws.eventsData.find((e) => e.id === deadlineEvId);
-      if (existingEnd) {
-        existingEnd.title = deadlineTitle;
-        existingEnd.caseNum = caseLabel;
-        existingEnd.dt = `${kase.deadline}T18:00`;
-        existingEnd.color = 'term';
-      } else {
-        ws.eventsData.push({
-          id: deadlineEvId,
-          title: deadlineTitle,
-          caseNum: caseLabel,
-          dt: `${kase.deadline}T18:00`,
-          color: 'term'
-        });
-      }
-
-      const leadDays = Number(kase.leadDays) || 10;
-      const warnDate = shiftIsoDays(kase.deadline, -leadDays);
-      const warnEvId = `term_warn_${kase.id}`;
-      const warnTitle = `Ходатайство о продлении (${leadDays} дн.) • ${caseLabel}`;
-      const existingWarn = ws.eventsData.find((e) => e.id === warnEvId);
-      if (existingWarn) {
-        existingWarn.title = warnTitle;
-        existingWarn.caseNum = caseLabel;
-        existingWarn.dt = `${warnDate}T10:00`;
-        existingWarn.color = 'term';
-      } else {
-        ws.eventsData.push({
-          id: warnEvId,
-          title: warnTitle,
-          caseNum: caseLabel,
-          dt: `${warnDate}T10:00`,
-          color: 'term'
-        });
-      }
-    }
-
-    function removeCaseDeadlineEvents(caseId) {
-      ws.eventsData = ws.eventsData.filter((e) => e.id !== `term_end_${caseId}` && e.id !== `term_warn_${caseId}`);
-    }
-
-    function setNetIndicator() {
-      const online = navigator.onLine;
-      document.getElementById('netDot').className = `w-2 h-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-amber-400'}`;
-      document.getElementById('netText').textContent = online ? 'Онлайн' : 'Офлайн';
-    }
-
-    function setCloudIndicator(mode, label) {
-      const dot = document.getElementById('cloudDot');
-      const txt = document.getElementById('cloudText');
-      if (mode === 'ok') {
-        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
-      } else if (mode === 'sync') {
-        dot.className = 'w-2 h-2 rounded-full bg-sky-400';
-      } else {
-        dot.className = 'w-2 h-2 rounded-full bg-amber-400';
-      }
-      txt.textContent = label;
-    }
-
-    function newCacheKey() {
-      return currentUser ? `iar_ws_cache_${currentUser.id}` : 'iar_ws_guest';
-    }
-
-    function oldCacheKey() {
-      return currentUser ? `iar_workspace_cache_${currentUser.id}` : 'iar_workspace_guest';
-    }
-
-    function saveLocal() {
-      try {
-        localStorage.setItem(newCacheKey(), JSON.stringify(ws));
-      } catch (e) {}
-    }
-
-    function loadLocal() {
-      try {
-        const rawNew = localStorage.getItem(newCacheKey());
-        const rawOld = localStorage.getItem(oldCacheKey());
-        if (rawNew) {
-          ws = normalizeWorkspacePayload(JSON.parse(rawNew));
-          if (!ws.casesData.length && rawOld) {
-            const oldNorm = normalizeWorkspacePayload(JSON.parse(rawOld));
-            if (oldNorm.casesData.length) ws.casesData = oldNorm.casesData;
-            if (!ws.profile.fio && oldNorm.profile.fio) ws.profile.fio = oldNorm.profile.fio;
-          }
-        } else if (rawOld) {
-          ws = normalizeWorkspacePayload(JSON.parse(rawOld));
-        }
-        ws.casesData.forEach((c) => syncCaseDeadlineInCalendar(c));
-      } catch (e) {}
-    }
-
-    async function pullFromCloud() {
-      if (!currentUser) return;
-      if (!navigator.onLine) {
-        setCloudIndicator('warn', 'Офлайн');
-        return;
-      }
-      setCloudIndicator('sync', 'Загрузка...');
-      try {
-        const { data, error } = await supabaseClient
-          .from('iar_user_workspaces')
-          .select('workspace_data, updated_at')
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
-        if (error) throw error;
-
-        if (data && data.workspace_data) {
-          const cloudWs = normalizeWorkspacePayload(data.workspace_data);
-          const localTs = new Date(ws.updatedAt || 0).getTime();
-          const cloudTs = new Date(data.updated_at || cloudWs.updatedAt || 0).getTime();
-          if (cloudTs >= localTs || (!ws.casesData.length && cloudWs.casesData.length)) {
-            ws = cloudWs;
-            ws.casesData.forEach((c) => syncCaseDeadlineInCalendar(c));
-            saveLocal();
-          } else {
-            await pushToCloud();
-          }
-        } else {
-          await pushToCloud();
-        }
-        syncProfileInputs();
-        setCloudIndicator('ok', 'Облако');
-        document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
-        renderAll();
-      } catch (err) {
-        console.error(err);
-        setCloudIndicator('warn', err.code || 'Сеть');
-        showToast('Синхронизация: ' + (err.message || err.code || 'ошибка'));
-      }
-    }
-
-    async function pushToCloud() {
-      if (!currentUser) return;
-      ws.updatedAt = new Date().toISOString();
-      saveLocal();
-      if (!navigator.onLine) {
-        setCloudIndicator('warn', 'Офлайн');
-        return;
-      }
-      setCloudIndicator('sync', 'Сохранение...');
-      try {
-        const { error } = await supabaseClient
-          .from('iar_user_workspaces')
-          .upsert({
-            user_id: currentUser.id,
-            workspace_data: ws,
-            updated_at: ws.updatedAt
-          }, { onConflict: 'user_id' });
-        if (error) throw error;
-        setCloudIndicator('ok', 'Облако');
-        document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
-      } catch (err) {
-        console.error(err);
-        setCloudIndicator('warn', err.code || 'Сеть');
-        showToast('Сохранено локально: ' + (err.message || err.code || 'ошибка'));
-      }
-    }
-
-    function scheduleSync() {
-      saveLocal();
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(() => pushToCloud(), 450);
-    }
-
-    /* ==================== АВТОРИЗАЦИЯ ==================== */
-
-    const tabLogin = document.getElementById('tabLogin');
-    const tabRegister = document.getElementById('tabRegister');
-    const authSubmitBtn = document.getElementById('authSubmitBtn');
-    const authMsg = document.getElementById('authMsg');
-
-    function showAuthMsg(text, type) {
-      authMsg.textContent = text;
-      authMsg.className = 'auth-msg ' + type;
-    }
-
-    tabLogin.addEventListener('click', () => {
-      authMode = 'login';
-      tabLogin.classList.add('active');
-      tabRegister.classList.remove('active');
-      authSubmitBtn.textContent = 'Войти в рабочее место';
-      authMsg.className = 'auth-msg';
-    });
-
-    tabRegister.addEventListener('click', () => {
-      authMode = 'register';
-      tabRegister.classList.add('active');
-      tabLogin.classList.remove('active');
-      authSubmitBtn.textContent = 'Создать аккаунт';
-      authMsg.className = 'auth-msg';
-    });
-
-    document.getElementById('authForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('authEmail').value.trim();
-      const password = document.getElementById('authPassword').value;
-      authSubmitBtn.disabled = true;
-      authMsg.className = 'auth-msg';
-
-      try {
-        if (authMode === 'login') {
-          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-          if (error) throw error;
-          await enterApp(data.user);
-        } else {
-          const { data, error } = await supabaseClient.auth.signUp({ email, password });
-          if (error) throw error;
-          if (data.session && data.user) {
-            await enterApp(data.user);
-            showToast('Аккаунт создан');
-          } else {
-            showAuthMsg('Аккаунт создан! Проверьте почту для подтверждения или отключите Confirm email в Supabase.', 'success');
-          }
-        }
-      } catch (err) {
-        showAuthMsg(err.message || 'Ошибка входа', 'error');
-      } finally {
-        authSubmitBtn.disabled = false;
-      }
-    });
-
-    async function enterApp(user) {
-      currentUser = user;
-      document.getElementById('authScreen').classList.add('hidden');
-      document.getElementById('appShell').classList.remove('hidden');
-      document.getElementById('userEmailSub').textContent = user.email;
-      document.getElementById('settingsEmail').textContent = user.email;
-
-      ws = defaultWorkspace();
-      loadLocal();
-      initCaseFormDates();
-      syncProfileInputs();
-      renderAll();
-
-      if (navigator.onLine) {
-        await pullFromCloud();
-      } else {
-        setCloudIndicator('warn', 'Офлайн');
-      }
-    }
-
-    async function logoutUser() {
-      await supabaseClient.auth.signOut();
-      currentUser = null;
-      document.getElementById('appShell').classList.add('hidden');
-      document.getElementById('authScreen').classList.remove('hidden');
-      showToast('Вы вышли из аккаунта');
-    }
-
-    function exportBackupJson() {
-      const blob = new Blob([JSON.stringify(ws, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ARM_Sledovatelya_${getTodayIso()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    /* ==================== НАВИГАЦИЯ И СВОДКА ==================== */
-
-    function switchTab(tab) {
-      ['svodka', 'cases', 'blanks', 'kb', 'actions', 'profile'].forEach((t) => {
-        document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
-        document.getElementById('tab-' + t).classList.toggle('active', t === tab);
-      });
-      if (tab === 'profile') syncProfileInputs();
-      if (tab === 'actions') renderAllActionsList();
-    }
-
-    function toggleAccordion(bodyId) {
-      const body = document.getElementById(bodyId);
-      const chev = document.getElementById('chev-' + bodyId);
-      const isHidden = body.classList.toggle('hidden');
-      if (chev) chev.classList.toggle('open', !isHidden);
-    }
-
-    function focusMetric(kind) {
-      ['tileCases', 'tileUrgent', 'tileToday'].forEach((id) => document.getElementById(id).classList.remove('active'));
-      if (kind === 'cases') {
-        document.getElementById('tileCases').classList.add('active');
-        switchTab('cases');
-      } else if (kind === 'urgent') {
-        document.getElementById('tileUrgent').classList.add('active');
-        const body = document.getElementById('accDeadlines');
-        body.classList.remove('hidden');
-        document.getElementById('chev-accDeadlines').classList.add('open');
-        body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } else {
-        document.getElementById('tileToday').classList.add('active');
-        goToday();
-      }
-    }
-
-    /* ==================== КАЛЕНДАРЬ НА НЕДЕЛЮ ==================== */
-
-    function getCurrentWeekDates() {
-      const today = parseDate(getTodayIso());
-      const mondayOffset = (today.getDay() + 6) % 7;
-      const monday = new Date(today);
-      monday.setDate(today.getDate() - mondayOffset + weekDelta * 7);
-      const res = [];
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        res.push(toIsoDate(d));
-      }
-      return res;
-    }
-
-    function shiftWeek(delta) {
-      weekDelta += delta;
-      const days = getCurrentWeekDates();
-      selectedDay = days[0];
-      renderCalendarSection();
+    function setCalMode(mode) {
+      state.calMode = mode;
+      document.getElementById("modeWeek").classList.toggle("active", mode === "week");
+      document.getElementById("modeMonth").classList.toggle("active", mode === "month");
+      renderCalendar();
     }
 
     function goToday() {
-      weekDelta = 0;
-      selectedDay = getTodayIso();
-      renderCalendarSection();
+      state.viewYear = 2026;
+      state.viewMonth = 10;
+      state.selectedDate = "2026-11-26";
+      renderCalendar();
+      renderDayEvents();
     }
 
-    function selectDay(isoDate) {
-      selectedDay = isoDate;
-      renderCalendarSection();
+    function shiftPeriod(delta) {
+      state.viewMonth += delta;
+      if (state.viewMonth < 0) { state.viewMonth = 11; state.viewYear--; }
+      if (state.viewMonth > 11) { state.viewMonth = 0; state.viewYear++; }
+      renderCalendar();
     }
 
-    function setColorFilter(key) {
-      activeColorFilter = key;
-      renderCalendarSection();
-    }
-
-    function renderCalendarSection() {
-      const filterBar = document.getElementById('calendarColorFilterBar');
-      const filterItems = [
-        { key: 'all', label: 'Все цвета', dot: '#64748b' },
-        ...Object.entries(EVENT_CATEGORIES).map(([k, v]) => ({ key: k, label: v.label, dot: v.dot }))
-      ];
-
-      filterBar.innerHTML = filterItems
-        .map((f) => {
-          const active = activeColorFilter === f.key;
-          return `
-            <button type="button" onclick="setColorFilter('${f.key}')"
-              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${
-                active ? 'bg-[#eef3fb] border-[#5b7bb2] text-[#243b61]' : 'bg-white border-slate-200 text-slate-600'
-              }">
-              <span class="w-2 h-2 rounded-full" style="background:${f.dot}"></span>
-              <span>${esc(f.label)}</span>
-            </button>
-          `;
-        })
-        .join('');
-
-      const weekDays = getCurrentWeekDates();
-      const monthsNom = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-      const midDate = parseDate(weekDays[3]);
-      document.getElementById('calendarMonthTitle').textContent = `${monthsNom[midDate.getMonth()]} ${midDate.getFullYear()}`;
-
-      const letters = ['п', 'в', 'с', 'ч', 'п', 'с', 'в'];
-      const todayIso = getTodayIso();
-      const grid = document.getElementById('iosWeekGrid');
-
-      grid.innerHTML = weekDays
-        .map((iso, idx) => {
-          const dObj = parseDate(iso);
-          const isToday = iso === todayIso;
-          const isSel = iso === selectedDay;
-          const dayEvs = ws.eventsData
-            .filter((e) => e.dt && e.dt.startsWith(iso))
-            .filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter)
-            .sort((a, b) => a.dt.localeCompare(b.dt));
-
-          return `
-            <div class="ios-day-col ${isSel ? 'selected' : ''}" onclick="selectDay('${iso}')">
-              <div class="ios-day-letter">${letters[idx]}</div>
-              <div class="ios-day-num ${isToday ? 'today' : ''}">${dObj.getDate()}</div>
-              ${dayEvs
-                .map((ev) => {
-                  const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
-                  const timeStr = (ev.dt.split('T')[1] || '').slice(0, 5);
-                  return `
-                    <button type="button" class="ios-mini-event ${cat.cls}" onclick="event.stopPropagation(); openEventModal('${ev.id}')">
-                      <span class="ev-title">${esc(ev.title)}</span>
-                      <span class="ev-time">${esc(timeStr)}</span>
-                    </button>
-                  `;
-                })
-                .join('')}
-            </div>
-          `;
-        })
-        .join('');
-
-      renderSelectedDayEvents();
-    }
-
-    function renderSelectedDayEvents() {
-      const dObj = parseDate(selectedDay);
-      const wdFull = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
-      const monthsGen = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-      document.getElementById('selectedDaySubtitle').textContent = `${wdFull[dObj.getDay()]}, ${dObj.getDate()} ${monthsGen[dObj.getMonth()]}`;
-
-      const listEl = document.getElementById('selectedDayEventsList');
-      const items = ws.eventsData
-        .filter((e) => e.dt && e.dt.startsWith(selectedDay))
-        .filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter)
-        .sort((a, b) => a.dt.localeCompare(b.dt));
-
-      if (!items.length) {
-        listEl.innerHTML = '<div class="text-xs text-slate-400 py-2">На этот день событий нет.</div>';
-        return;
-      }
-
-      listEl.innerHTML = items
-        .map((ev) => {
-          const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
-          return `
-            <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 flex-wrap ${cat.cls}">
-              <div class="min-w-0">
-                <div class="text-xs font-bold">${esc(ev.title)} <span class="opacity-75">• ${esc(ev.caseNum)}</span></div>
-                <div class="text-[11px] opacity-80">${esc(cat.label)}</div>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <input type="datetime-local" value="${esc(ev.dt)}"
-                  class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white text-slate-700"
-                  onchange="quickShiftEvent('${ev.id}', this.value)" />
-                <button type="button" class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-600"
-                  onclick="openEventModal('${ev.id}')">Цвет</button>
-              </div>
-            </div>
-          `;
-        })
-        .join('');
-    }
-
-    function quickShiftEvent(id, newDt) {
-      const ev = ws.eventsData.find((x) => x.id === id);
-      if (!ev || !newDt) return;
-      ev.dt = newDt;
-      selectedDay = newDt.split('T')[0];
-      renderAll();
-      scheduleSync();
-      showToast('Дата и время обновлены');
-    }
-
-    function openEventModal(eventId) {
-      const modal = document.getElementById('eventModal');
-      const delBtn = document.getElementById('evDeleteBtn');
-
-      if (eventId) {
-        const ev = ws.eventsData.find((x) => x.id === eventId);
-        if (!ev) return;
-        document.getElementById('evModalHeading').textContent = 'Настройка события';
-        document.getElementById('evEditId').value = ev.id;
-        document.getElementById('evTitleInput').value = ev.title;
-        document.getElementById('evDtInput').value = ev.dt;
-        document.getElementById('evCaseInput').value = ev.caseNum || '';
-        modalPickedColor = ev.color || 'work';
-        delBtn.classList.remove('hidden');
-      } else {
-        document.getElementById('evModalHeading').textContent = 'Новое событие';
-        document.getElementById('evEditId').value = '';
-        document.getElementById('evTitleInput').value = '';
-        document.getElementById('evDtInput').value = `${selectedDay}T10:00`;
-        document.getElementById('evCaseInput').value = ws.casesData[0] ? `УД ${ws.casesData[0].number}` : '';
-        modalPickedColor = 'work';
-        delBtn.classList.add('hidden');
-      }
-
-      renderModalColorChoices();
-      modal.classList.remove('hidden');
-    }
-
-    function renderModalColorChoices() {
-      const wrap = document.getElementById('evColorChoices');
-      wrap.innerHTML = Object.entries(EVENT_CATEGORIES)
-        .map(([key, cfg]) => {
-          const active = modalPickedColor === key;
-          return `
-            <button type="button" onclick="pickModalColor('${key}')"
-              class="p-2 rounded-xl border text-left text-xs font-semibold flex items-center gap-2 ${cfg.cls} ${
-                active ? 'ring-2 ring-[#5b7bb2]' : ''
-              }">
-              <span class="w-3 h-3 rounded-full shrink-0" style="background:${cfg.dot}"></span>
-              <span class="truncate">${esc(cfg.label)}</span>
-            </button>
-          `;
-        })
-        .join('');
-    }
-
-    function pickModalColor(key) {
-      modalPickedColor = key;
-      renderModalColorChoices();
-    }
-
-    function closeEventModal() {
-      document.getElementById('eventModal').classList.add('hidden');
-    }
-
-    function saveCalendarEvent() {
-      const id = document.getElementById('evEditId').value;
-      const title = (document.getElementById('evTitleInput').value || '').trim();
-      const dt = document.getElementById('evDtInput').value || `${selectedDay}T10:00`;
-      const caseNum = (document.getElementById('evCaseInput').value || '').trim();
-
-      if (!title) {
-        showToast('Укажите название события');
-        return;
-      }
-
-      if (id) {
-        const ev = ws.eventsData.find((x) => x.id === id);
-        if (ev) {
-          ev.title = title;
-          ev.dt = dt;
-          ev.caseNum = caseNum;
-          ev.color = modalPickedColor;
-        }
-        showToast('Событие сохранено');
-      } else {
-        ws.eventsData.push({
-          id: 'e_' + Date.now(),
-          title,
-          dt,
-          caseNum,
-          color: modalPickedColor
-        });
-        showToast('Событие добавлено в календарь');
-      }
-
-      selectedDay = dt.split('T')[0];
-      closeEventModal();
-      renderAll();
-      scheduleSync();
-    }
-
-    function deleteCalendarEvent() {
-      const id = document.getElementById('evEditId').value;
-      ws.eventsData = ws.eventsData.filter((x) => x.id !== id);
-      closeEventModal();
-      renderAll();
-      scheduleSync();
-      showToast('Событие удалено');
-    }
-
-    /* ==================== ВКЛАДКА «ДЕЛА» ==================== */
-
-    function initCaseFormDates() {
-      const t = getTodayIso();
-      document.getElementById('ncOpened').value = t;
-      document.getElementById('ncDeadline').value = addMonthsIso(t, 2);
-    }
-
-    function toggleNewCaseForm(show) {
-      const card = document.getElementById('newCaseFormCard');
-      const btnWrap = document.getElementById('addCaseTriggerWrap');
-      if (show) {
-        tempArticles = [];
-        tempParticipants = [];
-        tempPlans = [];
-        initCaseFormDates();
-        renderTempFormLists();
-        card.classList.remove('hidden');
-        btnWrap.classList.add('hidden');
-        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        card.classList.add('hidden');
-        btnWrap.classList.remove('hidden');
-      }
-    }
-
-    function addTempArticle() {
-      const inp = document.getElementById('ncArticleInput');
-      const val = (inp.value || '').trim();
-      if (!val) return;
-      tempArticles.push(val);
-      inp.value = '';
-      renderTempFormLists();
-    }
-
-    function addTempParticipant() {
-      const nameInp = document.getElementById('ncPartName');
-      const roleSel = document.getElementById('ncPartRole');
-      const name = (nameInp.value || '').trim();
-      if (!name) return;
-      tempParticipants.push({ name, role: roleSel.value });
-      nameInp.value = '';
-      renderTempFormLists();
-    }
-
-    function addTempPlan() {
-      const inp = document.getElementById('ncPlanInput');
-      const val = (inp.value || '').trim();
-      if (!val) return;
-      tempPlans.push(val);
-      inp.value = '';
-      renderTempFormLists();
-    }
-
-    function renderTempFormLists() {
-      document.getElementById('tempArticlesList').innerHTML = tempArticles
-        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" onclick="tempArticles.splice(${idx},1);renderTempFormLists()">×</button></span>`)
-        .join('');
-      document.getElementById('tempParticipantsList').innerHTML = tempParticipants
-        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" onclick="tempParticipants.splice(${idx},1);renderTempFormLists()">×</button></div>`)
-        .join('');
-      document.getElementById('tempPlanList').innerHTML = tempPlans
-        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" onclick="tempPlans.splice(${idx},1);renderTempFormLists()">×</button></div>`)
-        .join('');
-    }
-
-    function saveNewCase() {
-      const numRaw = (document.getElementById('ncNumber').value || '').trim();
-      if (!numRaw) {
-        showToast('Введите номер уголовного дела');
-        return;
-      }
-      const pendingArt = (document.getElementById('ncArticleInput').value || '').trim();
-      if (pendingArt) tempArticles.push(pendingArt);
-
-      const openedVal = document.getElementById('ncOpened').value || getTodayIso();
-      const deadlineVal = document.getElementById('ncDeadline').value || addMonthsIso(openedVal, 2);
-      const leadDaysVal = parseInt(document.getElementById('ncLeadDays').value, 10) || 10;
-
-      const newCase = {
-        id: 'ud_' + Date.now(),
-        number: numRaw.startsWith('№') ? numRaw : '№ ' + numRaw,
-        opened: openedVal,
-        deadline: deadlineVal,
-        leadDays: leadDaysVal,
-        articles: tempArticles.length ? [...tempArticles] : ['ст. 158 УК РФ'],
-        fabula: (document.getElementById('ncFabula').value || '').trim() || 'Фабула не заполнена.',
-        participants: [...tempParticipants],
-        plan: [...tempPlans],
-        docs: [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }],
-        expanded: true
-      };
-
-      ws.casesData.unshift(newCase);
-      syncCaseDeadlineInCalendar(newCase);
-      selectedDay = deadlineVal;
-
-      document.getElementById('ncNumber').value = '';
-      document.getElementById('ncArticleInput').value = '';
-      document.getElementById('ncFabula').value = '';
-      toggleNewCaseForm(false);
-      renderAll();
-      scheduleSync();
-      showToast('Дело сохранено, срок отмечен в календаре');
-    }
-
-    function openEditCaseModal(caseId) {
-      const item = ws.casesData.find((c) => c.id === caseId);
-      if (!item) return;
-
-      document.getElementById('ecId').value = item.id;
-      document.getElementById('ecNumber').value = item.number || '';
-      document.getElementById('ecOpened').value = item.opened || getTodayIso();
-      document.getElementById('ecDeadline').value = item.deadline || addMonthsIso(getTodayIso(), 2);
-      document.getElementById('ecLeadDays').value = item.leadDays || 10;
-      document.getElementById('ecFabula').value = item.fabula || '';
-      document.getElementById('ecArticleInput').value = '';
-      document.getElementById('ecPartName').value = '';
-      document.getElementById('ecPlanInput').value = '';
-
-      editArticles = [...(item.articles || [])];
-      editParticipants = (item.participants || []).map((p) => ({ ...p }));
-      editPlans = [...(item.plan || [])];
-
-      renderEditFormLists();
-      document.getElementById('editCaseModal').classList.remove('hidden');
-    }
-
-    function closeEditCaseModal() {
-      document.getElementById('editCaseModal').classList.add('hidden');
-    }
-
-    function addEditArticle() {
-      const inp = document.getElementById('ecArticleInput');
-      const val = (inp.value || '').trim();
-      if (!val) return;
-      editArticles.push(val);
-      inp.value = '';
-      renderEditFormLists();
-    }
-
-    function addEditParticipant() {
-      const nameInp = document.getElementById('ecPartName');
-      const roleSel = document.getElementById('ecPartRole');
-      const name = (nameInp.value || '').trim();
-      if (!name) return;
-      editParticipants.push({ name, role: roleSel.value });
-      nameInp.value = '';
-      renderEditFormLists();
-    }
-
-    function addEditPlan() {
-      const inp = document.getElementById('ecPlanInput');
-      const val = (inp.value || '').trim();
-      if (!val) return;
-      editPlans.push(val);
-      inp.value = '';
-      renderEditFormLists();
-    }
-
-    function renderEditFormLists() {
-      document.getElementById('editArticlesList').innerHTML = editArticles
-        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" onclick="editArticles.splice(${idx},1);renderEditFormLists()">×</button></span>`)
-        .join('');
-      document.getElementById('editParticipantsList').innerHTML = editParticipants
-        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" onclick="editParticipants.splice(${idx},1);renderEditFormLists()">×</button></div>`)
-        .join('');
-      document.getElementById('editPlanList').innerHTML = editPlans
-        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" onclick="editPlans.splice(${idx},1);renderEditFormLists()">×</button></div>`)
-        .join('');
-    }
-
-    function saveEditedCase() {
-      const id = document.getElementById('ecId').value;
-      const item = ws.casesData.find((c) => c.id === id);
-      if (!item) return;
-
-      const numRaw = (document.getElementById('ecNumber').value || '').trim();
-      if (!numRaw) {
-        showToast('Укажите номер уголовного дела');
-        return;
-      }
-
-      const pendingArt = (document.getElementById('ecArticleInput').value || '').trim();
-      if (pendingArt) editArticles.push(pendingArt);
-
-      item.number = numRaw.startsWith('№') ? numRaw : '№ ' + numRaw;
-      item.opened = document.getElementById('ecOpened').value || item.opened;
-      item.deadline = document.getElementById('ecDeadline').value || item.deadline;
-      item.leadDays = parseInt(document.getElementById('ecLeadDays').value, 10) || 10;
-      item.fabula = (document.getElementById('ecFabula').value || '').trim() || 'Фабула не заполнена.';
-      item.articles = editArticles.length ? [...editArticles] : ['ст. 158 УК РФ'];
-      item.participants = [...editParticipants];
-      item.plan = [...editPlans];
-      item.expanded = true;
-
-      syncCaseDeadlineInCalendar(item);
-      selectedDay = item.deadline;
-      closeEditCaseModal();
-      renderAll();
-      scheduleSync();
-      showToast('Изменения сохранены, срок в календаре обновлён');
-    }
-
-    function toggleCaseExpand(caseId) {
-      const item = ws.casesData.find((c) => c.id === caseId);
-      if (item) {
-        item.expanded = !item.expanded;
-        renderCasesList();
-      }
-    }
-
-    function moveCaseDoc(caseId, idx, delta) {
-      const item = ws.casesData.find((c) => c.id === caseId);
-      if (!item) return;
-      const target = idx + delta;
-      if (target < 0 || target >= item.docs.length) return;
-      const [moved] = item.docs.splice(idx, 1);
-      item.docs.splice(target, 0, moved);
-      renderCasesList();
-      scheduleSync();
-    }
-
-    function deleteCaseById(caseId) {
-      ws.casesData = ws.casesData.filter((c) => c.id !== caseId);
-      removeCaseDeadlineEvents(caseId);
-      renderAll();
-      scheduleSync();
-      showToast('Дело удалено');
-    }
-
-    function renderCasesList() {
-      const container = document.getElementById('casesCardsContainer');
-      if (!ws.casesData.length) {
-        container.innerHTML = '<div class="card text-xs text-slate-400">Дел в производстве пока нет. Нажмите «+ Добавить дело» ниже.</div>';
-        return;
-      }
-
-      container.innerHTML = ws.casesData
-        .map((c) => {
-          const left = daysUntil(c.deadline);
-          const isUrgent = left <= (c.leadDays || 10);
-          const badgeCls = isUrgent ? 'bg-red-50 text-red-700 border-red-200' : 'bg-[#eef3fb] text-[#334e7b] border-[#d7e3f7]';
-
-          return `
-            <div class="card">
-              <div class="flex items-start justify-between gap-2 cursor-pointer" onclick="toggleCaseExpand('${c.id}')">
-                <div>
-                  <div class="text-base font-extrabold text-[#243b61]">УД ${esc(c.number)}</div>
-                  <div class="flex flex-wrap gap-1 mt-1">
-                    ${(c.articles || []).map((a) => `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">${esc(a)}</span>`).join('')}
-                  </div>
-                </div>
-                <div class="text-right shrink-0">
-                  <span class="inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${badgeCls}">${left} дн.</span>
-                  <div class="text-[11px] text-slate-400 mt-1">${c.expanded ? 'Свернуть ▲' : 'Подразделы ▼'}</div>
-                </div>
-              </div>
-
-              ${c.expanded ? `
-                <div class="mt-3 pt-3 border-t border-slate-100 space-y-2.5 text-xs">
-                  <div class="p-2.5 rounded-xl bg-slate-50">
-                    <div class="font-bold text-[#243b61] mb-0.5">Фабула и сроки</div>
-                    <div class="text-slate-600 mb-1">${esc(c.fabula)}</div>
-                    <div class="text-slate-500">Возбуждено: ${esc(c.opened)} • Срок до: ${esc(c.deadline)}</div>
-                  </div>
-
-                  <div class="p-2.5 rounded-xl bg-slate-50">
-                    <div class="font-bold text-[#243b61] mb-1">Участники (${(c.participants || []).length})</div>
-                    ${(c.participants || []).length
-                      ? c.participants.map((p) => `<div class="text-slate-700">• ${esc(p.name)} — <span class="text-slate-500">${esc(p.role)}</span></div>`).join('')
-                      : '<div class="text-slate-400">Участники пока не добавлены</div>'}
-                  </div>
-
-                  <div class="p-2.5 rounded-xl bg-slate-50">
-                    <div class="font-bold text-[#243b61] mb-1">План: что провести</div>
-                    ${(c.plan || []).length
-                      ? c.plan.map((pl) => `<div class="text-slate-700">• ${esc(pl)}</div>`).join('')
-                      : '<div class="text-slate-400">Пунктов плана нет</div>'}
-                  </div>
-
-                  <div class="p-2.5 rounded-xl bg-slate-50">
-                    <div class="font-bold text-[#243b61] mb-1.5">Документы дела (порядок для описи)</div>
-                    ${(c.docs || []).map((doc, idx) => `
-                      <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-white border border-slate-200 mb-1">
-                        <span class="font-medium text-slate-700">${esc(doc.name)} <small class="text-slate-400">(${esc(doc.kind)})</small></span>
-                        <div class="flex gap-1 shrink-0">
-                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" onclick="moveCaseDoc('${c.id}', ${idx}, -1)">↑</button>
-                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" onclick="moveCaseDoc('${c.id}', ${idx}, 1)">↓</button>
-                        </div>
-                      </div>
-                    `).join('')}
-                  </div>
-
-                  <div class="flex items-center justify-between gap-2 pt-1">
-                    <button type="button" class="btn-soft-secondary text-xs" onclick="openEditCaseModal('${c.id}')">Редактировать дело</button>
-                    <button type="button" class="btn-soft-ghost text-red-600 text-xs" onclick="deleteCaseById('${c.id}')">Удалить дело</button>
-                  </div>
-                </div>
-              ` : ''}
-            </div>
-          `;
-        })
-        .join('');
-    }
-
-    function renderSvodkaDeadlines() {
-      const el = document.getElementById('svodkaDeadlinesList');
-      if (!ws.casesData.length) {
-        el.innerHTML = '<div class="text-xs text-slate-400">Дел с контролем сроков пока нет.</div>';
-        return;
-      }
-      el.innerHTML = ws.casesData
-        .map((c) => {
-          const left = daysUntil(c.deadline);
-          const urgent = left <= (c.leadDays || 10);
-          return `
-            <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 ${
-              urgent ? 'bg-red-50/70 border-red-200' : 'bg-white border-slate-200'
-            }">
-              <div>
-                <div class="text-xs font-bold text-[#243b61]">УД ${esc(c.number)} • ${esc((c.articles || []).join(', '))}</div>
-                <div class="text-[11px] text-slate-500">Срок до ${esc(c.deadline)}</div>
-              </div>
-              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${urgent ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-700'}">${left} дн.</span>
-            </div>
-          `;
-        })
-        .join('');
-    }
-
-    /* ==================== БЛАНКИ, БАЗА ЗНАНИЙ И ПРОФИЛЬ ==================== */
-
-    function syncProfileInputs() {
-      document.getElementById('profOrg').value = ws.profile.org || '';
-      document.getElementById('profRank').value = ws.profile.rank || '';
-      document.getElementById('profFio').value = ws.profile.fio || '';
-    }
-
-    function onProfileInput() {
-      ws.profile.org = document.getElementById('profOrg').value;
-      ws.profile.rank = document.getElementById('profRank').value;
-      ws.profile.fio = document.getElementById('profFio').value;
-      updateBlankDraft();
-      scheduleSync();
-    }
-
-    function setBlankGroup(grp) {
-      currentBlankGrp = grp;
-      ['Постановления', 'Протоколы', 'Иные документы'].forEach((g) => {
-        const b = document.getElementById('bGrp-' + g);
-        b.className = g === grp ? 'btn-soft-secondary text-xs py-2' : 'btn-soft-ghost text-xs py-2';
+    function renderColorsBar() {
+      const bar = document.getElementById("colorsBar");
+      let html = `<button class="color-chip ${state.activeColorFilter === 'all' ? 'selected' : ''}" onclick="filterColor('all')">Все (${state.events.length})</button>`;
+      state.colors.forEach(c => {
+        html += `<button class="color-chip ${state.activeColorFilter === c.id ? 'selected' : ''}" onclick="filterColor('${c.id}')">
+          <span class="color-swatch" style="background:${c.hex}"></span>${c.name}
+        </button>`;
       });
-      renderBlankSelect();
+      bar.innerHTML = html;
     }
 
-    function renderBlankSelect() {
-      const q = (document.getElementById('blankSearch').value || '').toLowerCase();
-      let list = BLANKS_LIST.filter((b) => b.group === currentBlankGrp);
-      if (q) {
-        const m = BLANKS_LIST.filter((b) => b.title.toLowerCase().includes(q));
-        if (m.length) list = m;
+    function filterColor(id) {
+      state.activeColorFilter = id;
+      renderColorsBar();
+      renderCalendar();
+      renderDayEvents();
+    }
+
+    function renderCalendar() {
+      document.getElementById("calTitle").textContent = `${MONTHS_RU[state.viewMonth]} ${state.viewYear}`;
+      const cells = document.getElementById("calCells");
+      const firstDay = new Date(state.viewYear, state.viewMonth, 1);
+      let startDow = (firstDay.getDay() + 6) % 7;
+      const daysInMonth = new Date(state.viewYear, state.viewMonth + 1, 0).getDate();
+
+      let allDays = [];
+      for (let i = 0; i < startDow; i++) allDays.push(null);
+      for (let d = 1; d <= daysInMonth; d++) allDays.push(d);
+
+      if (state.calMode === "week") {
+        const selDay = parseInt(state.selectedDate.split("-")[2], 10) || 1;
+        const idx = allDays.indexOf(selDay);
+        const weekStart = idx >= 0 ? Math.floor(idx / 7) * 7 : 0;
+        allDays = allDays.slice(weekStart, weekStart + 7);
       }
-      document.getElementById('blankPicker').innerHTML = list
-        .map((b) => `<option value="${b.id}">${esc(b.title)} (${esc(b.ref)})</option>`)
-        .join('');
 
-      const caseSel = document.getElementById('blankCaseSelect');
-      caseSel.innerHTML = ws.casesData.length
-        ? ws.casesData.map((c) => `<option value="${c.id}">УД ${esc(c.number)} — ${esc((c.articles || []).join(', '))}</option>`).join('')
-        : '<option value="">— Дела пока не добавлены —</option>';
-
-      updateBlankDraft();
-    }
-
-    function updateBlankDraft() {
-      const blank = BLANKS_LIST.find((b) => b.id === document.getElementById('blankPicker').value) || BLANKS_LIST[0];
-      const mode = (document.querySelector('input[name="bMode"]:checked') || {}).value || 'case';
-      const org = ws.profile.org || 'Следственный орган';
-      const rank = ws.profile.rank || 'следователь';
-      const fio = ws.profile.fio || '________________';
-      const editor = document.getElementById('blankEditor');
-
-      if (mode === 'empty') {
-        editor.value = `${blank.title.toUpperCase()}\n(${blank.ref})\n\n«___» __________ 2026 г.\n\nТекст документа:`;
-      } else if (mode === 'header') {
-        editor.value = `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\n(${blank.ref})\n\n«___» __________ 2026 г.\n\nТекст документа:`;
-      } else {
-        const kase = ws.casesData.find((c) => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
-        const kbRef = ws.kbMaterials.map((m) => `«${m.title}»`).join(', ');
-        if (!kase) {
-          editor.value = `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\nпо уголовному делу № ______________\n\nДобавьте дело во вкладке «Дела», чтобы подставить реквизиты и фабулу.`;
+      let html = "";
+      allDays.forEach(d => {
+        if (!d) {
+          html += `<div class="cal-day empty"></div>`;
           return;
         }
-        editor.value =
-          `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\nпо уголовному делу ${kase.number} (${(kase.articles || []).join(', ')})\n\n` +
-          `Сформировано по образцу с учётом материалов дела, расчёта сроков по УПК РФ (срок до ${kase.deadline}) ` +
-          `и пособий из Базы знаний: ${kbRef}.\n\n` +
-          `Фабула: ${kase.fabula}`;
-      }
-    }
-
-    function downloadBlankDocx() {
-      const txt = document.getElementById('blankEditor').value;
-      const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'></head><body><pre style="font-family:'Times New Roman',serif;font-size:14pt;white-space:pre-wrap;">${esc(txt)}</pre></body></html>`;
-      const blob = new Blob(['\ufeff', html], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'ARM_Sledovatelya_Dokument.docx';
-      a.click();
-      showToast('Документ .DOCX скачан');
-    }
-
-    function attachBlankToCase() {
-      const kase = ws.casesData.find((c) => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
-      if (!kase) {
-        showToast('Сначала добавьте дело');
-        return;
-      }
-      const blank = BLANKS_LIST.find((b) => b.id === document.getElementById('blankPicker').value) || BLANKS_LIST[0];
-      kase.docs = kase.docs || [];
-      kase.docs.push({ name: `${blank.title} (${kase.number})`, kind: 'Создать' });
-      renderCasesList();
-      scheduleSync();
-      showToast(`Добавлено в документы дела ${kase.number}`);
-    }
-
-    function renderKbSection() {
-      document.getElementById('kbCatChips').innerHTML = KB_CATEGORIES
-        .map((c) => {
-          const act = kbSelectedCats.includes(c);
-          return `<button type="button" onclick="toggleKbCat('${esc(c)}')" class="px-2.5 py-1 rounded-full text-xs font-semibold border ${
-            act ? 'bg-[#334e7b] text-white border-[#334e7b]' : 'bg-white text-slate-600 border-slate-200'
-          }">${esc(c)}</button>`;
-        })
-        .join('');
-
-      document.getElementById('kbMaterialList').innerHTML = ws.kbMaterials
-        .map((m) => `
-          <div class="card">
-            <div class="text-sm font-bold text-[#243b61]">${esc(m.title)}</div>
-            <div class="flex flex-wrap gap-1 my-1.5">
-              ${(m.cats || []).map((c) => `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#eef3fb] text-[#334e7b]">${esc(c)}</span>`).join('')}
-            </div>
-            <div class="text-xs text-slate-600">${esc(m.notes)}</div>
-          </div>
-        `)
-        .join('');
-    }
-
-    function toggleKbCat(c) {
-      if (kbSelectedCats.includes(c)) kbSelectedCats = kbSelectedCats.filter((x) => x !== c);
-      else kbSelectedCats.push(c);
-      renderKbSection();
-    }
-
-    function addKbMaterial() {
-      const title = (document.getElementById('kbNewTitle').value || '').trim();
-      if (!title) return;
-      const notes = (document.getElementById('kbNewNotes').value || '').trim() || 'Подключено к генерации бланков и расчётам по УПК.';
-      ws.kbMaterials.unshift({ title, cats: [...kbSelectedCats], notes });
-      document.getElementById('kbNewTitle').value = '';
-      document.getElementById('kbNewNotes').value = '';
-      renderKbSection();
-      updateBlankDraft();
-      scheduleSync();
-      showToast('Добавлено в Базу знаний');
-    }
-
-    function renderAllActionsList() {
-      const sorted = [...ws.eventsData].sort((a, b) => (a.dt || '').localeCompare(b.dt || ''));
-      if (!sorted.length) {
-        document.getElementById('allActionsContainer').innerHTML = '<div class="text-xs text-slate-400">Запланированных действий пока нет.</div>';
-        return;
-      }
-      document.getElementById('allActionsContainer').innerHTML = sorted
-        .map((ev) => {
-          const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
-          return `
-            <div class="p-3 rounded-xl border mb-2 flex items-center justify-between gap-2 ${cat.cls}">
-              <div>
-                <div class="text-xs font-bold">${esc(ev.title)} • ${esc(ev.caseNum)}</div>
-                <div class="text-[11px] opacity-80">${esc((ev.dt || '').replace('T', ' '))} (${esc(cat.label)})</div>
-              </div>
-              <button type="button" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700"
-                onclick="openEventModal('${ev.id}')">Изменить</button>
-            </div>
-          `;
-        })
-        .join('');
-    }
-
-    function renderMetrics() {
-      const todayIso = getTodayIso();
-      document.getElementById('statCasesCount').textContent = String(ws.casesData.length);
-      document.getElementById('statUrgentCount').textContent = String(ws.casesData.filter((c) => daysUntil(c.deadline) <= (c.leadDays || 10)).length);
-      document.getElementById('statTodayCount').textContent = String(ws.eventsData.filter((e) => e.dt && e.dt.startsWith(todayIso)).length);
-    }
-
-    function renderAll() {
-      renderMetrics();
-      renderCalendarSection();
-      renderSvodkaDeadlines();
-      renderCasesList();
-      renderBlankSelect();
-      renderKbSection();
-    }
-
-    setNetIndicator();
-    window.addEventListener('online', () => {
-      setNetIndicator();
-      showToast('Связь восстановлена');
-      pushToCloud();
-    });
-    window.addEventListener('offline', () => {
-      setNetIndicator();
-      setCloudIndicator('warn', 'Офлайн');
-    });
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        const iso = `${state.viewYear}-${String(state.viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const dayEvs = state.events.filter(e => e.date === iso && (state.activeColorFilter === "all" || e.colorId === state.activeColorFilter));
+        const dots = dayEvs.map(e => {
+          const col = state.colors.find(c => c.id === e.colorId);
+          return `<span class="day-dot" style="background:${col ? col.hex : '#1a4fa3'}"></span>`;
+        }).join("");
+        const isToday = iso === "2026-11-26";
+        const isSel = iso === state.selectedDate;
+        html += `<div class="cal-day ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''}" onclick="selectDate('${iso}')">
+          <span>${d}</span>
+          <div class="day-dots">${dots}</div>
+        </div>`;
       });
+      cells.innerHTML = html;
     }
 
-    (async function init() {
-      try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session && session.user) {
-          await enterApp(session.user);
-        }
-      } catch (err) {
-        console.error(err);
+    function selectDate(iso) {
+      state.selectedDate = iso;
+      renderCalendar();
+      renderDayEvents();
+      document.getElementById("accDayEvents").classList.add("open");
+    }
+
+    function renderDayEvents() {
+      document.getElementById("selectedDateLabel").textContent = state.selectedDate.split("-").reverse().join(".");
+      const list = state.events.filter(e => e.date === state.selectedDate && (state.activeColorFilter === "all" || e.colorId === state.activeColorFilter));
+      const box = document.getElementById("dayEventsBody");
+      if (!list.length) {
+        box.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding-top:8px;">Событий на выбранный день нет.</div>`;
+      } else {
+        box.innerHTML = list.map(e => {
+          const col = state.colors.find(c => c.id === e.colorId);
+          return `<div class="item-row" style="margin-top:8px;">
+            <div class="row-between">
+              <span><span class="color-swatch" style="display:inline-block; background:${col ? col.hex : '#1a4fa3'}; margin-right:6px;"></span><strong>${e.time}</strong> — ${e.title}</span>
+              <button class="btn btn-sm btn-danger" onclick="deleteEvent('${e.id}')">&#10005;</button>
+            </div>
+          </div>`;
+        }).join("");
       }
-    })();
+      document.getElementById("kpiToday").textContent = state.events.filter(e => e.date === "2026-11-26").length;
+    }
+
+    function deleteEvent(id) {
+      state.events = state.events.filter(e => e.id !== id);
+      persist();
+      renderCalendar();
+      renderDayEvents();
+    }
+
+    function renderDeadlines() {
+      const box = document.getElementById("deadlinesBody");
+      document.getElementById("kpiActive").textContent = state.cases.length;
+      if (!state.cases.length) {
+        box.innerHTML = `<div style="font-size:12px; color:var(--text-muted); padding-top:8px;">Нет активных дел на контроле.</div>`;
+        return;
+      }
+      box.innerHTML = state.cases.map(c => `
+        <div class="item-row" style="margin-top:8px;">
+          <div class="row-between">
+            <div><strong>${c.num}</strong> (${c.art})</div>
+            <span class="badge">Срок до ${c.deadline.split("-").reverse().join(".")}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function openColorManager() {
+      renderColorEditList();
+      document.getElementById("colorModal").classList.add("open");
+    }
+    function renderColorEditList() {
+      const box = document.getElementById("colorEditList");
+      box.innerHTML = state.colors.map((c, idx) => `
+        <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+          <input type="color" value="${c.hex}" style="width:42px; height:34px; padding:2px; margin:0;" onchange="updateColor(${idx}, 'hex', this.value)" />
+          <input type="text" value="${c.name}" style="flex:1; margin:0;" onchange="updateColor(${idx}, 'name', this.value)" />
+          ${state.colors.length > 1 ? `<button class="btn btn-sm btn-danger" onclick="removeColor('${c.id}')">&#10005;</button>` : ''}
+        </div>
+      `).join("");
+    }
+    function updateColor(idx, field, val) {
+      state.colors[idx][field] = val;
+      persist();
+      renderColorsBar();
+      renderCalendar();
+      renderDayEvents();
+    }
+    function addNewColor() {
+      const hex = document.getElementById("newColorHex").value;
+      const name = document.getElementById("newColorName").value.trim() || "Новая категория";
+      state.colors.push({ id: "c_" + Date.now(), name, hex });
+      document.getElementById("newColorName").value = "";
+      persist();
+      renderColorEditList();
+      renderColorsBar();
+    }
+    function removeColor(id) {
+      const fallback = state.colors.find(c => c.id !== id).id;
+      state.events.forEach(e => { if (e.colorId === id) e.colorId = fallback; });
+      state.colors = state.colors.filter(c => c.id !== id);
+      if (state.activeColorFilter === id) state.activeColorFilter = "all";
+      persist();
+      renderColorEditList();
+      renderColorsBar();
+      renderCalendar();
+      renderDayEvents();
+    }
+
+    function openEventModal() {
+      document.getElementById("evDate").value = state.selectedDate;
+      document.getElementById("evColorSelect").innerHTML = state.colors.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+      document.getElementById("eventModal").classList.add("open");
+    }
+    function saveEvent() {
+      const date = document.getElementById("evDate").value;
+      const time = document.getElementById("evTime").value || "12:00";
+      const title = document.getElementById("evTitle").value.trim();
+      const colorId = document.getElementById("evColorSelect").value;
+      if (!title) return;
+      state.events.push({ id: "ev_" + Date.now(), date, time, title, colorId });
+      document.getElementById("evTitle").value = "";
+      persist();
+      closeModal("eventModal");
+      renderColorsBar();
+      renderCalendar();
+      renderDayEvents();
+    }
+
+    function openCaseModal() { document.getElementById("caseModal").classList.add("open"); }
+    function saveCase() {
+      const num = document.getElementById("cNum").value.trim();
+      const art = document.getElementById("cArt").value.trim();
+      const deadline = document.getElementById("cDeadline").value || "2026-12-30";
+      if (!num) return;
+      state.cases.push({ id: "u_" + Date.now(), num, art, deadline });
+      persist();
+      closeModal("caseModal");
+      renderCases();
+      renderDeadlines();
+    }
+    function renderCases() {
+      const q = (document.getElementById("caseSearch").value || "").toLowerCase();
+      const list = state.cases.filter(c => (c.num + " " + c.art).toLowerCase().includes(q));
+      document.getElementById("casesList").innerHTML = list.map(c => `
+        <div class="item-row">
+          <div class="row-between">
+            <strong>${c.num}</strong>
+            <span class="badge">Срок до ${c.deadline.split("-").reverse().join(".")}</span>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">${c.art}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderCatChips(containerId, currentCat, onSelectFnName) {
+      const all = getAllBlanks();
+      const cats = ["Все", "Постановления", "Протоколы", "Иные документы", "Свои"];
+      document.getElementById(containerId).innerHTML = cats.map(cat => {
+        const cnt = cat === "Все" ? all.length : all.filter(b => b.category === cat).length;
+        return `<button class="btn btn-sm ${currentCat === cat ? 'active' : ''}" onclick="${onSelectFnName}('${cat}')">${cat} (${cnt})</button>`;
+      }).join("");
+    }
+
+    function setKbCat(cat) { state.kbCatFilter = cat; renderKB(); }
+    function setBlankTabCat(cat) { state.blankTabCatFilter = cat; renderBlanksTab(); }
+
+    function renderKB() {
+      renderCatChips("kbCatFilters", state.kbCatFilter, "setKbCat");
+      const q = (document.getElementById("kbSearch").value || "").toLowerCase();
+      const list = getAllBlanks().filter(b =>
+        (state.kbCatFilter === "Все" || b.category === state.kbCatFilter) &&
+        b.title.toLowerCase().includes(q)
+      );
+      document.getElementById("kbList").innerHTML = list.map(b => `
+        <div class="item-row">
+          <div style="font-size:12px; font-weight:600; margin-bottom:5px;">${b.title}</div>
+          <div class="row-between">
+            <div>
+              <span class="badge">${b.builtin ? "Встроенный" : "Свой"}</span>
+              <span class="badge">${b.category}</span>
+            </div>
+            <div style="display:flex; gap:5px;">
+              <button class="btn btn-sm" onclick="openEditBlankModal('${b.id}')">Ред.</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteBlank('${b.id}', ${!!b.builtin})">Удалить</button>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderBlanksTab() {
+      renderCatChips("blankCatFilters", state.blankTabCatFilter, "setBlankTabCat");
+      const q = (document.getElementById("blankSearch").value || "").toLowerCase();
+      const list = getAllBlanks().filter(b =>
+        (state.blankTabCatFilter === "Все" || b.category === state.blankTabCatFilter) &&
+        b.title.toLowerCase().includes(q)
+      );
+      document.getElementById("blanksTabList").innerHTML = list.map(b => `
+        <div class="item-row">
+          <div style="font-size:12px; font-weight:600; margin-bottom:5px;">${b.title}</div>
+          <div class="row-between">
+            <span class="badge">${b.category}</span>
+            <button class="btn btn-sm btn-primary" onclick="downloadDoc('${b.id}')">Скачать .DOC</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function openAddBlankModal() {
+      document.getElementById("blankModalTitle").textContent = "Добавить свой бланк / файл";
+      document.getElementById("editBlankId").value = "";
+      document.getElementById("editBlankCat").value = "Свои";
+      document.getElementById("editBlankName").value = "";
+      document.getElementById("editBlankText").value = "";
+      document.getElementById("blankModal").classList.add("open");
+    }
+
+    function openEditBlankModal(id) {
+      const item = getAllBlanks().find(b => b.id === id);
+      if (!item) return;
+      document.getElementById("blankModalTitle").textContent = "Изменить бланк";
+      document.getElementById("editBlankId").value = item.id;
+      document.getElementById("editBlankCat").value = item.category;
+      document.getElementById("editBlankName").value = item.title;
+      document.getElementById("editBlankText").value = item.content || "";
+      document.getElementById("blankModal").classList.add("open");
+    }
+
+    function handleFileUpload(ev) {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        if (!document.getElementById("editBlankName").value) {
+          document.getElementById("editBlankName").value = file.name.replace(/\.[^.]+$/, "");
+        }
+        document.getElementById("editBlankText").value = e.target.result;
+      };
+      reader.readAsText(file);
+    }
+
+    function saveBlank() {
+      const id = document.getElementById("editBlankId").value;
+      const category = document.getElementById("editBlankCat").value;
+      const title = document.getElementById("editBlankName").value.trim();
+      const content = document.getElementById("editBlankText").value;
+      if (!title) return;
+
+      if (!id) {
+        state.customBlanks.unshift({ id: "cust_" + Date.now(), category, title, content, builtin: false });
+      } else if (BUILTIN_BLANKS.some(b => b.id === id)) {
+        state.editedBuiltins[id] = { category, title, content };
+      } else {
+        const idx = state.customBlanks.findIndex(b => b.id === id);
+        if (idx >= 0) state.customBlanks[idx] = { ...state.customBlanks[idx], category, title, content };
+      }
+      persist();
+      closeModal("blankModal");
+      renderKB();
+      renderBlanksTab();
+    }
+
+    function deleteBlank(id, isBuiltin) {
+      if (isBuiltin) {
+        if (!state.dismissedBuiltins.includes(id)) state.dismissedBuiltins.push(id);
+      } else {
+        state.customBlanks = state.customBlanks.filter(b => b.id !== id);
+      }
+      persist();
+      renderKB();
+      renderBlanksTab();
+    }
+
+    function restoreBuiltins() {
+      state.dismissedBuiltins = [];
+      state.editedBuiltins = {};
+      persist();
+      renderKB();
+      renderBlanksTab();
+    }
+
+    function downloadDoc(id) {
+      const item = getAllBlanks().find(b => b.id === id);
+      if (!item) return;
+      const fio = document.getElementById("profFio").value || "Следователь";
+      const rank = document.getElementById("profRank").value || "";
+      const body = item.content || `${item.title}\n\nСледователь: ${rank} ${fio}\nДата: ${state.selectedDate.split("-").reverse().join(".")}`;
+      const blob = new Blob(["\ufeff" + body], { type: "application/msword;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = item.title.slice(0, 60) + ".doc";
+      a.click();
+    }
+
+    function updateHeaderEmail() {
+      document.getElementById("headerEmail").textContent = document.getElementById("profMail").value;
+    }
+    function saveProfile() {
+      updateHeaderEmail();
+      alert("Профиль сохранён");
+    }
+    function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+    renderColorsBar();
+    renderCalendar();
+    renderDayEvents();
+    renderDeadlines();
+    renderCases();
+    renderKB();
+    renderBlanksTab();
   </script>
 </body>
 </html>
