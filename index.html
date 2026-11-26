@@ -16,13 +16,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // ==== Хэш пароля для офлайн-режима ====
     async function sha256Hex(text) {
       const buf = new TextEncoder().encode(text);
       const hash = await crypto.subtle.digest('SHA-256', buf);
-      return Array.from(new Uint8Array(hash))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
+      return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
     }
 
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
@@ -39,28 +36,18 @@
               const s = parsed && parsed.currentSession ? parsed.currentSession : parsed;
               if (s && s.user) return s;
               return null;
-            } catch (e) {
-              return null;
-            }
+            } catch (e) { return null; }
           }
 
           function writeSession(user) {
-            const session = {
-              access_token: 'offline_token',
-              token_type: 'bearer',
-              user: user
-            };
-            try {
-              localStorage.setItem(sessionKey, JSON.stringify(session));
-            } catch (e) {}
+            const session = { access_token: 'offline_token', token_type: 'bearer', user: user };
+            try { localStorage.setItem(sessionKey, JSON.stringify(session)); } catch (e) {}
             return session;
           }
 
           return {
             auth: {
-              async getSession() {
-                return { data: { session: readSession() }, error: null };
-              },
+              async getSession() { return { data: { session: readSession() }, error: null }; },
               async signInWithPassword({ email, password }) {
                 if (!navigator.onLine) {
                   if (!password || String(password).length < 6) {
@@ -71,52 +58,25 @@
                   const currentHash = await sha256Hex(email + ':' + password);
 
                   if (storedHash) {
-                    if (currentHash !== storedHash) {
-                      return { data: { session: null, user: null }, error: { message: 'Неверный пароль' } };
-                    }
+                    if (currentHash !== storedHash) return { data: { session: null, user: null }, error: { message: 'Неверный пароль' } };
                   } else {
                     try { localStorage.setItem(passKey, currentHash); } catch (e) {}
                   }
 
                   const existing = readSession();
-                  let user;
-                  if (existing && existing.user && existing.user.email === email) {
-                    user = existing.user;
-                  } else {
-                    user = {
-                      id: 'offline_' + btoa(unescape(encodeURIComponent(email))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24),
-                      email: email
-                    };
-                  }
+                  let user = existing && existing.user && existing.user.email === email ? existing.user : { id: 'offline_' + btoa(unescape(encodeURIComponent(email))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24), email: email };
                   const s = writeSession(user);
                   return { data: { session: s, user: user }, error: null };
                 }
                 return { data: { session: null, user: null }, error: { message: 'Нет соединения с сервером авторизации' } };
               },
-              async signUp() {
-                return { data: { session: null, user: null }, error: { message: 'Регистрация требует подключения к сети' } };
-              },
-              async signOut() {
-                try { localStorage.removeItem(sessionKey); } catch (e) {}
-                return { error: null };
-              }
+              async signUp() { return { data: { session: null, user: null }, error: { message: 'Регистрация требует подключения к сети' } }; },
+              async signOut() { try { localStorage.removeItem(sessionKey); } catch (e) {} return { error: null }; }
             },
             from() {
               return {
-                select() {
-                  return {
-                    eq() {
-                      return {
-                        async maybeSingle() {
-                          return { data: null, error: { code: 'OFFLINE', message: 'Офлайн-режим' } };
-                        }
-                      };
-                    }
-                  };
-                },
-                async upsert() {
-                  return { error: { code: 'OFFLINE', message: 'Офлайн-режим' } };
-                }
+                select() { return { eq() { return { async maybeSingle() { return { data: null, error: { code: 'OFFLINE', message: 'Офлайн-режим' } }; } }; } }; },
+                async upsert() { return { error: { code: 'OFFLINE', message: 'Офлайн-режим' } }; }
               };
             }
           };
@@ -126,480 +86,63 @@
   </script>
   <style>
     :root {
-      --bg: #f6f8fc;
-      --surface: #ffffff;
-      --surface-soft: #f9fbff;
-      --primary: #334e7b;
-      --primary-soft: #eef3fb;
-      --accent: #5b7bb2;
-      --accent-soft: #e6eefc;
-      --text: #1e293b;
-      --muted: #64748b;
-      --border: #e6ebf2;
-
-      --cat-court-bg: #fdf2f2;
-      --cat-court-border: #f5d0d0;
-      --cat-court-text: #9b3b3b;
-      --cat-court-dot: #d97777;
-
-      --cat-work-bg: #eff6ff;
-      --cat-work-border: #cfe0fc;
-      --cat-work-text: #2c5282;
-      --cat-work-dot: #5b7bb2;
-
-      --cat-expert-bg: #f0f9f4;
-      --cat-expert-border: #cbe8d6;
-      --cat-expert-text: #276749;
-      --cat-expert-dot: #489c73;
-
-      --cat-term-bg: #fffbeb;
-      --cat-term-border: #f6e0a6;
-      --cat-term-text: #8c5a19;
-      --cat-term-dot: #d69e2e;
-
-      --shadow-soft: 0 4px 20px rgba(51, 78, 123, 0.05);
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      --radius-sm: 10px;
+      --bg: #f6f8fc; --surface: #ffffff; --surface-soft: #f9fbff; --primary: #334e7b; --primary-soft: #eef3fb;
+      --accent: #5b7bb2; --accent-soft: #e6eefc; --text: #1e293b; --muted: #64748b; --border: #e6ebf2;
+      --cat-court-bg: #fdf2f2; --cat-court-border: #f5d0d0; --cat-court-text: #9b3b3b; --cat-court-dot: #d97777;
+      --cat-work-bg: #eff6ff; --cat-work-border: #cfe0fc; --cat-work-text: #2c5282; --cat-work-dot: #5b7bb2;
+      --cat-expert-bg: #f0f9f4; --cat-expert-border: #cbe8d6; --cat-expert-text: #276749; --cat-expert-dot: #489c73;
+      --cat-term-bg: #fffbeb; --cat-term-border: #f6e0a6; --cat-term-text: #8c5a19; --cat-term-dot: #d69e2e;
+      --shadow-soft: 0 4px 20px rgba(51, 78, 123, 0.05); --radius-lg: 20px; --radius-md: 14px; --radius-sm: 10px;
     }
-
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      margin: 0;
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      padding-bottom: 96px;
-      line-height: 1.45;
-    }
-
-    .auth-screen {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: var(--bg);
-    }
-
-    .auth-card {
-      width: 100%;
-      max-width: 410px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 26px 22px;
-      box-shadow: 0 14px 36px rgba(51, 78, 123, 0.1);
-    }
-
-    .auth-tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      background: var(--bg);
-      padding: 4px;
-      border-radius: 12px;
-      margin-bottom: 16px;
-    }
-
-    .auth-tab {
-      border: none;
-      background: transparent;
-      padding: 8px;
-      border-radius: 9px;
-      font-weight: 600;
-      font-size: 13px;
-      color: var(--muted);
-      cursor: pointer;
-    }
-
-    .auth-tab.active {
-      background: var(--surface);
-      color: var(--primary);
-      box-shadow: 0 2px 6px rgba(51, 78, 123, 0.08);
-    }
-
-    .auth-msg {
-      font-size: 12.5px;
-      padding: 10px 12px;
-      border-radius: 11px;
-      margin-bottom: 12px;
-      display: none;
-    }
-
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding-bottom: 96px; line-height: 1.45; }
+    .auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--bg); }
+    .auth-card { width: 100%; max-width: 410px; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 26px 22px; box-shadow: 0 14px 36px rgba(51, 78, 123, 0.1); }
+    .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
+    .auth-tab { border: none; background: transparent; padding: 8px; border-radius: 9px; font-weight: 600; font-size: 13px; color: var(--muted); cursor: pointer; }
+    .auth-tab.active { background: var(--surface); color: var(--primary); box-shadow: 0 2px 6px rgba(51, 78, 123, 0.08); }
+    .auth-msg { font-size: 12.5px; padding: 10px 12px; border-radius: 11px; margin-bottom: 12px; display: none; }
     .auth-msg.error { display: block; background: #fef2f2; color: #b91c1c; }
     .auth-msg.success { display: block; background: #ecfdf5; color: #047857; }
-
-    .app-container {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 12px 14px 28px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 15px;
-      box-shadow: var(--shadow-soft);
-      margin-bottom: 12px;
-    }
-
-    .status-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 11px;
-      border-radius: 999px;
-      font-size: 11.5px;
-      font-weight: 600;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .brand-hero {
-      text-align: center;
-      padding: 6px 8px 16px;
-    }
-
-    .brand-emblem {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 12px;
-      border-radius: 18px;
-      background: #0d1b3e;
-      border: 1.5px solid #1e356b;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 8px 20px rgba(13, 27, 62, 0.16);
-    }
-
-    .metric-tile {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 10px 6px;
-      text-align: center;
-      box-shadow: var(--shadow-soft);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .metric-tile.active {
-      border-color: var(--accent);
-      background: var(--primary-soft);
-    }
-
-    .ios-week-grid {
-      display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 4px;
-    }
-
-    .ios-day-col {
-      background: var(--surface-soft);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 5px 3px 6px;
-      min-height: 138px;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 4px;
-      cursor: pointer;
-      transition: background 0.15s ease, border-color 0.15s ease;
-    }
-
-    .ios-day-col.selected {
-      background: #ffffff;
-      border-color: var(--accent);
-      box-shadow: 0 2px 10px rgba(91, 123, 178, 0.12);
-    }
-
-    .ios-day-letter {
-      text-align: center;
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-    }
-
-    .ios-day-num {
-      width: 24px;
-      height: 24px;
-      margin: 1px auto 3px;
-      border-radius: 999px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .ios-day-num.today {
-      background: #e06c6c;
-      color: #ffffff;
-    }
-
-    .ios-mini-event {
-      border-radius: 7px;
-      padding: 3px 4px;
-      font-size: 9.5px;
-      line-height: 1.2;
-      font-weight: 600;
-      text-align: left;
-      overflow: hidden;
-      border: 1px solid transparent;
-      cursor: pointer;
-    }
-
-    .ios-mini-event .ev-title {
-      display: block;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .ios-mini-event .ev-time {
-      display: block;
-      font-size: 8.5px;
-      opacity: 0.82;
-      margin-top: 1px;
-    }
-
-    .ev-court {
-      background: var(--cat-court-bg);
-      border-color: var(--cat-court-border);
-      color: var(--cat-court-text);
-    }
-
-    .ev-work {
-      background: var(--cat-work-bg);
-      border-color: var(--cat-work-border);
-      color: var(--cat-work-text);
-    }
-
-    .ev-expert {
-      background: var(--cat-expert-bg);
-      border-color: var(--cat-expert-border);
-      color: var(--cat-expert-text);
-    }
-
-    .ev-term {
-      background: var(--cat-term-bg);
-      border-color: var(--cat-term-border);
-      color: var(--cat-term-text);
-    }
-
-    .inner-accordion {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      background: var(--surface);
-      margin-bottom: 10px;
-      overflow: hidden;
-      box-shadow: var(--shadow-soft);
-    }
-
-    .accordion-header {
-      width: 100%;
-      background: var(--surface);
-      border: none;
-      padding: 13px 15px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      cursor: pointer;
-      text-align: left;
-    }
-
-    .accordion-body {
-      padding: 0 15px 14px;
-      border-top: 1px solid var(--border);
-      background: var(--surface-soft);
-    }
-
-    .chevron-icon {
-      transition: transform 0.2s ease;
-      color: var(--muted);
-    }
-
-    .chevron-icon.open {
-      transform: rotate(180deg);
-    }
-
-    .soft-input, .soft-select, .soft-textarea {
-      width: 100%;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 13.5px;
-      color: var(--text);
-      background: #ffffff;
-      font-family: inherit;
-    }
-
-    .soft-input:focus, .soft-select:focus, .soft-textarea:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(91, 123, 178, 0.14);
-    }
-
-    .btn-soft-primary {
-      background: var(--primary);
-      color: #ffffff;
-      border: none;
-      border-radius: 12px;
-      padding: 11px 15px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: opacity 0.15s ease;
-    }
-
-    .btn-soft-secondary {
-      background: var(--primary-soft);
-      color: var(--primary);
-      border: 1px solid #d7e3f7;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    .btn-soft-ghost {
-      background: #ffffff;
-      color: var(--muted);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 9px 12px;
-      font-size: 12.5px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(30, 41, 59, 0.35);
-      backdrop-filter: blur(3px);
-      z-index: 60;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      padding: 10px;
-    }
-
-    @media (min-width: 640px) {
-      .modal-overlay {
-        align-items: center;
-      }
-    }
-
-    .modal-sheet {
-      width: 100%;
-      max-width: 540px;
-      background: #ffffff;
-      border-radius: 22px;
-      padding: 18px;
-      border: 1px solid var(--border);
-      box-shadow: 0 20px 45px rgba(30, 41, 59, 0.16);
-      max-height: 88vh;
-      overflow-y: auto;
-    }
-
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(255, 255, 255, 0.96);
-      backdrop-filter: blur(12px);
-      border-top: 1px solid var(--border);
-      box-shadow: 0 -4px 20px rgba(51, 78, 123, 0.06);
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      padding: 8px 4px 12px;
-      z-index: 45;
-    }
-
-    .nav-tab {
-      border: none;
-      background: transparent;
-      border-radius: 13px;
-      padding: 6px 2px;
-      min-height: 54px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      color: var(--muted);
-      font-size: 10.5px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .nav-tab.active {
-      background: var(--primary-soft);
-      color: var(--primary);
-      font-weight: 700;
-    }
-
-    .toast-bar {
-      position: fixed;
-      top: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--primary);
-      color: #ffffff;
-      padding: 9px 16px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      z-index: 80;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-      max-width: 92vw;
-      text-align: center;
-    }
-
-    .toast-bar.show {
-      opacity: 1;
-    }
-
-    @media (max-width: 440px) {
-      .nav-tab {
-        font-size: 9.5px;
-      }
-      .ios-day-col {
-        padding: 4px 2px 5px;
-        min-height: 126px;
-      }
-      .ios-mini-event {
-        padding: 2.5px 3px;
-        font-size: 9px;
-      }
-    }
+    .app-container { max-width: 820px; margin: 0 auto; padding: 12px 14px 28px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 15px; box-shadow: var(--shadow-soft); margin-bottom: 12px; }
+    .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; transition: all 0.15s ease; }
+    .brand-hero { text-align: center; padding: 6px 8px 16px; }
+    .brand-emblem { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px; background: #0d1b3e; border: 1.5px solid #1e356b; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(13, 27, 62, 0.16); }
+    .metric-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 6px; text-align: center; box-shadow: var(--shadow-soft); cursor: pointer; transition: all 0.15s ease; }
+    .metric-tile.active { border-color: var(--accent); background: var(--primary-soft); }
+    .ios-week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+    .ios-day-col { background: var(--surface-soft); border: 1px solid var(--border); border-radius: 12px; padding: 5px 3px 6px; min-height: 138px; display: flex; flex-direction: column; align-items: stretch; gap: 4px; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .ios-day-col.selected { background: #ffffff; border-color: var(--accent); box-shadow: 0 2px 10px rgba(91, 123, 178, 0.12); }
+    .ios-day-letter { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+    .ios-day-num { width: 24px; height: 24px; margin: 1px auto 3px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--text); }
+    .ios-day-num.today { background: #e06c6c; color: #ffffff; }
+    .ios-mini-event { border-radius: 7px; padding: 3px 4px; font-size: 9.5px; line-height: 1.2; font-weight: 600; text-align: left; overflow: hidden; border: 1px solid transparent; cursor: pointer; }
+    .ios-mini-event .ev-title { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ios-mini-event .ev-time { display: block; font-size: 8.5px; opacity: 0.82; margin-top: 1px; }
+    .ev-court { background: var(--cat-court-bg); border-color: var(--cat-court-border); color: var(--cat-court-text); }
+    .ev-work { background: var(--cat-work-bg); border-color: var(--cat-work-border); color: var(--cat-work-text); }
+    .ev-expert { background: var(--cat-expert-bg); border-color: var(--cat-expert-border); color: var(--cat-expert-text); }
+    .ev-term { background: var(--cat-term-bg); border-color: var(--cat-term-border); color: var(--cat-term-text); }
+    .inner-accordion { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); margin-bottom: 10px; overflow: hidden; box-shadow: var(--shadow-soft); }
+    .accordion-header { width: 100%; background: var(--surface); border: none; padding: 13px 15px; display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; text-align: left; }
+    .accordion-body { padding: 0 15px 14px; border-top: 1px solid var(--border); background: var(--surface-soft); }
+    .chevron-icon { transition: transform 0.2s ease; color: var(--muted); }
+    .chevron-icon.open { transform: rotate(180deg); }
+    .soft-input, .soft-select, .soft-textarea { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; color: var(--text); background: #ffffff; font-family: inherit; }
+    .soft-input:focus, .soft-select:focus, .soft-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91, 123, 178, 0.14); }
+    .btn-soft-primary { background: var(--primary); color: #ffffff; border: none; border-radius: 12px; padding: 11px 15px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: opacity 0.15s ease; }
+    .btn-soft-secondary { background: var(--primary-soft); color: var(--primary); border: 1px solid #d7e3f7; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-soft-ghost { background: #ffffff; color: var(--muted); border: 1px solid var(--border); border-radius: 12px; padding: 9px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(30, 41, 59, 0.35); backdrop-filter: blur(3px); z-index: 60; display: flex; align-items: flex-end; justify-content: center; padding: 10px; }
+    @media (min-width: 640px) { .modal-overlay { align-items: center; } }
+    .modal-sheet { width: 100%; max-width: 540px; background: #ffffff; border-radius: 22px; padding: 18px; border: 1px solid var(--border); box-shadow: 0 20px 45px rgba(30, 41, 59, 0.16); max-height: 88vh; overflow-y: auto; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(51, 78, 123, 0.06); display: grid; grid-template-columns: repeat(6, 1fr); padding: 8px 4px 12px; z-index: 45; }
+    .nav-tab { border: none; background: transparent; border-radius: 13px; padding: 6px 2px; min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-size: 10.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
+    .nav-tab.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+    .toast-bar { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #ffffff; padding: 9px 16px; border-radius: 999px; font-size: 12px; font-weight: 600; z-index: 80; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; max-width: 92vw; text-align: center; }
+    .toast-bar.show { opacity: 1; }
+    @media (max-width: 440px) { .nav-tab { font-size: 9.5px; } .ios-day-col { padding: 4px 2px 5px; min-height: 126px; } .ios-mini-event { padding: 2.5px 3px; font-size: 9px; } }
   </style>
 </head>
 <body>
@@ -656,7 +199,6 @@
         </div>
       </div>
 
-      <!-- ==================== ВКЛАДКА 1: СВОДКА ==================== -->
       <main id="view-svodka">
         <header class="brand-hero">
           <div class="brand-emblem" aria-label="Логотип IAR">
@@ -745,7 +287,6 @@
         </div>
       </main>
 
-      <!-- ==================== ВКЛАДКА 2: ДЕЛА ==================== -->
       <main id="view-cases" class="hidden">
         <div class="mb-3">
           <h2 class="text-lg font-extrabold text-[#243b61] m-0">Уголовные дела</h2>
@@ -835,7 +376,6 @@
         </section>
       </main>
 
-      <!-- ==================== ВКЛАДКА 3: БЛАНКИ ==================== -->
       <main id="view-blanks" class="hidden">
         <div class="card">
           <h2 class="text-base font-extrabold text-[#243b61] mb-1">Процессуальные бланки</h2>
@@ -881,7 +421,6 @@
         </div>
       </main>
 
-      <!-- ==================== ВКЛАДКА 4: БАЗА ЗНАНИЙ ==================== -->
       <main id="view-kb" class="hidden">
         <div class="card">
           <h2 class="text-base font-extrabold text-[#243b61] mb-1">База знаний</h2>
@@ -896,7 +435,6 @@
         <div id="kbMaterialList"></div>
       </main>
 
-      <!-- ==================== ВКЛАДКА 5: ДЕЙСТВИЯ ==================== -->
       <main id="view-actions" class="hidden">
         <div class="card">
           <h2 class="text-base font-extrabold text-[#243b61] mb-1">Следственные действия и экспертизы</h2>
@@ -905,7 +443,6 @@
         </div>
       </main>
 
-      <!-- ==================== ВКЛАДКА 6: ПРОФИЛЬ ==================== -->
       <main id="view-profile" class="hidden">
         <div class="card">
           <h2 class="text-base font-extrabold text-[#243b61] mb-3">Профиль следователя (шапка документов)</h2>
@@ -941,58 +478,39 @@
 
     <nav class="bottom-nav" aria-label="Навигация">
       <button type="button" id="tab-svodka" class="nav-tab active" data-action="switch-tab" data-tab="svodka">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="3" />
-          <path d="M16 2v4M8 2v4M3 10h18" />
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
         <span>Сводка</span>
       </button>
       <button type="button" id="tab-cases" class="nav-tab" data-action="switch-tab" data-tab="cases">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg>
         <span>Дела</span>
       </button>
       <button type="button" id="tab-blanks" class="nav-tab" data-action="switch-tab" data-tab="blanks">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-          <path d="M14 2v6h6M8 13h8M8 17h5" />
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h5" /></svg>
         <span>Бланки</span>
       </button>
       <button type="button" id="tab-kb" class="nav-tab" data-action="switch-tab" data-tab="kb">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /></svg>
         <span>База знаний</span>
       </button>
       <button type="button" id="tab-actions" class="nav-tab" data-action="switch-tab" data-tab="actions">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 3v18M5 7h14M5 7l-2 5h4l-2-5zM19 7l-2 5h4l-2-5z" />
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 7h14M5 7l-2 5h4l-2-5zM19 7l-2 5h4l-2-5z" /></svg>
         <span>Действия</span>
       </button>
       <button type="button" id="tab-profile" class="nav-tab" data-action="switch-tab" data-tab="profile">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 20c1.8-3.6 5-5 8-5s6.2 1.4 8 5" />
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4" /><path d="M4 20c1.8-3.6 5-5 8-5s6.2 1.4 8 5" /></svg>
         <span>Профиль</span>
       </button>
     </nav>
   </div>
 
-  <!-- Модалка редактирования уголовного дела -->
   <div id="editCaseModal" class="modal-overlay hidden" data-action="overlay-close" data-modal="editCaseModal">
     <div class="modal-sheet">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-extrabold text-[#243b61] m-0">Редактирование уголовного дела</h3>
         <button type="button" class="text-slate-400 font-bold px-2 py-1" data-action="close-edit-case">✕</button>
       </div>
-
       <input type="hidden" id="ecId" />
-
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Номер уголовного дела *</label>
@@ -1003,7 +521,6 @@
           <input type="date" id="ecOpened" class="soft-input" />
         </div>
       </div>
-
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Срок окончания следствия до</label>
@@ -1014,7 +531,6 @@
           <input type="number" id="ecLeadDays" class="soft-input" min="1" max="60" />
         </div>
       </div>
-
       <div class="mb-2.5">
         <label class="block text-xs font-semibold text-slate-600 mb-1">Квалификация (статьи УК РФ)</label>
         <div class="flex gap-2 mb-1.5">
@@ -1023,12 +539,10 @@
         </div>
         <div id="editArticlesList" class="flex flex-wrap gap-1.5"></div>
       </div>
-
       <div class="mb-2.5">
         <label class="block text-xs font-semibold text-slate-600 mb-1">Фабула дела</label>
         <textarea id="ecFabula" class="soft-textarea" rows="2"></textarea>
       </div>
-
       <div class="mb-2.5">
         <label class="block text-xs font-semibold text-slate-600 mb-1">Участники</label>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-1.5">
@@ -1045,7 +559,6 @@
         </div>
         <div id="editParticipantsList" class="space-y-1"></div>
       </div>
-
       <div class="mb-3">
         <label class="block text-xs font-semibold text-slate-600 mb-1">План: что необходимо провести</label>
         <div class="flex gap-2 mb-1.5">
@@ -1054,7 +567,6 @@
         </div>
         <div id="editPlanList" class="space-y-1"></div>
       </div>
-
       <div class="flex justify-end gap-2">
         <button type="button" class="btn-soft-ghost" data-action="close-edit-case">Отмена</button>
         <button type="button" class="btn-soft-primary" data-action="save-edited-case">Сохранить изменения</button>
@@ -1062,21 +574,17 @@
     </div>
   </div>
 
-  <!-- Модалка добавления / редактирования события календаря -->
   <div id="eventModal" class="modal-overlay hidden" data-action="overlay-close" data-modal="eventModal">
     <div class="modal-sheet">
       <div class="flex items-center justify-between mb-3">
         <h3 id="evModalHeading" class="text-base font-extrabold text-[#243b61] m-0">Событие календаря</h3>
         <button type="button" class="text-slate-400 font-bold px-2 py-1" data-action="close-event">✕</button>
       </div>
-
       <input type="hidden" id="evEditId" />
-
       <div class="mb-2.5">
         <label class="block text-xs font-semibold text-slate-600 mb-1">Краткое название для календаря</label>
         <input type="text" id="evTitleInput" class="soft-input" placeholder="Например: Допрос свидетеля или Продление срока" />
       </div>
-
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Дата и время</label>
@@ -1087,12 +595,10 @@
           <input type="text" id="evCaseInput" class="soft-input" placeholder="УД № 116611" />
         </div>
       </div>
-
       <div class="mb-3">
         <label class="block text-xs font-semibold text-slate-600 mb-1.5">Цветовое выделение категории</label>
         <div class="grid grid-cols-2 gap-2" id="evColorChoices"></div>
       </div>
-
       <div class="flex items-center justify-between gap-2">
         <button type="button" id="evDeleteBtn" class="btn-soft-ghost text-red-600 hidden" data-action="delete-event">Удалить</button>
         <div class="flex gap-2 ml-auto">
@@ -1128,26 +634,10 @@
     }
 
     const EVENT_CATEGORIES = {
-      court: {
-        label: 'Суд / Прокурор / Рук. СО',
-        cls: 'ev-court',
-        dot: '#d97777'
-      },
-      work: {
-        label: 'Следств. действия (гибкие)',
-        cls: 'ev-work',
-        dot: '#5b7bb2'
-      },
-      expert: {
-        label: 'Экспертизы и запросы',
-        cls: 'ev-expert',
-        dot: '#489c73'
-      },
-      term: {
-        label: 'Контроль сроков',
-        cls: 'ev-term',
-        dot: '#d69e2e'
-      }
+      court: { label: 'Суд / Прокурор / Рук. СО', cls: 'ev-court', dot: '#d97777' },
+      work: { label: 'Следств. действия (гибкие)', cls: 'ev-work', dot: '#5b7bb2' },
+      expert: { label: 'Экспертизы и запросы', cls: 'ev-expert', dot: '#489c73' },
+      term: { label: 'Контроль сроков', cls: 'ev-term', dot: '#d69e2e' }
     };
 
     const BLANKS_LIST = [
@@ -1163,22 +653,10 @@
       eventsData: [],
       casesData: [],
       kbMaterials: [
-        {
-          title: 'Криминалистика и тактика следственных действий (учебное пособие)',
-          cats: ['Учебники', 'Экспертизы'],
-          notes: 'Тактика допроса, выемки и постановки вопросов при назначении судебных экспертиз.'
-        },
-        {
-          title: 'Сроки предварительного следствия и ходатайства по УПК РФ',
-          cats: ['УПК', 'Постановления'],
-          notes: 'Расчёт сроков по ст. 162 УПК РФ и порядок уведомления прокурора и руководителя СО.'
-        }
+        { title: 'Криминалистика и тактика следственных действий (учебное пособие)', cats: ['Учебники', 'Экспертизы'], notes: 'Тактика допроса, выемки и постановки вопросов при назначении судебных экспертиз.' },
+        { title: 'Сроки предварительного следствия и ходатайства по УПК РФ', cats: ['УПК', 'Постановления'], notes: 'Расчёт сроков по ст. 162 УПК РФ и порядок уведомления прокурора и руководителя СО.' }
       ],
-      profile: {
-        org: 'СО ОП № 4 СУ УМВД России',
-        rank: 'следователь лейтенант юстиции',
-        fio: ''
-      },
+      profile: { org: 'СО ОП № 4 СУ УМВД России', rank: 'следователь лейтенант юстиции', fio: '' },
       updatedAt: new Date().toISOString()
     });
 
@@ -1203,9 +681,7 @@
             fabula: c.notes || c.extraInfo || 'Фабула не заполнена.',
             participants: Array.isArray(c.participants) ? c.participants.map((p) => ({ name: p.name || '', role: p.role || 'Участник' })) : [],
             plan: Array.isArray(c.planTasks) ? c.planTasks.map((t) => t.title || '').filter(Boolean) : [],
-            docs: Array.isArray(c.documents) && c.documents.length
-              ? c.documents.map((d) => ({ name: d.title || d.name || 'Документ', kind: d.kind || 'Фото / скан' }))
-              : [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }],
+            docs: Array.isArray(c.documents) && c.documents.length ? c.documents.map((d) => ({ name: d.title || d.name || 'Документ', kind: d.kind || 'Фото / скан' })) : [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }],
             expanded: false
           };
         });
@@ -1223,19 +699,9 @@
       }
 
       const legacyCfg = raw.docConfig || {};
-      const prof = {
-        org: (raw.profile && raw.profile.org) || legacyCfg.department || base.profile.org,
-        rank: (raw.profile && raw.profile.rank) || legacyCfg.rank || base.profile.rank,
-        fio: (raw.profile && raw.profile.fio) !== undefined ? raw.profile.fio : (legacyCfg.name || ''),
-      };
+      const prof = { org: (raw.profile && raw.profile.org) || legacyCfg.department || base.profile.org, rank: (raw.profile && raw.profile.rank) || legacyCfg.rank || base.profile.rank, fio: (raw.profile && raw.profile.fio) !== undefined ? raw.profile.fio : (legacyCfg.name || '') };
 
-      return {
-        eventsData: eventsArr,
-        casesData: casesArr,
-        kbMaterials: Array.isArray(raw.kbMaterials) && raw.kbMaterials.length ? raw.kbMaterials : base.kbMaterials,
-        profile: prof,
-        updatedAt: raw.updatedAt || base.updatedAt
-      };
+      return { eventsData: eventsArr, casesData: casesArr, kbMaterials: Array.isArray(raw.kbMaterials) && raw.kbMaterials.length ? raw.kbMaterials : base.kbMaterials, profile: prof, updatedAt: raw.updatedAt || base.updatedAt };
     }
 
     let currentUser = null;
@@ -1251,7 +717,6 @@
     let tempArticles = [];
     let tempParticipants = [];
     let tempPlans = [];
-
     let editArticles = [];
     let editParticipants = [];
     let editPlans = [];
@@ -1268,11 +733,7 @@
     }
 
     function esc(s) {
-      return String(s || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     function parseDate(str) {
@@ -1297,18 +758,9 @@
       const deadlineTitle = `Окончание срока • ${caseLabel}`;
       const existingEnd = ws.eventsData.find((e) => e.id === deadlineEvId);
       if (existingEnd) {
-        existingEnd.title = deadlineTitle;
-        existingEnd.caseNum = caseLabel;
-        existingEnd.dt = `${kase.deadline}T18:00`;
-        existingEnd.color = 'term';
+        existingEnd.title = deadlineTitle; existingEnd.caseNum = caseLabel; existingEnd.dt = `${kase.deadline}T18:00`; existingEnd.color = 'term';
       } else {
-        ws.eventsData.push({
-          id: deadlineEvId,
-          title: deadlineTitle,
-          caseNum: caseLabel,
-          dt: `${kase.deadline}T18:00`,
-          color: 'term'
-        });
+        ws.eventsData.push({ id: deadlineEvId, title: deadlineTitle, caseNum: caseLabel, dt: `${kase.deadline}T18:00`, color: 'term' });
       }
 
       const leadDays = Number(kase.leadDays) || 10;
@@ -1317,18 +769,9 @@
       const warnTitle = `Ходатайство о продлении (${leadDays} дн.) • ${caseLabel}`;
       const existingWarn = ws.eventsData.find((e) => e.id === warnEvId);
       if (existingWarn) {
-        existingWarn.title = warnTitle;
-        existingWarn.caseNum = caseLabel;
-        existingWarn.dt = `${warnDate}T10:00`;
-        existingWarn.color = 'term';
+        existingWarn.title = warnTitle; existingWarn.caseNum = caseLabel; existingWarn.dt = `${warnDate}T10:00`; existingWarn.color = 'term';
       } else {
-        ws.eventsData.push({
-          id: warnEvId,
-          title: warnTitle,
-          caseNum: caseLabel,
-          dt: `${warnDate}T10:00`,
-          color: 'term'
-        });
+        ws.eventsData.push({ id: warnEvId, title: warnTitle, caseNum: caseLabel, dt: `${warnDate}T10:00`, color: 'term' });
       }
     }
 
@@ -1345,29 +788,16 @@
     function setCloudIndicator(mode, label) {
       const dot = document.getElementById('cloudDot');
       const txt = document.getElementById('cloudText');
-      if (mode === 'ok') {
-        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
-      } else if (mode === 'sync') {
-        dot.className = 'w-2 h-2 rounded-full bg-sky-400';
-      } else {
-        dot.className = 'w-2 h-2 rounded-full bg-amber-400';
-      }
+      if (mode === 'ok') dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+      else if (mode === 'sync') dot.className = 'w-2 h-2 rounded-full bg-sky-400';
+      else dot.className = 'w-2 h-2 rounded-full bg-amber-400';
       txt.textContent = label;
     }
 
-    function newCacheKey() {
-      return currentUser ? `iar_ws_cache_${currentUser.id}` : 'iar_ws_guest';
-    }
+    function newCacheKey() { return currentUser ? `iar_ws_cache_${currentUser.id}` : 'iar_ws_guest'; }
+    function oldCacheKey() { return currentUser ? `iar_workspace_cache_${currentUser.id}` : 'iar_workspace_guest'; }
 
-    function oldCacheKey() {
-      return currentUser ? `iar_workspace_cache_${currentUser.id}` : 'iar_workspace_guest';
-    }
-
-    function saveLocal() {
-      try {
-        localStorage.setItem(newCacheKey(), JSON.stringify(ws));
-      } catch (e) {}
-    }
+    function saveLocal() { try { localStorage.setItem(newCacheKey(), JSON.stringify(ws)); } catch (e) {} }
 
     function loadLocal() {
       try {
@@ -1389,19 +819,11 @@
 
     async function pullFromCloud() {
       if (!currentUser) return;
-      if (!navigator.onLine) {
-        setCloudIndicator('warn', 'Офлайн');
-        return;
-      }
+      if (!navigator.onLine) { setCloudIndicator('warn', 'Офлайн'); return; }
       setCloudIndicator('sync', 'Загрузка...');
       try {
-        const { data, error } = await supabaseClient
-          .from('iar_user_workspaces')
-          .select('workspace_data, updated_at')
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
+        const { data, error } = await supabaseClient.from('iar_user_workspaces').select('workspace_data, updated_at').eq('user_id', currentUser.id).maybeSingle();
         if (error) throw error;
-
         if (data && data.workspace_data) {
           const cloudWs = normalizeWorkspacePayload(data.workspace_data);
           const localTs = new Date(ws.updatedAt || 0).getTime();
@@ -1431,19 +853,10 @@
       if (!currentUser) return;
       ws.updatedAt = new Date().toISOString();
       saveLocal();
-      if (!navigator.onLine) {
-        setCloudIndicator('warn', 'Офлайн');
-        return;
-      }
+      if (!navigator.onLine) { setCloudIndicator('warn', 'Офлайн'); return; }
       setCloudIndicator('sync', 'Сохранение...');
       try {
-        const { error } = await supabaseClient
-          .from('iar_user_workspaces')
-          .upsert({
-            user_id: currentUser.id,
-            workspace_data: ws,
-            updated_at: ws.updatedAt
-          }, { onConflict: 'user_id' });
+        const { error } = await supabaseClient.from('iar_user_workspaces').upsert({ user_id: currentUser.id, workspace_data: ws, updated_at: ws.updatedAt }, { onConflict: 'user_id' });
         if (error) throw error;
         setCloudIndicator('ok', 'Облако');
         document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
@@ -1454,38 +867,23 @@
       }
     }
 
-    function scheduleSync() {
-      saveLocal();
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(() => pushToCloud(), 450);
-    }
-
-    /* ==================== АВТОРИЗАЦИЯ ==================== */
+    function scheduleSync() { saveLocal(); clearTimeout(syncTimer); syncTimer = setTimeout(() => pushToCloud(), 450); }
 
     const tabLogin = document.getElementById('tabLogin');
     const tabRegister = document.getElementById('tabRegister');
     const authSubmitBtn = document.getElementById('authSubmitBtn');
     const authMsg = document.getElementById('authMsg');
 
-    function showAuthMsg(text, type) {
-      authMsg.textContent = text;
-      authMsg.className = 'auth-msg ' + type;
-    }
+    function showAuthMsg(text, type) { authMsg.textContent = text; authMsg.className = 'auth-msg ' + type; }
 
     tabLogin.addEventListener('click', () => {
-      authMode = 'login';
-      tabLogin.classList.add('active');
-      tabRegister.classList.remove('active');
-      authSubmitBtn.textContent = 'Войти в рабочее место';
-      authMsg.className = 'auth-msg';
+      authMode = 'login'; tabLogin.classList.add('active'); tabRegister.classList.remove('active');
+      authSubmitBtn.textContent = 'Войти в рабочее место'; authMsg.className = 'auth-msg';
     });
 
     tabRegister.addEventListener('click', () => {
-      authMode = 'register';
-      tabRegister.classList.add('active');
-      tabLogin.classList.remove('active');
-      authSubmitBtn.textContent = 'Создать аккаунт';
-      authMsg.className = 'auth-msg';
+      authMode = 'register'; tabRegister.classList.add('active'); tabLogin.classList.remove('active');
+      authSubmitBtn.textContent = 'Создать аккаунт'; authMsg.className = 'auth-msg';
     });
 
     document.getElementById('authForm').addEventListener('submit', async (e) => {
@@ -1504,10 +902,9 @@
           const { data, error } = await supabaseClient.auth.signUp({ email, password });
           if (error) throw error;
           if (data.session && data.user) {
-            await enterApp(data.user);
-            showToast('Аккаунт создан');
+            await enterApp(data.user); showToast('Аккаунт создан');
           } else {
-            showAuthMsg('Аккаунт создан! Проверьте почту для подтверждения или отключите Confirm email в Supabase.', 'success');
+            showAuthMsg('Аккаунт создан! Проверьте почту для подтверждения.', 'success');
           }
         }
       } catch (err) {
@@ -1524,17 +921,10 @@
       document.getElementById('userEmailSub').textContent = user.email;
       document.getElementById('settingsEmail').textContent = user.email;
 
-      ws = defaultWorkspace();
-      loadLocal();
-      initCaseFormDates();
-      syncProfileInputs();
-      renderAll();
+      ws = defaultWorkspace(); loadLocal(); initCaseFormDates(); syncProfileInputs(); renderAll();
 
-      if (navigator.onLine) {
-        await pullFromCloud();
-      } else {
-        setCloudIndicator('warn', 'Офлайн');
-      }
+      if (navigator.onLine) await pullFromCloud();
+      else setCloudIndicator('warn', 'Офлайн');
     }
 
     async function logoutUser() {
@@ -1549,13 +939,8 @@
       const blob = new Blob([JSON.stringify(ws, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `ARM_Sledovatelya_${getTodayIso()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      a.href = url; a.download = `ARM_Sledovatelya_${getTodayIso()}.json`; a.click(); URL.revokeObjectURL(url);
     }
-
-    /* ==================== НАВИГАЦИЯ И СВОДКА ==================== */
 
     function switchTab(tab) {
       ['svodka', 'cases', 'blanks', 'kb', 'actions', 'profile'].forEach((t) => {
@@ -1575,22 +960,14 @@
 
     function focusMetric(kind) {
       ['tileCases', 'tileUrgent', 'tileToday'].forEach((id) => document.getElementById(id).classList.remove('active'));
-      if (kind === 'cases') {
-        document.getElementById('tileCases').classList.add('active');
-        switchTab('cases');
-      } else if (kind === 'urgent') {
+      if (kind === 'cases') { document.getElementById('tileCases').classList.add('active'); switchTab('cases'); }
+      else if (kind === 'urgent') {
         document.getElementById('tileUrgent').classList.add('active');
         const body = document.getElementById('accDeadlines');
-        body.classList.remove('hidden');
-        document.getElementById('chev-accDeadlines').classList.add('open');
+        body.classList.remove('hidden'); document.getElementById('chev-accDeadlines').classList.add('open');
         body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } else {
-        document.getElementById('tileToday').classList.add('active');
-        goToday();
-      }
+      } else { document.getElementById('tileToday').classList.add('active'); goToday(); }
     }
-
-    /* ==================== КАЛЕНДАРЬ НА НЕДЕЛЮ ==================== */
 
     function getCurrentWeekDates() {
       const today = parseDate(getTodayIso());
@@ -1599,70 +976,35 @@
       monday.setDate(today.getDate() - mondayOffset + weekDelta * 7);
       const res = [];
       for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        res.push(toIsoDate(d));
+        const d = new Date(monday); d.setDate(monday.getDate() + i); res.push(toIsoDate(d));
       }
       return res;
     }
 
-    function shiftWeek(delta) {
-      weekDelta += delta;
-      const days = getCurrentWeekDates();
-      selectedDay = days[0];
-      renderCalendarSection();
-    }
+    function shiftWeek(delta) { weekDelta += delta; const days = getCurrentWeekDates(); selectedDay = days[0]; renderCalendarSection(); }
+    function goToday() { weekDelta = 0; selectedDay = getTodayIso(); renderCalendarSection(); }
 
-    function goToday() {
-      weekDelta = 0;
-      selectedDay = getTodayIso();
-      renderCalendarSection();
-    }
-
-    // ==== НОВОЕ: перейти к произвольной дате ====
     function jumpToDate(isoDate) {
       if (!isoDate) return;
       const target = parseDate(isoDate);
       const today = parseDate(getTodayIso());
-      const targetMonday = new Date(target);
-      targetMonday.setDate(target.getDate() - ((target.getDay() + 6) % 7));
-      const todayMonday = new Date(today);
-      todayMonday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+      const targetMonday = new Date(target); targetMonday.setDate(target.getDate() - ((target.getDay() + 6) % 7));
+      const todayMonday = new Date(today); todayMonday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
       weekDelta = Math.round((targetMonday - todayMonday) / (7 * 24 * 60 * 60 * 1000));
       selectedDay = isoDate;
     }
 
-    function selectDay(isoDate) {
-      selectedDay = isoDate;
-      renderCalendarSection();
-    }
-
-    function setColorFilter(key) {
-      activeColorFilter = key;
-      renderCalendarSection();
-    }
+    function selectDay(isoDate) { selectedDay = isoDate; renderCalendarSection(); }
+    function setColorFilter(key) { activeColorFilter = key; renderCalendarSection(); }
 
     function renderCalendarSection() {
       const filterBar = document.getElementById('calendarColorFilterBar');
-      const filterItems = [
-        { key: 'all', label: 'Все цвета', dot: '#64748b' },
-        ...Object.entries(EVENT_CATEGORIES).map(([k, v]) => ({ key: k, label: v.label, dot: v.dot }))
-      ];
+      const filterItems = [{ key: 'all', label: 'Все цвета', dot: '#64748b' }, ...Object.entries(EVENT_CATEGORIES).map(([k, v]) => ({ key: k, label: v.label, dot: v.dot }))];
 
-      filterBar.innerHTML = filterItems
-        .map((f) => {
-          const active = activeColorFilter === f.key;
-          return `
-            <button type="button" data-action="set-color-filter" data-key="${f.key}"
-              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${
-                active ? 'bg-[#eef3fb] border-[#5b7bb2] text-[#243b61]' : 'bg-white border-slate-200 text-slate-600'
-              }">
-              <span class="w-2 h-2 rounded-full" style="background:${f.dot}"></span>
-              <span>${esc(f.label)}</span>
-            </button>
-          `;
-        })
-        .join('');
+      filterBar.innerHTML = filterItems.map((f) => {
+        const active = activeColorFilter === f.key;
+        return `<button type="button" data-action="set-color-filter" data-key="${f.key}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${active ? 'bg-[#eef3fb] border-[#5b7bb2] text-[#243b61]' : 'bg-white border-slate-200 text-slate-600'}"><span class="w-2 h-2 rounded-full" style="background:${f.dot}"></span><span>${esc(f.label)}</span></button>`;
+      }).join('');
 
       const weekDays = getCurrentWeekDates();
       const monthsNom = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -1673,36 +1015,24 @@
       const todayIso = getTodayIso();
       const grid = document.getElementById('iosWeekGrid');
 
-      grid.innerHTML = weekDays
-        .map((iso, idx) => {
-          const dObj = parseDate(iso);
-          const isToday = iso === todayIso;
-          const isSel = iso === selectedDay;
-          const dayEvs = ws.eventsData
-            .filter((e) => e.dt && e.dt.startsWith(iso))
-            .filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter)
-            .sort((a, b) => a.dt.localeCompare(b.dt));
+      grid.innerHTML = weekDays.map((iso, idx) => {
+        const dObj = parseDate(iso);
+        const isToday = iso === todayIso;
+        const isSel = iso === selectedDay;
+        const dayEvs = ws.eventsData.filter((e) => e.dt && e.dt.startsWith(iso)).filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a, b) => a.dt.localeCompare(b.dt));
 
-          return `
-            <div class="ios-day-col ${isSel ? 'selected' : ''}" data-action="select-day" data-id="${iso}">
-              <div class="ios-day-letter">${letters[idx]}</div>
-              <div class="ios-day-num ${isToday ? 'today' : ''}">${dObj.getDate()}</div>
-              ${dayEvs
-                .map((ev) => {
-                  const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
-                  const timeStr = (ev.dt.split('T')[1] || '').slice(0, 5);
-                  return `
-                    <button type="button" class="ios-mini-event ${cat.cls}" data-action="open-event" data-id="${esc(ev.id)}">
-                      <span class="ev-title">${esc(ev.title)}</span>
-                      <span class="ev-time">${esc(timeStr)}</span>
-                    </button>
-                  `;
-                })
-                .join('')}
-            </div>
-          `;
-        })
-        .join('');
+        return `
+          <div class="ios-day-col ${isSel ? 'selected' : ''}" data-action="select-day" data-id="${iso}">
+            <div class="ios-day-letter">${letters[idx]}</div>
+            <div class="ios-day-num ${isToday ? 'today' : ''}">${dObj.getDate()}</div>
+            ${dayEvs.map((ev) => {
+              const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
+              const timeStr = (ev.dt.split('T')[1] || '').slice(0, 5);
+              return `<button type="button" class="ios-mini-event ${cat.cls}" data-action="open-event" data-id="${esc(ev.id)}"><span class="ev-title">${esc(ev.title)}</span><span class="ev-time">${esc(timeStr)}</span></button>`;
+            }).join('')}
+          </div>
+        `;
+      }).join('');
 
       renderSelectedDayEvents();
     }
@@ -1714,46 +1044,28 @@
       document.getElementById('selectedDaySubtitle').textContent = `${wdFull[dObj.getDay()]}, ${dObj.getDate()} ${monthsGen[dObj.getMonth()]}`;
 
       const listEl = document.getElementById('selectedDayEventsList');
-      const items = ws.eventsData
-        .filter((e) => e.dt && e.dt.startsWith(selectedDay))
-        .filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter)
-        .sort((a, b) => a.dt.localeCompare(b.dt));
+      const items = ws.eventsData.filter((e) => e.dt && e.dt.startsWith(selectedDay)).filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a, b) => a.dt.localeCompare(b.dt));
 
-      if (!items.length) {
-        listEl.innerHTML = '<div class="text-xs text-slate-400 py-2">На этот день событий нет.</div>';
-        return;
-      }
+      if (!items.length) { listEl.innerHTML = '<div class="text-xs text-slate-400 py-2">На этот день событий нет.</div>'; return; }
 
-      listEl.innerHTML = items
-        .map((ev) => {
-          const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
-          return `
-            <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 flex-wrap ${cat.cls}">
-              <div class="min-w-0">
-                <div class="text-xs font-bold">${esc(ev.title)} <span class="opacity-75">• ${esc(ev.caseNum)}</span></div>
-                <div class="text-[11px] opacity-80">${esc(cat.label)}</div>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <input type="datetime-local" value="${esc(ev.dt)}"
-                  data-action="quick-shift" data-id="${esc(ev.id)}"
-                  class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white text-slate-700" />
-                <button type="button" class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-600"
-                  data-action="open-event" data-id="${esc(ev.id)}">Цвет</button>
-              </div>
+      listEl.innerHTML = items.map((ev) => {
+        const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
+        return `
+          <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 flex-wrap ${cat.cls}">
+            <div class="min-w-0"><div class="text-xs font-bold">${esc(ev.title)} <span class="opacity-75">• ${esc(ev.caseNum)}</span></div><div class="text-[11px] opacity-80">${esc(cat.label)}</div></div>
+            <div class="flex items-center gap-1.5">
+              <input type="datetime-local" value="${esc(ev.dt)}" data-action="quick-shift" data-id="${esc(ev.id)}" class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white text-slate-700" />
+              <button type="button" class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-600" data-action="open-event" data-id="${esc(ev.id)}">Цвет</button>
             </div>
-          `;
-        })
-        .join('');
+          </div>
+        `;
+      }).join('');
     }
 
     function quickShiftEvent(id, newDt) {
       const ev = ws.eventsData.find((x) => x.id === id);
       if (!ev || !newDt) return;
-      ev.dt = newDt;
-      selectedDay = newDt.split('T')[0];
-      renderAll();
-      scheduleSync();
-      showToast('Дата и время обновлены');
+      ev.dt = newDt; selectedDay = newDt.split('T')[0]; renderAll(); scheduleSync(); showToast('Дата и время обновлены');
     }
 
     function openEventModal(eventId) {
@@ -1779,37 +1091,19 @@
         modalPickedColor = 'work';
         delBtn.classList.add('hidden');
       }
-
-      renderModalColorChoices();
-      modal.classList.remove('hidden');
+      renderModalColorChoices(); modal.classList.remove('hidden');
     }
 
     function renderModalColorChoices() {
       const wrap = document.getElementById('evColorChoices');
-      wrap.innerHTML = Object.entries(EVENT_CATEGORIES)
-        .map(([key, cfg]) => {
-          const active = modalPickedColor === key;
-          return `
-            <button type="button" data-action="pick-color" data-key="${key}"
-              class="p-2 rounded-xl border text-left text-xs font-semibold flex items-center gap-2 ${cfg.cls} ${
-                active ? 'ring-2 ring-[#5b7bb2]' : ''
-              }">
-              <span class="w-3 h-3 rounded-full shrink-0" style="background:${cfg.dot}"></span>
-              <span class="truncate">${esc(cfg.label)}</span>
-            </button>
-          `;
-        })
-        .join('');
+      wrap.innerHTML = Object.entries(EVENT_CATEGORIES).map(([key, cfg]) => {
+        const active = modalPickedColor === key;
+        return `<button type="button" data-action="pick-color" data-key="${key}" class="p-2 rounded-xl border text-left text-xs font-semibold flex items-center gap-2 ${cfg.cls} ${active ? 'ring-2 ring-[#5b7bb2]' : ''}"><span class="w-3 h-3 rounded-full shrink-0" style="background:${cfg.dot}"></span><span class="truncate">${esc(cfg.label)}</span></button>`;
+      }).join('');
     }
 
-    function pickModalColor(key) {
-      modalPickedColor = key;
-      renderModalColorChoices();
-    }
-
-    function closeEventModal() {
-      document.getElementById('eventModal').classList.add('hidden');
-    }
+    function pickModalColor(key) { modalPickedColor = key; renderModalColorChoices(); }
+    function closeEventModal() { document.getElementById('eventModal').classList.add('hidden'); }
 
     function saveCalendarEvent() {
       const id = document.getElementById('evEditId').value;
@@ -1817,47 +1111,25 @@
       const dt = document.getElementById('evDtInput').value || `${selectedDay}T10:00`;
       const caseNum = (document.getElementById('evCaseInput').value || '').trim();
 
-      if (!title) {
-        showToast('Укажите название события');
-        return;
-      }
+      if (!title) { showToast('Укажите название события'); return; }
 
       if (id) {
         const ev = ws.eventsData.find((x) => x.id === id);
-        if (ev) {
-          ev.title = title;
-          ev.dt = dt;
-          ev.caseNum = caseNum;
-          ev.color = modalPickedColor;
-        }
+        if (ev) { ev.title = title; ev.dt = dt; ev.caseNum = caseNum; ev.color = modalPickedColor; }
         showToast('Событие сохранено');
       } else {
-        ws.eventsData.push({
-          id: 'e_' + Date.now(),
-          title,
-          dt,
-          caseNum,
-          color: modalPickedColor
-        });
+        ws.eventsData.push({ id: 'e_' + Date.now(), title, dt, caseNum, color: modalPickedColor });
         showToast('Событие добавлено в календарь');
       }
 
-      selectedDay = dt.split('T')[0];
-      closeEventModal();
-      renderAll();
-      scheduleSync();
+      selectedDay = dt.split('T')[0]; closeEventModal(); renderAll(); scheduleSync();
     }
 
     function deleteCalendarEvent() {
       const id = document.getElementById('evEditId').value;
       ws.eventsData = ws.eventsData.filter((x) => x.id !== id);
-      closeEventModal();
-      renderAll();
-      scheduleSync();
-      showToast('Событие удалено');
+      closeEventModal(); renderAll(); scheduleSync(); showToast('Событие удалено');
     }
-
-    /* ==================== ВКЛАДКА «ДЕЛА» ==================== */
 
     function initCaseFormDates() {
       const t = getTodayIso();
@@ -1869,66 +1141,25 @@
       const card = document.getElementById('newCaseFormCard');
       const btnWrap = document.getElementById('addCaseTriggerWrap');
       if (show) {
-        tempArticles = [];
-        tempParticipants = [];
-        tempPlans = [];
-        initCaseFormDates();
-        renderTempFormLists();
-        card.classList.remove('hidden');
-        btnWrap.classList.add('hidden');
-        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        card.classList.add('hidden');
-        btnWrap.classList.remove('hidden');
-      }
+        tempArticles = []; tempParticipants = []; tempPlans = [];
+        initCaseFormDates(); renderTempFormLists();
+        card.classList.remove('hidden'); btnWrap.classList.add('hidden'); card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else { card.classList.add('hidden'); btnWrap.classList.remove('hidden'); }
     }
 
-    function addTempArticle() {
-      const inp = document.getElementById('ncArticleInput');
-      const val = (inp.value || '').trim();
-      if (!val) return;
-      tempArticles.push(val);
-      inp.value = '';
-      renderTempFormLists();
-    }
-
-    function addTempParticipant() {
-      const nameInp = document.getElementById('ncPartName');
-      const roleSel = document.getElementById('ncPartRole');
-      const name = (nameInp.value || '').trim();
-      if (!name) return;
-      tempParticipants.push({ name, role: roleSel.value });
-      nameInp.value = '';
-      renderTempFormLists();
-    }
-
-    function addTempPlan() {
-      const inp = document.getElementById('ncPlanInput');
-      const val = (inp.value || '').trim();
-      if (!val) return;
-      tempPlans.push(val);
-      inp.value = '';
-      renderTempFormLists();
-    }
+    function addTempArticle() { const inp = document.getElementById('ncArticleInput'); const val = (inp.value || '').trim(); if (!val) return; tempArticles.push(val); inp.value = ''; renderTempFormLists(); }
+    function addTempParticipant() { const nameInp = document.getElementById('ncPartName'); const roleSel = document.getElementById('ncPartRole'); const name = (nameInp.value || '').trim(); if (!name) return; tempParticipants.push({ name, role: roleSel.value }); nameInp.value = ''; renderTempFormLists(); }
+    function addTempPlan() { const inp = document.getElementById('ncPlanInput'); const val = (inp.value || '').trim(); if (!val) return; tempPlans.push(val); inp.value = ''; renderTempFormLists(); }
 
     function renderTempFormLists() {
-      document.getElementById('tempArticlesList').innerHTML = tempArticles
-        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-temp-art" data-idx="${idx}">×</button></span>`)
-        .join('');
-      document.getElementById('tempParticipantsList').innerHTML = tempParticipants
-        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" data-action="remove-temp-part" data-idx="${idx}">×</button></div>`)
-        .join('');
-      document.getElementById('tempPlanList').innerHTML = tempPlans
-        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" data-action="remove-temp-plan" data-idx="${idx}">×</button></div>`)
-        .join('');
+      document.getElementById('tempArticlesList').innerHTML = tempArticles.map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-temp-art" data-idx="${idx}">×</button></span>`).join('');
+      document.getElementById('tempParticipantsList').innerHTML = tempParticipants.map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" data-action="remove-temp-part" data-idx="${idx}">×</button></div>`).join('');
+      document.getElementById('tempPlanList').innerHTML = tempPlans.map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" data-action="remove-temp-plan" data-idx="${idx}">×</button></div>`).join('');
     }
 
     function saveNewCase() {
       const numRaw = (document.getElementById('ncNumber').value || '').trim();
-      if (!numRaw) {
-        showToast('Введите номер уголовного дела');
-        return;
-      }
+      if (!numRaw) { showToast('Введите номер уголовного дела'); return; }
       const pendingArt = (document.getElementById('ncArticleInput').value || '').trim();
       if (pendingArt) tempArticles.push(pendingArt);
 
@@ -1937,97 +1168,41 @@
       const leadDaysVal = parseInt(document.getElementById('ncLeadDays').value, 10) || 10;
 
       const newCase = {
-        id: 'ud_' + Date.now(),
-        number: numRaw.startsWith('№') ? numRaw : '№ ' + numRaw,
-        opened: openedVal,
-        deadline: deadlineVal,
-        leadDays: leadDaysVal,
-        articles: tempArticles.length ? [...tempArticles] : ['ст. 158 УК РФ'],
-        fabula: (document.getElementById('ncFabula').value || '').trim() || 'Фабула не заполнена.',
-        participants: [...tempParticipants],
-        plan: [...tempPlans],
-        docs: [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }],
-        expanded: true
+        id: 'ud_' + Date.now(), number: numRaw.startsWith('№') ? numRaw : '№ ' + numRaw, opened: openedVal, deadline: deadlineVal, leadDays: leadDaysVal,
+        articles: tempArticles.length ? [...tempArticles] : ['ст. 158 УК РФ'], fabula: (document.getElementById('ncFabula').value || '').trim() || 'Фабула не заполнена.',
+        participants: [...tempParticipants], plan: [...tempPlans], docs: [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }], expanded: true
       };
 
       ws.casesData.unshift(newCase);
       syncCaseDeadlineInCalendar(newCase);
-      // ==== ИСПРАВЛЕНО: перематываем календарь на неделю срока ====
       jumpToDate(deadlineVal);
 
-      document.getElementById('ncNumber').value = '';
-      document.getElementById('ncArticleInput').value = '';
-      document.getElementById('ncFabula').value = '';
-      toggleNewCaseForm(false);
-      renderAll();
-      scheduleSync();
-      showToast('Дело сохранено, срок отмечен в календаре');
+      document.getElementById('ncNumber').value = ''; document.getElementById('ncArticleInput').value = ''; document.getElementById('ncFabula').value = '';
+      toggleNewCaseForm(false); renderAll(); scheduleSync(); showToast('Дело сохранено, срок отмечен в календаре');
     }
 
     function openEditCaseModal(caseId) {
       const item = ws.casesData.find((c) => c.id === caseId);
       if (!item) return;
+      document.getElementById('ecId').value = item.id; document.getElementById('ecNumber').value = item.number || '';
+      document.getElementById('ecOpened').value = item.opened || getTodayIso(); document.getElementById('ecDeadline').value = item.deadline || addMonthsIso(getTodayIso(), 2);
+      document.getElementById('ecLeadDays').value = item.leadDays || 10; document.getElementById('ecFabula').value = item.fabula || '';
+      document.getElementById('ecArticleInput').value = ''; document.getElementById('ecPartName').value = ''; document.getElementById('ecPlanInput').value = '';
 
-      document.getElementById('ecId').value = item.id;
-      document.getElementById('ecNumber').value = item.number || '';
-      document.getElementById('ecOpened').value = item.opened || getTodayIso();
-      document.getElementById('ecDeadline').value = item.deadline || addMonthsIso(getTodayIso(), 2);
-      document.getElementById('ecLeadDays').value = item.leadDays || 10;
-      document.getElementById('ecFabula').value = item.fabula || '';
-      document.getElementById('ecArticleInput').value = '';
-      document.getElementById('ecPartName').value = '';
-      document.getElementById('ecPlanInput').value = '';
-
-      editArticles = [...(item.articles || [])];
-      editParticipants = (item.participants || []).map((p) => ({ ...p }));
-      editPlans = [...(item.plan || [])];
-
-      renderEditFormLists();
-      document.getElementById('editCaseModal').classList.remove('hidden');
+      editArticles = [...(item.articles || [])]; editParticipants = (item.participants || []).map((p) => ({ ...p })); editPlans = [...(item.plan || [])];
+      renderEditFormLists(); document.getElementById('editCaseModal').classList.remove('hidden');
     }
 
-    function closeEditCaseModal() {
-      document.getElementById('editCaseModal').classList.add('hidden');
-    }
+    function closeEditCaseModal() { document.getElementById('editCaseModal').classList.add('hidden'); }
 
-    function addEditArticle() {
-      const inp = document.getElementById('ecArticleInput');
-      const val = (inp.value || '').trim();
-      if (!val) return;
-      editArticles.push(val);
-      inp.value = '';
-      renderEditFormLists();
-    }
-
-    function addEditParticipant() {
-      const nameInp = document.getElementById('ecPartName');
-      const roleSel = document.getElementById('ecPartRole');
-      const name = (nameInp.value || '').trim();
-      if (!name) return;
-      editParticipants.push({ name, role: roleSel.value });
-      nameInp.value = '';
-      renderEditFormLists();
-    }
-
-    function addEditPlan() {
-      const inp = document.getElementById('ecPlanInput');
-      const val = (inp.value || '').trim();
-      if (!val) return;
-      editPlans.push(val);
-      inp.value = '';
-      renderEditFormLists();
-    }
+    function addEditArticle() { const inp = document.getElementById('ecArticleInput'); const val = (inp.value || '').trim(); if (!val) return; editArticles.push(val); inp.value = ''; renderEditFormLists(); }
+    function addEditParticipant() { const nameInp = document.getElementById('ecPartName'); const roleSel = document.getElementById('ecPartRole'); const name = (nameInp.value || '').trim(); if (!name) return; editParticipants.push({ name, role: roleSel.value }); nameInp.value = ''; renderEditFormLists(); }
+    function addEditPlan() { const inp = document.getElementById('ecPlanInput'); const val = (inp.value || '').trim(); if (!val) return; editPlans.push(val); inp.value = ''; renderEditFormLists(); }
 
     function renderEditFormLists() {
-      document.getElementById('editArticlesList').innerHTML = editArticles
-        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-edit-art" data-idx="${idx}">×</button></span>`)
-        .join('');
-      document.getElementById('editParticipantsList').innerHTML = editParticipants
-        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" data-action="remove-edit-part" data-idx="${idx}">×</button></div>`)
-        .join('');
-      document.getElementById('editPlanList').innerHTML = editPlans
-        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" data-action="remove-edit-plan" data-idx="${idx}">×</button></div>`)
-        .join('');
+      document.getElementById('editArticlesList').innerHTML = editArticles.map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-edit-art" data-idx="${idx}">×</button></span>`).join('');
+      document.getElementById('editParticipantsList').innerHTML = editParticipants.map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" data-action="remove-edit-part" data-idx="${idx}">×</button></div>`).join('');
+      document.getElementById('editPlanList').innerHTML = editPlans.map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" data-action="remove-edit-plan" data-idx="${idx}">×</button></div>`).join('');
     }
 
     function saveEditedCase() {
@@ -2036,10 +1211,7 @@
       if (!item) return;
 
       const numRaw = (document.getElementById('ecNumber').value || '').trim();
-      if (!numRaw) {
-        showToast('Укажите номер уголовного дела');
-        return;
-      }
+      if (!numRaw) { showToast('Укажите номер уголовного дела'); return; }
 
       const pendingArt = (document.getElementById('ecArticleInput').value || '').trim();
       if (pendingArt) editArticles.push(pendingArt);
@@ -2055,20 +1227,13 @@
       item.expanded = true;
 
       syncCaseDeadlineInCalendar(item);
-      // ==== ИСПРАВЛЕНО: перематываем календарь на неделю срока ====
       jumpToDate(item.deadline);
-      closeEditCaseModal();
-      renderAll();
-      scheduleSync();
-      showToast('Изменения сохранены, срок в календаре обновлён');
+      closeEditCaseModal(); renderAll(); scheduleSync(); showToast('Изменения сохранены, срок в календаре обновлён');
     }
 
     function toggleCaseExpand(caseId) {
       const item = ws.casesData.find((c) => c.id === caseId);
-      if (item) {
-        item.expanded = !item.expanded;
-        renderCasesList();
-      }
+      if (item) { item.expanded = !item.expanded; renderCasesList(); }
     }
 
     function moveCaseDoc(caseId, idx, delta) {
@@ -2076,121 +1241,92 @@
       if (!item) return;
       const target = idx + delta;
       if (target < 0 || target >= item.docs.length) return;
-      const [moved] = item.docs.splice(idx, 1);
-      item.docs.splice(target, 0, moved);
-      renderCasesList();
-      scheduleSync();
+      const [moved] = item.docs.splice(idx, 1); item.docs.splice(target, 0, moved);
+      renderCasesList(); scheduleSync();
     }
 
     function deleteCaseById(caseId) {
       ws.casesData = ws.casesData.filter((c) => c.id !== caseId);
-      removeCaseDeadlineEvents(caseId);
-      renderAll();
-      scheduleSync();
-      showToast('Дело удалено');
+      removeCaseDeadlineEvents(caseId); renderAll(); scheduleSync(); showToast('Дело удалено');
     }
 
     function renderCasesList() {
       const container = document.getElementById('casesCardsContainer');
-      if (!ws.casesData.length) {
-        container.innerHTML = '<div class="card text-xs text-slate-400">Дел в производстве пока нет. Нажмите «+ Добавить дело» ниже.</div>';
-        return;
-      }
+      if (!ws.casesData.length) { container.innerHTML = '<div class="card text-xs text-slate-400">Дел в производстве пока нет. Нажмите «+ Добавить дело» ниже.</div>'; return; }
 
-      container.innerHTML = ws.casesData
-        .map((c) => {
-          const left = daysUntil(c.deadline);
-          const isUrgent = left <= (c.leadDays || 10);
-          const badgeCls = isUrgent ? 'bg-red-50 text-red-700 border-red-200' : 'bg-[#eef3fb] text-[#334e7b] border-[#d7e3f7]';
+      container.innerHTML = ws.casesData.map((c) => {
+        const left = daysUntil(c.deadline);
+        const isUrgent = left <= (c.leadDays || 10);
+        const badgeCls = isUrgent ? 'bg-red-50 text-red-700 border-red-200' : 'bg-[#eef3fb] text-[#334e7b] border-[#d7e3f7]';
 
-          return `
-            <div class="card">
-              <div class="flex items-start justify-between gap-2 cursor-pointer" data-action="toggle-case" data-id="${esc(c.id)}">
-                <div>
-                  <div class="text-base font-extrabold text-[#243b61]">УД ${esc(c.number)}</div>
-                  <div class="flex flex-wrap gap-1 mt-1">
-                    ${(c.articles || []).map((a) => `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">${esc(a)}</span>`).join('')}
-                  </div>
+        return `
+          <div class="card">
+            <div class="flex items-start justify-between gap-2 cursor-pointer" data-action="toggle-case" data-id="${esc(c.id)}">
+              <div>
+                <div class="text-base font-extrabold text-[#243b61]">УД ${esc(c.number)}</div>
+                <div class="flex flex-wrap gap-1 mt-1">${(c.articles || []).map((a) => `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">${esc(a)}</span>`).join('')}</div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${badgeCls}">${left} дн.</span>
+                <div class="text-[11px] text-slate-400 mt-1">${c.expanded ? 'Свернуть ▲' : 'Подразделы ▼'}</div>
+              </div>
+            </div>
+            ${c.expanded ? `
+              <div class="mt-3 pt-3 border-t border-slate-100 space-y-2.5 text-xs">
+                <div class="p-2.5 rounded-xl bg-slate-50">
+                  <div class="font-bold text-[#243b61] mb-0.5">Фабула и сроки</div>
+                  <div class="text-slate-600 mb-1">${esc(c.fabula)}</div>
+                  <div class="text-slate-500">Возбуждено: ${esc(c.opened)} • Срок до: ${esc(c.deadline)}</div>
                 </div>
-                <div class="text-right shrink-0">
-                  <span class="inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${badgeCls}">${left} дн.</span>
-                  <div class="text-[11px] text-slate-400 mt-1">${c.expanded ? 'Свернуть ▲' : 'Подразделы ▼'}</div>
+                <div class="p-2.5 rounded-xl bg-slate-50">
+                  <div class="font-bold text-[#243b61] mb-1">Участники (${(c.participants || []).length})</div>
+                  ${(c.participants || []).length ? c.participants.map((p) => `<div class="text-slate-700">• ${esc(p.name)} — <span class="text-slate-500">${esc(p.role)}</span></div>`).join('') : '<div class="text-slate-400">Участники пока не добавлены</div>'}
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-50">
+                  <div class="font-bold text-[#243b61] mb-1">План: что провести</div>
+                  ${(c.plan || []).length ? c.plan.map((pl) => `<div class="text-slate-700">• ${esc(pl)}</div>`).join('') : '<div class="text-slate-400">Пунктов плана нет</div>'}
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-50">
+                  <div class="font-bold text-[#243b61] mb-1.5">Документы дела (порядок для описи)</div>
+                  ${(c.docs || []).map((doc, idx) => `
+                    <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-white border border-slate-200 mb-1">
+                      <span class="font-medium text-slate-700">${esc(doc.name)} <small class="text-slate-400">(${esc(doc.kind)})</small></span>
+                      <div class="flex gap-1 shrink-0">
+                        <button type="button" class="px-2 py-0.5 rounded border border-slate-200" data-action="move-doc-up" data-id="${esc(c.id)}" data-idx="${idx}">↑</button>
+                        <button type="button" class="px-2 py-0.5 rounded border border-slate-200" data-action="move-doc-down" data-id="${esc(c.id)}" data-idx="${idx}">↓</button>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+                <div class="flex items-center justify-between gap-2 pt-1">
+                  <button type="button" class="btn-soft-secondary text-xs" data-action="open-edit-case" data-id="${esc(c.id)}">Редактировать дело</button>
+                  <button type="button" class="btn-soft-ghost text-red-600 text-xs" data-action="delete-case" data-id="${esc(c.id)}">Удалить дело</button>
                 </div>
               </div>
-
-              ${c.expanded ? `
-                <div class="mt-3 pt-3 border-t border-slate-100 space-y-2.5 text-xs">
-                  <div class="p-2.5 rounded-xl bg-slate-50">
-                    <div class="font-bold text-[#243b61] mb-0.5">Фабула и сроки</div>
-                    <div class="text-slate-600 mb-1">${esc(c.fabula)}</div>
-                    <div class="text-slate-500">Возбуждено: ${esc(c.opened)} • Срок до: ${esc(c.deadline)}</div>
-                  </div>
-
-                  <div class="p-2.5 rounded-xl bg-slate-50">
-                    <div class="font-bold text-[#243b61] mb-1">Участники (${(c.participants || []).length})</div>
-                    ${(c.participants || []).length
-                      ? c.participants.map((p) => `<div class="text-slate-700">• ${esc(p.name)} — <span class="text-slate-500">${esc(p.role)}</span></div>`).join('')
-                      : '<div class="text-slate-400">Участники пока не добавлены</div>'}
-                  </div>
-
-                  <div class="p-2.5 rounded-xl bg-slate-50">
-                    <div class="font-bold text-[#243b61] mb-1">План: что провести</div>
-                    ${(c.plan || []).length
-                      ? c.plan.map((pl) => `<div class="text-slate-700">• ${esc(pl)}</div>`).join('')
-                      : '<div class="text-slate-400">Пунктов плана нет</div>'}
-                  </div>
-
-                  <div class="p-2.5 rounded-xl bg-slate-50">
-                    <div class="font-bold text-[#243b61] mb-1.5">Документы дела (порядок для описи)</div>
-                    ${(c.docs || []).map((doc, idx) => `
-                      <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-white border border-slate-200 mb-1">
-                        <span class="font-medium text-slate-700">${esc(doc.name)} <small class="text-slate-400">(${esc(doc.kind)})</small></span>
-                        <div class="flex gap-1 shrink-0">
-                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" data-action="move-doc-up" data-id="${esc(c.id)}" data-idx="${idx}">↑</button>
-                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" data-action="move-doc-down" data-id="${esc(c.id)}" data-idx="${idx}">↓</button>
-                        </div>
-                      </div>
-                    `).join('')}
-                  </div>
-
-                  <div class="flex items-center justify-between gap-2 pt-1">
-                    <button type="button" class="btn-soft-secondary text-xs" data-action="open-edit-case" data-id="${esc(c.id)}">Редактировать дело</button>
-                    <button type="button" class="btn-soft-ghost text-red-600 text-xs" data-action="delete-case" data-id="${esc(c.id)}">Удалить дело</button>
-                  </div>
-                </div>
-              ` : ''}
-            </div>
-          `;
-        })
-        .join('');
+            ` : ''}
+          </div>
+        `;
+      }).join('');
     }
 
     function renderSvodkaDeadlines() {
       const el = document.getElementById('svodkaDeadlinesList');
-      if (!ws.casesData.length) {
-        el.innerHTML = '<div class="text-xs text-slate-400">Дел с контролем сроков пока нет.</div>';
-        return;
-      }
-      el.innerHTML = ws.casesData
-        .map((c) => {
-          const left = daysUntil(c.deadline);
-          const urgent = left <= (c.leadDays || 10);
-          return `
-            <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 ${
-              urgent ? 'bg-red-50/70 border-red-200' : 'bg-white border-slate-200'
-            }">
-              <div>
-                <div class="text-xs font-bold text-[#243b61]">УД ${esc(c.number)} • ${esc((c.articles || []).join(', '))}</div>
-                <div class="text-[11px] text-slate-500">Срок до ${esc(c.deadline)}</div>
-              </div>
-              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${urgent ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-700'}">${left} дн.</span>
-            </div>
-          `;
-        })
-        .join('');
-    }
+      if (!ws.casesData.length) { el.innerHTML = '<div class="text-xs text-slate-400">Дел с контролем сроков пока нет.</div>'; return; }
 
-    /* ==================== БЛАНКИ, БАЗА ЗНАНИЙ И ПРОФИЛЬ ==================== */
+      el.innerHTML = ws.casesData.map((c) => {
+        const left = daysUntil(c.deadline);
+        const urgent = left <= (c.leadDays || 10);
+        return `
+          <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 ${urgent ? 'bg-red-50/70 border-red-200' : 'bg-white border-slate-200'}">
+            <div>
+              <div class="text-xs font-bold text-[#243b61]">УД ${esc(c.number)} • ${esc((c.articles || []).join(', '))}</div>
+              <div class="text-[11px] text-slate-500">Срок до ${esc(c.deadline)}</div>
+            </div>
+            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${urgent ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-700'}">${left} дн.</span>
+          </div>
+        `;
+      }).join('');
+    }
 
     function syncProfileInputs() {
       document.getElementById('profOrg').value = ws.profile.org || '';
@@ -2202,8 +1338,7 @@
       ws.profile.org = document.getElementById('profOrg').value;
       ws.profile.rank = document.getElementById('profRank').value;
       ws.profile.fio = document.getElementById('profFio').value;
-      updateBlankDraft();
-      scheduleSync();
+      updateBlankDraft(); scheduleSync();
     }
 
     function setBlankGroup(grp) {
@@ -2218,19 +1353,11 @@
     function renderBlankSelect() {
       const q = (document.getElementById('blankSearch').value || '').toLowerCase();
       let list = BLANKS_LIST.filter((b) => b.group === currentBlankGrp);
-      if (q) {
-        const m = BLANKS_LIST.filter((b) => b.title.toLowerCase().includes(q));
-        if (m.length) list = m;
-      }
-      document.getElementById('blankPicker').innerHTML = list
-        .map((b) => `<option value="${b.id}">${esc(b.title)} (${esc(b.ref)})</option>`)
-        .join('');
+      if (q) { const m = BLANKS_LIST.filter((b) => b.title.toLowerCase().includes(q)); if (m.length) list = m; }
+      document.getElementById('blankPicker').innerHTML = list.map((b) => `<option value="${b.id}">${esc(b.title)} (${esc(b.ref)})</option>`).join('');
 
       const caseSel = document.getElementById('blankCaseSelect');
-      caseSel.innerHTML = ws.casesData.length
-        ? ws.casesData.map((c) => `<option value="${c.id}">УД ${esc(c.number)} — ${esc((c.articles || []).join(', '))}</option>`).join('')
-        : '<option value="">— Дела пока не добавлены —</option>';
-
+      caseSel.innerHTML = ws.casesData.length ? ws.casesData.map((c) => `<option value="${c.id}">УД ${esc(c.number)} — ${esc((c.articles || []).join(', '))}</option>`).join('') : '<option value="">— Дела пока не добавлены —</option>';
       updateBlankDraft();
     }
 
@@ -2253,11 +1380,7 @@
           editor.value = `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\nпо уголовному делу № ______________\n\nДобавьте дело во вкладке «Дела», чтобы подставить реквизиты и фабулу.`;
           return;
         }
-        editor.value =
-          `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\nпо уголовному делу ${kase.number} (${(kase.articles || []).join(', ')})\n\n` +
-          `Сформировано по образцу с учётом материалов дела, расчёта сроков по УПК РФ (срок до ${kase.deadline}) ` +
-          `и пособий из Базы знаний: ${kbRef}.\n\n` +
-          `Фабула: ${kase.fabula}`;
+        editor.value = `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\nпо уголовному делу ${kase.number} (${(kase.articles || []).join(', ')})\n\nСформировано по образцу с учётом материалов дела, расчёта сроков по УПК РФ (срок до ${kase.deadline}) и пособий из Базы знаний: ${kbRef}.\n\nФабула: ${kase.fabula}`;
       }
     }
 
@@ -2265,53 +1388,36 @@
       const txt = document.getElementById('blankEditor').value;
       const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'></head><body><pre style="font-family:'Times New Roman',serif;font-size:14pt;white-space:pre-wrap;">${esc(txt)}</pre></body></html>`;
       const blob = new Blob(['\ufeff', html], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'ARM_Sledovatelya_Dokument.docx';
-      a.click();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ARM_Sledovatelya_Dokument.docx'; a.click();
       showToast('Документ .DOCX скачан');
     }
 
     function attachBlankToCase() {
       const kase = ws.casesData.find((c) => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
-      if (!kase) {
-        showToast('Сначала добавьте дело');
-        return;
-      }
+      if (!kase) { showToast('Сначала добавьте дело'); return; }
       const blank = BLANKS_LIST.find((b) => b.id === document.getElementById('blankPicker').value) || BLANKS_LIST[0];
       kase.docs = kase.docs || [];
       kase.docs.push({ name: `${blank.title} (${kase.number})`, kind: 'Создать' });
-      renderCasesList();
-      scheduleSync();
-      showToast(`Добавлено в документы дела ${kase.number}`);
+      renderCasesList(); scheduleSync(); showToast(`Добавлено в документы дела ${kase.number}`);
     }
 
     function renderKbSection() {
-      document.getElementById('kbCatChips').innerHTML = KB_CATEGORIES
-        .map((c) => {
-          const act = kbSelectedCats.includes(c);
-          return `<button type="button" data-action="toggle-kb-cat" data-cat="${esc(c)}" class="px-2.5 py-1 rounded-full text-xs font-semibold border ${
-            act ? 'bg-[#334e7b] text-white border-[#334e7b]' : 'bg-white text-slate-600 border-slate-200'
-          }">${esc(c)}</button>`;
-        })
-        .join('');
+      document.getElementById('kbCatChips').innerHTML = KB_CATEGORIES.map((c) => {
+        const act = kbSelectedCats.includes(c);
+        return `<button type="button" data-action="toggle-kb-cat" data-cat="${esc(c)}" class="px-2.5 py-1 rounded-full text-xs font-semibold border ${act ? 'bg-[#334e7b] text-white border-[#334e7b]' : 'bg-white text-slate-600 border-slate-200'}">${esc(c)}</button>`;
+      }).join('');
 
-      document.getElementById('kbMaterialList').innerHTML = ws.kbMaterials
-        .map((m) => `
-          <div class="card">
-            <div class="text-sm font-bold text-[#243b61]">${esc(m.title)}</div>
-            <div class="flex flex-wrap gap-1 my-1.5">
-              ${(m.cats || []).map((c) => `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#eef3fb] text-[#334e7b]">${esc(c)}</span>`).join('')}
-            </div>
-            <div class="text-xs text-slate-600">${esc(m.notes)}</div>
-          </div>
-        `)
-        .join('');
+      document.getElementById('kbMaterialList').innerHTML = ws.kbMaterials.map((m) => `
+        <div class="card">
+          <div class="text-sm font-bold text-[#243b61]">${esc(m.title)}</div>
+          <div class="flex flex-wrap gap-1 my-1.5">${(m.cats || []).map((c) => `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#eef3fb] text-[#334e7b]">${esc(c)}</span>`).join('')}</div>
+          <div class="text-xs text-slate-600">${esc(m.notes)}</div>
+        </div>
+      `).join('');
     }
 
     function toggleKbCat(c) {
-      if (kbSelectedCats.includes(c)) kbSelectedCats = kbSelectedCats.filter((x) => x !== c);
-      else kbSelectedCats.push(c);
+      if (kbSelectedCats.includes(c)) kbSelectedCats = kbSelectedCats.filter((x) => x !== c); else kbSelectedCats.push(c);
       renderKbSection();
     }
 
@@ -2320,21 +1426,132 @@
       if (!title) return;
       const notes = (document.getElementById('kbNewNotes').value || '').trim() || 'Подключено к генерации бланков и расчётам по УПК.';
       ws.kbMaterials.unshift({ title, cats: [...kbSelectedCats], notes });
-      document.getElementById('kbNewTitle').value = '';
-      document.getElementById('kbNewNotes').value = '';
-      renderKbSection();
-      updateBlankDraft();
-      scheduleSync();
-      showToast('Добавлено в Базу знаний');
+      document.getElementById('kbNewTitle').value = ''; document.getElementById('kbNewNotes').value = '';
+      renderKbSection(); updateBlankDraft(); scheduleSync(); showToast('Добавлено в Базу знаний');
     }
 
     function renderAllActionsList() {
       const sorted = [...ws.eventsData].sort((a, b) => (a.dt || '').localeCompare(b.dt || ''));
-      if (!sorted.length) {
-        document.getElementById('allActionsContainer').innerHTML = '<div class="text-xs text-slate-400">Запланированных действий пока нет.</div>';
+      if (!sorted.length) { document.getElementById('allActionsContainer').innerHTML = '<div class="text-xs text-slate-400">Запланированных действий пока нет.</div>'; return; }
+
+      document.getElementById('allActionsContainer').innerHTML = sorted.map((ev) => {
+        const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
+        return `
+          <div class="p-3 rounded-xl border mb-2 flex items-center justify-between gap-2 ${cat.cls}">
+            <div>
+              <div class="text-xs font-bold">${esc(ev.title)} • ${esc(ev.caseNum)}</div>
+              <div class="text-[11px] opacity-80">${esc((ev.dt || '').replace('T', ' '))} (${esc(cat.label)})</div>
+            </div>
+            <button type="button" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700" data-action="open-event" data-id="${esc(ev.id)}">Изменить</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderMetrics() {
+      const todayIso = getTodayIso();
+      document.getElementById('statCasesCount').textContent = String(ws.casesData.length);
+      document.getElementById('statUrgentCount').textContent = String(ws.casesData.filter((c) => daysUntil(c.deadline) <= (c.leadDays || 10)).length);
+      document.getElementById('statTodayCount').textContent = String(ws.eventsData.filter((e) => e.dt && e.dt.startsWith(todayIso)).length);
+    }
+
+    function renderAll() {
+      renderMetrics(); renderCalendarSection(); renderSvodkaDeadlines(); renderCasesList(); renderBlankSelect(); renderKbSection();
+    }
+
+    document.body.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-action]');
+      if (!el) return;
+      const action = el.dataset.action;
+      const id = el.dataset.id;
+      const idx = el.dataset.idx !== undefined ? Number(el.dataset.idx) : undefined;
+      const key = el.dataset.key;
+      const grp = el.dataset.grp;
+      const cat = el.dataset.cat;
+      const kind = el.dataset.kind;
+      const target = el.dataset.target;
+      const delta = el.dataset.delta;
+      const tab = el.dataset.tab;
+      const modalId = el.dataset.modal;
+
+      if (action === 'overlay-close') {
+        if (e.target.id === modalId) document.getElementById(modalId).classList.add('hidden');
         return;
       }
-      document.getElementById('allActionsContainer').innerHTML = sorted
-        .map((ev) => {
-          const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
-          return `
+
+      switch (action) {
+        case 'pull-from-cloud': pullFromCloud(); break;
+        case 'focus-metric': focusMetric(kind); break;
+        case 'toggle-accordion': toggleAccordion(target); break;
+        case 'shift-week': shiftWeek(Number(delta)); break;
+        case 'go-today': goToday(); break;
+        case 'open-event-new': openEventModal(); break;
+        case 'open-event': openEventModal(id); break;
+        case 'switch-tab': switchTab(tab); break;
+        case 'set-color-filter': setColorFilter(key); break;
+        case 'select-day': selectDay(id); break;
+        case 'pick-color': pickModalColor(key); break;
+        case 'remove-temp-art': tempArticles.splice(idx, 1); renderTempFormLists(); break;
+        case 'remove-temp-part': tempParticipants.splice(idx, 1); renderTempFormLists(); break;
+        case 'remove-temp-plan': tempPlans.splice(idx, 1); renderTempFormLists(); break;
+        case 'new-case-open': toggleNewCaseForm(true); break;
+        case 'new-case-close': toggleNewCaseForm(false); break;
+        case 'save-new-case': saveNewCase(); break;
+        case 'add-temp-art': addTempArticle(); break;
+        case 'add-temp-part': addTempParticipant(); break;
+        case 'add-temp-plan': addTempPlan(); break;
+        case 'close-edit-case': closeEditCaseModal(); break;
+        case 'open-edit-case': openEditCaseModal(id); break;
+        case 'toggle-case': toggleCaseExpand(id); break;
+        case 'move-doc-up': moveCaseDoc(id, idx, -1); break;
+        case 'move-doc-down': moveCaseDoc(id, idx, 1); break;
+        case 'delete-case': deleteCaseById(id); break;
+        case 'add-edit-art': addEditArticle(); break;
+        case 'add-edit-part': addEditParticipant(); break;
+        case 'add-edit-plan': addEditPlan(); break;
+        case 'remove-edit-art': editArticles.splice(idx, 1); renderEditFormLists(); break;
+        case 'remove-edit-part': editParticipants.splice(idx, 1); renderEditFormLists(); break;
+        case 'remove-edit-plan': editPlans.splice(idx, 1); renderEditFormLists(); break;
+        case 'save-edited-case': saveEditedCase(); break;
+        case 'set-blank-group': setBlankGroup(grp); break;
+        case 'download-docx': downloadBlankDocx(); break;
+        case 'attach-blank': attachBlankToCase(); break;
+        case 'add-kb-material': addKbMaterial(); break;
+        case 'toggle-kb-cat': toggleKbCat(cat); break;
+        case 'export-backup': exportBackupJson(); break;
+        case 'logout': logoutUser(); break;
+        case 'close-event': closeEventModal(); break;
+        case 'save-event': saveCalendarEvent(); break;
+        case 'delete-event': deleteCalendarEvent(); break;
+      }
+    });
+
+    document.body.addEventListener('change', (e) => {
+      const el = e.target.closest('[data-action="quick-shift"]');
+      if (!el) return;
+      quickShiftDateEvent(el.dataset.id, el.value);
+    });
+
+    function quickShiftDateEvent(id, newDt) {
+      const ev = ws.eventsData.find((x) => x.id === id);
+      if (!ev || !newDt) return;
+      ev.dt = newDt; selectedDay = newDt.split('T')[0]; renderAll(); scheduleSync(); showToast('Дата и время обновлены');
+    }
+
+    setNetIndicator();
+    window.addEventListener('online', () => { setNetIndicator(); showToast('Связь восстановлена'); pushToCloud(); });
+    window.addEventListener('offline', () => { setNetIndicator(); setCloudIndicator('warn', 'Офлайн'); });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+    }
+
+    (async function init() {
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) await enterApp(session.user);
+      } catch (err) { console.error(err); }
+    })();
+  </script>
+</body>
+</html>
