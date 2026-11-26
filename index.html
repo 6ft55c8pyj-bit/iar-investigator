@@ -16,6 +16,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // ==== Хэш пароля для офлайн-режима ====
+    async function sha256Hex(text) {
+      const buf = new TextEncoder().encode(text);
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hash))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
       window.supabase = {
         createClient: function(url) {
@@ -52,18 +61,35 @@
               async getSession() {
                 return { data: { session: readSession() }, error: null };
               },
-              async signInWithPassword({ email }) {
+              async signInWithPassword({ email, password }) {
                 if (!navigator.onLine) {
-                  const existing = readSession();
-                  if (existing && existing.user && existing.user.email === email) {
-                    return { data: { session: existing, user: existing.user }, error: null };
+                  if (!password || String(password).length < 6) {
+                    return { data: { session: null, user: null }, error: { message: 'Пароль должен содержать не менее 6 символов' } };
                   }
-                  const offlineUser = {
-                    id: 'offline_' + btoa(unescape(encodeURIComponent(email))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24),
-                    email: email
-                  };
-                  const s = writeSession(offlineUser);
-                  return { data: { session: s, user: offlineUser }, error: null };
+                  const passKey = 'iar_offline_pass_' + email;
+                  const storedHash = localStorage.getItem(passKey);
+                  const currentHash = await sha256Hex(email + ':' + password);
+
+                  if (storedHash) {
+                    if (currentHash !== storedHash) {
+                      return { data: { session: null, user: null }, error: { message: 'Неверный пароль' } };
+                    }
+                  } else {
+                    try { localStorage.setItem(passKey, currentHash); } catch (e) {}
+                  }
+
+                  const existing = readSession();
+                  let user;
+                  if (existing && existing.user && existing.user.email === email) {
+                    user = existing.user;
+                  } else {
+                    user = {
+                      id: 'offline_' + btoa(unescape(encodeURIComponent(email))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24),
+                      email: email
+                    };
+                  }
+                  const s = writeSession(user);
+                  return { data: { session: s, user: user }, error: null };
                 }
                 return { data: { session: null, user: null }, error: { message: 'Нет соединения с сервером авторизации' } };
               },
@@ -623,7 +649,7 @@
             <span id="netDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span id="netText">Онлайн</span>
           </span>
-          <button type="button" id="cloudChip" class="status-chip" onclick="pullFromCloud()" title="Синхронизировать с облаком">
+          <button type="button" id="cloudChip" class="status-chip" data-action="pull-from-cloud" title="Синхронизировать с облаком">
             <span id="cloudDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span id="cloudText">Облако</span>
           </button>
@@ -648,15 +674,15 @@
         </header>
 
         <section class="grid grid-cols-3 gap-2 mb-3" aria-label="Показатели">
-          <button type="button" id="tileCases" class="metric-tile" onclick="focusMetric('cases')">
+          <button type="button" id="tileCases" class="metric-tile" data-action="focus-metric" data-kind="cases">
             <div id="statCasesCount" class="text-xl font-extrabold text-[#334e7b]">0</div>
             <div class="text-[11px] font-semibold text-slate-500 mt-0.5">В производстве</div>
           </button>
-          <button type="button" id="tileUrgent" class="metric-tile" onclick="focusMetric('urgent')">
+          <button type="button" id="tileUrgent" class="metric-tile" data-action="focus-metric" data-kind="urgent">
             <div id="statUrgentCount" class="text-xl font-extrabold text-[#b45353]">0</div>
             <div class="text-[11px] font-semibold text-slate-500 mt-0.5">Срок &le; 10 дн.</div>
           </button>
-          <button type="button" id="tileToday" class="metric-tile active" onclick="focusMetric('today')">
+          <button type="button" id="tileToday" class="metric-tile active" data-action="focus-metric" data-kind="today">
             <div id="statTodayCount" class="text-xl font-extrabold text-[#4a6fa5]">0</div>
             <div class="text-[11px] font-semibold text-slate-500 mt-0.5">На сегодня</div>
           </button>
@@ -665,13 +691,13 @@
         <section class="card" aria-label="Рабочий календарь на неделю">
           <div class="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
             <div class="flex items-center gap-1.5">
-              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" onclick="shiftWeek(-1)" aria-label="Предыдущая неделя">◀</button>
+              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" data-action="shift-week" data-delta="-1" aria-label="Предыдущая неделя">◀</button>
               <span id="calendarMonthTitle" class="text-base font-extrabold text-[#243b61] px-1"></span>
-              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" onclick="shiftWeek(1)" aria-label="Следующая неделя">▶</button>
+              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" data-action="shift-week" data-delta="1" aria-label="Следующая неделя">▶</button>
             </div>
             <div class="flex items-center gap-1.5">
-              <button type="button" class="btn-soft-secondary py-1.5 px-3 text-xs" onclick="goToday()">Сегодня</button>
-              <button type="button" class="btn-soft-primary py-1.5 px-3 text-xs" onclick="openEventModal()">+ Событие</button>
+              <button type="button" class="btn-soft-secondary py-1.5 px-3 text-xs" data-action="go-today">Сегодня</button>
+              <button type="button" class="btn-soft-primary py-1.5 px-3 text-xs" data-action="open-event-new">+ Событие</button>
             </div>
           </div>
 
@@ -680,16 +706,16 @@
         </section>
 
         <div class="grid grid-cols-2 gap-2.5 mb-3">
-          <button type="button" class="btn-soft-primary w-full" onclick="openEventModal()">
+          <button type="button" class="btn-soft-primary w-full" data-action="open-event-new">
             <span>+ Событие в календарь</span>
           </button>
-          <button type="button" class="btn-soft-secondary w-full" onclick="switchTab('blanks')">
+          <button type="button" class="btn-soft-secondary w-full" data-action="switch-tab" data-tab="blanks">
             <span>Создать бланк</span>
           </button>
         </div>
 
         <div class="inner-accordion">
-          <button type="button" class="accordion-header" onclick="toggleAccordion('accDayEvents')">
+          <button type="button" class="accordion-header" data-action="toggle-accordion" data-target="accDayEvents">
             <div>
               <div class="text-sm font-bold text-[#243b61]">События выбранного дня</div>
               <div id="selectedDaySubtitle" class="text-xs text-slate-500"></div>
@@ -704,7 +730,7 @@
         </div>
 
         <div class="inner-accordion">
-          <button type="button" class="accordion-header" onclick="toggleAccordion('accDeadlines')">
+          <button type="button" class="accordion-header" data-action="toggle-accordion" data-target="accDeadlines">
             <div>
               <div class="text-sm font-bold text-[#243b61]">Контроль процессуальных сроков</div>
               <div class="text-xs text-slate-500">Нажмите, чтобы раскрыть сроки следствия и ходатайств</div>
@@ -729,7 +755,7 @@
         <div id="casesCardsContainer"></div>
 
         <div id="addCaseTriggerWrap" class="mt-2 mb-3">
-          <button type="button" class="btn-soft-primary w-full py-3" onclick="toggleNewCaseForm(true)">
+          <button type="button" class="btn-soft-primary w-full py-3" data-action="new-case-open">
             <span>+ Добавить дело</span>
           </button>
         </div>
@@ -737,7 +763,7 @@
         <section id="newCaseFormCard" class="card hidden">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-base font-extrabold text-[#243b61] m-0">Новое уголовное дело</h3>
-            <button type="button" class="text-slate-400 font-bold px-2 py-1" onclick="toggleNewCaseForm(false)">✕</button>
+            <button type="button" class="text-slate-400 font-bold px-2 py-1" data-action="new-case-close">✕</button>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
@@ -766,7 +792,7 @@
             <label class="block text-xs font-semibold text-slate-600 mb-1">Квалификация (статьи УК РФ)</label>
             <div class="flex gap-2 mb-1.5">
               <input type="text" id="ncArticleInput" class="soft-input" placeholder="Например: ч. 2 ст. 158 УК РФ" />
-              <button type="button" class="btn-soft-secondary shrink-0" onclick="addTempArticle()">+ Статья</button>
+              <button type="button" class="btn-soft-secondary shrink-0" data-action="add-temp-art">+ Статья</button>
             </div>
             <div id="tempArticlesList" class="flex flex-wrap gap-1.5"></div>
           </div>
@@ -787,7 +813,7 @@
                   <option value="Подозреваемый">Подозреваемый</option>
                   <option value="Обвиняемый">Обвиняемый</option>
                 </select>
-                <button type="button" class="btn-soft-secondary shrink-0" onclick="addTempParticipant()">+</button>
+                <button type="button" class="btn-soft-secondary shrink-0" data-action="add-temp-part">+</button>
               </div>
             </div>
             <div id="tempParticipantsList" class="space-y-1"></div>
@@ -797,14 +823,14 @@
             <label class="block text-xs font-semibold text-slate-600 mb-1">План: что необходимо провести</label>
             <div class="flex gap-2 mb-1.5">
               <input type="text" id="ncPlanInput" class="soft-input" placeholder="Например: Допросить свидетеля / Назначить экспертизу" />
-              <button type="button" class="btn-soft-secondary shrink-0" onclick="addTempPlan()">+</button>
+              <button type="button" class="btn-soft-secondary shrink-0" data-action="add-temp-plan">+</button>
             </div>
             <div id="tempPlanList" class="space-y-1"></div>
           </div>
 
           <div class="flex justify-end gap-2">
-            <button type="button" class="btn-soft-ghost" onclick="toggleNewCaseForm(false)">Отмена</button>
-            <button type="button" class="btn-soft-primary" onclick="saveNewCase()">Сохранить дело</button>
+            <button type="button" class="btn-soft-ghost" data-action="new-case-close">Отмена</button>
+            <button type="button" class="btn-soft-primary" data-action="save-new-case">Сохранить дело</button>
           </div>
         </section>
       </main>
@@ -818,9 +844,9 @@
           <input type="text" id="blankSearch" class="soft-input mb-2.5" placeholder="Поиск бланка (выемка, допрос, экспертиза, запрос)..." oninput="renderBlankSelect()" />
 
           <div class="grid grid-cols-3 gap-1.5 mb-3">
-            <button type="button" id="bGrp-Постановления" class="btn-soft-secondary text-xs py-2" onclick="setBlankGroup('Постановления')">Постановления</button>
-            <button type="button" id="bGrp-Протоколы" class="btn-soft-ghost text-xs py-2" onclick="setBlankGroup('Протоколы')">Протоколы</button>
-            <button type="button" id="bGrp-Иные документы" class="btn-soft-ghost text-xs py-2" onclick="setBlankGroup('Иные документы')">Иные документы</button>
+            <button type="button" id="bGrp-Постановления" class="btn-soft-secondary text-xs py-2" data-action="set-blank-group" data-grp="Постановления">Постановления</button>
+            <button type="button" id="bGrp-Протоколы" class="btn-soft-ghost text-xs py-2" data-action="set-blank-group" data-grp="Протоколы">Протоколы</button>
+            <button type="button" id="bGrp-Иные документы" class="btn-soft-ghost text-xs py-2" data-action="set-blank-group" data-grp="Иные документы">Иные документы</button>
           </div>
 
           <select id="blankPicker" class="soft-select mb-3" onchange="updateBlankDraft()"></select>
@@ -844,8 +870,8 @@
           </div>
 
           <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn-soft-primary flex-1" onclick="downloadBlankDocx()">Скачать .DOCX</button>
-            <button type="button" class="btn-soft-secondary flex-1" onclick="attachBlankToCase()">В документы дела</button>
+            <button type="button" class="btn-soft-primary flex-1" data-action="download-docx">Скачать .DOCX</button>
+            <button type="button" class="btn-soft-secondary flex-1" data-action="attach-blank">В документы дела</button>
           </div>
         </div>
 
@@ -864,7 +890,7 @@
           <div class="flex flex-wrap gap-1.5 mb-2.5" id="kbCatChips"></div>
           <input type="text" id="kbNewTitle" class="soft-input mb-2" placeholder="Название пособия или бланка..." />
           <textarea id="kbNewNotes" class="soft-textarea mb-2.5" rows="2" placeholder="Ключевые положения, сроки по УПК или примерные вопросы для экспертизы..."></textarea>
-          <button type="button" class="btn-soft-primary w-full" onclick="addKbMaterial()">+ Вставить материал в Базу знаний</button>
+          <button type="button" class="btn-soft-primary w-full" data-action="add-kb-material">+ Вставить материал в Базу знаний</button>
         </div>
 
         <div id="kbMaterialList"></div>
@@ -905,49 +931,49 @@
             Аккаунт: <strong id="settingsEmail">-</strong> • Синхронизация: <strong id="lastSyncTime">ожидание...</strong>
           </div>
           <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn-soft-secondary text-xs" onclick="pullFromCloud()">Обновить из облака</button>
-            <button type="button" class="btn-soft-ghost text-xs" onclick="exportBackupJson()">Экспорт .JSON</button>
-            <button type="button" class="btn-soft-ghost text-xs text-red-600" onclick="logoutUser()">Выйти</button>
+            <button type="button" class="btn-soft-secondary text-xs" data-action="pull-from-cloud">Обновить из облака</button>
+            <button type="button" class="btn-soft-ghost text-xs" data-action="export-backup">Экспорт .JSON</button>
+            <button type="button" class="btn-soft-ghost text-xs text-red-600" data-action="logout">Выйти</button>
           </div>
         </div>
       </main>
     </div>
 
     <nav class="bottom-nav" aria-label="Навигация">
-      <button type="button" id="tab-svodka" class="nav-tab active" onclick="switchTab('svodka')">
+      <button type="button" id="tab-svodka" class="nav-tab active" data-action="switch-tab" data-tab="svodka">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="4" width="18" height="18" rx="3" />
           <path d="M16 2v4M8 2v4M3 10h18" />
         </svg>
         <span>Сводка</span>
       </button>
-      <button type="button" id="tab-cases" class="nav-tab" onclick="switchTab('cases')">
+      <button type="button" id="tab-cases" class="nav-tab" data-action="switch-tab" data-tab="cases">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
         </svg>
         <span>Дела</span>
       </button>
-      <button type="button" id="tab-blanks" class="nav-tab" onclick="switchTab('blanks')">
+      <button type="button" id="tab-blanks" class="nav-tab" data-action="switch-tab" data-tab="blanks">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
           <path d="M14 2v6h6M8 13h8M8 17h5" />
         </svg>
         <span>Бланки</span>
       </button>
-      <button type="button" id="tab-kb" class="nav-tab" onclick="switchTab('kb')">
+      <button type="button" id="tab-kb" class="nav-tab" data-action="switch-tab" data-tab="kb">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
         </svg>
         <span>База знаний</span>
       </button>
-      <button type="button" id="tab-actions" class="nav-tab" onclick="switchTab('actions')">
+      <button type="button" id="tab-actions" class="nav-tab" data-action="switch-tab" data-tab="actions">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 3v18M5 7h14M5 7l-2 5h4l-2-5zM19 7l-2 5h4l-2-5z" />
         </svg>
         <span>Действия</span>
       </button>
-      <button type="button" id="tab-profile" class="nav-tab" onclick="switchTab('profile')">
+      <button type="button" id="tab-profile" class="nav-tab" data-action="switch-tab" data-tab="profile">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="8" r="4" />
           <path d="M4 20c1.8-3.6 5-5 8-5s6.2 1.4 8 5" />
@@ -958,11 +984,11 @@
   </div>
 
   <!-- Модалка редактирования уголовного дела -->
-  <div id="editCaseModal" class="modal-overlay hidden" onclick="if(event.target.id==='editCaseModal') closeEditCaseModal()">
+  <div id="editCaseModal" class="modal-overlay hidden" data-action="overlay-close" data-modal="editCaseModal">
     <div class="modal-sheet">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-extrabold text-[#243b61] m-0">Редактирование уголовного дела</h3>
-        <button type="button" class="text-slate-400 font-bold px-2 py-1" onclick="closeEditCaseModal()">✕</button>
+        <button type="button" class="text-slate-400 font-bold px-2 py-1" data-action="close-edit-case">✕</button>
       </div>
 
       <input type="hidden" id="ecId" />
@@ -993,7 +1019,7 @@
         <label class="block text-xs font-semibold text-slate-600 mb-1">Квалификация (статьи УК РФ)</label>
         <div class="flex gap-2 mb-1.5">
           <input type="text" id="ecArticleInput" class="soft-input" placeholder="Например: ч. 2 ст. 158 УК РФ" />
-          <button type="button" class="btn-soft-secondary shrink-0" onclick="addEditArticle()">+ Статья</button>
+          <button type="button" class="btn-soft-secondary shrink-0" data-action="add-edit-art">+ Статья</button>
         </div>
         <div id="editArticlesList" class="flex flex-wrap gap-1.5"></div>
       </div>
@@ -1014,7 +1040,7 @@
               <option value="Подозреваемый">Подозреваемый</option>
               <option value="Обвиняемый">Обвиняемый</option>
             </select>
-            <button type="button" class="btn-soft-secondary shrink-0" onclick="addEditParticipant()">+</button>
+            <button type="button" class="btn-soft-secondary shrink-0" data-action="add-edit-part">+</button>
           </div>
         </div>
         <div id="editParticipantsList" class="space-y-1"></div>
@@ -1024,24 +1050,24 @@
         <label class="block text-xs font-semibold text-slate-600 mb-1">План: что необходимо провести</label>
         <div class="flex gap-2 mb-1.5">
           <input type="text" id="ecPlanInput" class="soft-input" placeholder="Новый пункт плана..." />
-          <button type="button" class="btn-soft-secondary shrink-0" onclick="addEditPlan()">+</button>
+          <button type="button" class="btn-soft-secondary shrink-0" data-action="add-edit-plan">+</button>
         </div>
         <div id="editPlanList" class="space-y-1"></div>
       </div>
 
       <div class="flex justify-end gap-2">
-        <button type="button" class="btn-soft-ghost" onclick="closeEditCaseModal()">Отмена</button>
-        <button type="button" class="btn-soft-primary" onclick="saveEditedCase()">Сохранить изменения</button>
+        <button type="button" class="btn-soft-ghost" data-action="close-edit-case">Отмена</button>
+        <button type="button" class="btn-soft-primary" data-action="save-edited-case">Сохранить изменения</button>
       </div>
     </div>
   </div>
 
-  <!-- Модалка добавления / редактирования события календаря с выбором цвета -->
-  <div id="eventModal" class="modal-overlay hidden" onclick="if(event.target.id==='eventModal') closeEventModal()">
+  <!-- Модалка добавления / редактирования события календаря -->
+  <div id="eventModal" class="modal-overlay hidden" data-action="overlay-close" data-modal="eventModal">
     <div class="modal-sheet">
       <div class="flex items-center justify-between mb-3">
         <h3 id="evModalHeading" class="text-base font-extrabold text-[#243b61] m-0">Событие календаря</h3>
-        <button type="button" class="text-slate-400 font-bold px-2 py-1" onclick="closeEventModal()">✕</button>
+        <button type="button" class="text-slate-400 font-bold px-2 py-1" data-action="close-event">✕</button>
       </div>
 
       <input type="hidden" id="evEditId" />
@@ -1068,10 +1094,10 @@
       </div>
 
       <div class="flex items-center justify-between gap-2">
-        <button type="button" id="evDeleteBtn" class="btn-soft-ghost text-red-600 hidden" onclick="deleteCalendarEvent()">Удалить</button>
+        <button type="button" id="evDeleteBtn" class="btn-soft-ghost text-red-600 hidden" data-action="delete-event">Удалить</button>
         <div class="flex gap-2 ml-auto">
-          <button type="button" class="btn-soft-ghost" onclick="closeEventModal()">Отмена</button>
-          <button type="button" class="btn-soft-primary" onclick="saveCalendarEvent()">Сохранить</button>
+          <button type="button" class="btn-soft-ghost" data-action="close-event">Отмена</button>
+          <button type="button" class="btn-soft-primary" data-action="save-event">Сохранить</button>
         </div>
       </div>
     </div>
@@ -1593,6 +1619,19 @@
       renderCalendarSection();
     }
 
+    // ==== НОВОЕ: перейти к произвольной дате ====
+    function jumpToDate(isoDate) {
+      if (!isoDate) return;
+      const target = parseDate(isoDate);
+      const today = parseDate(getTodayIso());
+      const targetMonday = new Date(target);
+      targetMonday.setDate(target.getDate() - ((target.getDay() + 6) % 7));
+      const todayMonday = new Date(today);
+      todayMonday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+      weekDelta = Math.round((targetMonday - todayMonday) / (7 * 24 * 60 * 60 * 1000));
+      selectedDay = isoDate;
+    }
+
     function selectDay(isoDate) {
       selectedDay = isoDate;
       renderCalendarSection();
@@ -1614,7 +1653,7 @@
         .map((f) => {
           const active = activeColorFilter === f.key;
           return `
-            <button type="button" onclick="setColorFilter('${f.key}')"
+            <button type="button" data-action="set-color-filter" data-key="${f.key}"
               class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${
                 active ? 'bg-[#eef3fb] border-[#5b7bb2] text-[#243b61]' : 'bg-white border-slate-200 text-slate-600'
               }">
@@ -1645,7 +1684,7 @@
             .sort((a, b) => a.dt.localeCompare(b.dt));
 
           return `
-            <div class="ios-day-col ${isSel ? 'selected' : ''}" onclick="selectDay('${iso}')">
+            <div class="ios-day-col ${isSel ? 'selected' : ''}" data-action="select-day" data-id="${iso}">
               <div class="ios-day-letter">${letters[idx]}</div>
               <div class="ios-day-num ${isToday ? 'today' : ''}">${dObj.getDate()}</div>
               ${dayEvs
@@ -1653,7 +1692,7 @@
                   const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
                   const timeStr = (ev.dt.split('T')[1] || '').slice(0, 5);
                   return `
-                    <button type="button" class="ios-mini-event ${cat.cls}" onclick="event.stopPropagation(); openEventModal('${ev.id}')">
+                    <button type="button" class="ios-mini-event ${cat.cls}" data-action="open-event" data-id="${esc(ev.id)}">
                       <span class="ev-title">${esc(ev.title)}</span>
                       <span class="ev-time">${esc(timeStr)}</span>
                     </button>
@@ -1696,10 +1735,10 @@
               </div>
               <div class="flex items-center gap-1.5">
                 <input type="datetime-local" value="${esc(ev.dt)}"
-                  class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white text-slate-700"
-                  onchange="quickShiftEvent('${ev.id}', this.value)" />
+                  data-action="quick-shift" data-id="${esc(ev.id)}"
+                  class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white text-slate-700" />
                 <button type="button" class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-600"
-                  onclick="openEventModal('${ev.id}')">Цвет</button>
+                  data-action="open-event" data-id="${esc(ev.id)}">Цвет</button>
               </div>
             </div>
           `;
@@ -1751,7 +1790,7 @@
         .map(([key, cfg]) => {
           const active = modalPickedColor === key;
           return `
-            <button type="button" onclick="pickModalColor('${key}')"
+            <button type="button" data-action="pick-color" data-key="${key}"
               class="p-2 rounded-xl border text-left text-xs font-semibold flex items-center gap-2 ${cfg.cls} ${
                 active ? 'ring-2 ring-[#5b7bb2]' : ''
               }">
@@ -1874,13 +1913,13 @@
 
     function renderTempFormLists() {
       document.getElementById('tempArticlesList').innerHTML = tempArticles
-        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" onclick="tempArticles.splice(${idx},1);renderTempFormLists()">×</button></span>`)
+        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-temp-art" data-idx="${idx}">×</button></span>`)
         .join('');
       document.getElementById('tempParticipantsList').innerHTML = tempParticipants
-        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" onclick="tempParticipants.splice(${idx},1);renderTempFormLists()">×</button></div>`)
+        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" data-action="remove-temp-part" data-idx="${idx}">×</button></div>`)
         .join('');
       document.getElementById('tempPlanList').innerHTML = tempPlans
-        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" onclick="tempPlans.splice(${idx},1);renderTempFormLists()">×</button></div>`)
+        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" data-action="remove-temp-plan" data-idx="${idx}">×</button></div>`)
         .join('');
     }
 
@@ -1913,7 +1952,8 @@
 
       ws.casesData.unshift(newCase);
       syncCaseDeadlineInCalendar(newCase);
-      selectedDay = deadlineVal;
+      // ==== ИСПРАВЛЕНО: перематываем календарь на неделю срока ====
+      jumpToDate(deadlineVal);
 
       document.getElementById('ncNumber').value = '';
       document.getElementById('ncArticleInput').value = '';
@@ -1980,13 +2020,13 @@
 
     function renderEditFormLists() {
       document.getElementById('editArticlesList').innerHTML = editArticles
-        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" onclick="editArticles.splice(${idx},1);renderEditFormLists()">×</button></span>`)
+        .map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-edit-art" data-idx="${idx}">×</button></span>`)
         .join('');
       document.getElementById('editParticipantsList').innerHTML = editParticipants
-        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" onclick="editParticipants.splice(${idx},1);renderEditFormLists()">×</button></div>`)
+        .map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" data-action="remove-edit-part" data-idx="${idx}">×</button></div>`)
         .join('');
       document.getElementById('editPlanList').innerHTML = editPlans
-        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" onclick="editPlans.splice(${idx},1);renderEditFormLists()">×</button></div>`)
+        .map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" data-action="remove-edit-plan" data-idx="${idx}">×</button></div>`)
         .join('');
     }
 
@@ -2015,7 +2055,8 @@
       item.expanded = true;
 
       syncCaseDeadlineInCalendar(item);
-      selectedDay = item.deadline;
+      // ==== ИСПРАВЛЕНО: перематываем календарь на неделю срока ====
+      jumpToDate(item.deadline);
       closeEditCaseModal();
       renderAll();
       scheduleSync();
@@ -2064,7 +2105,7 @@
 
           return `
             <div class="card">
-              <div class="flex items-start justify-between gap-2 cursor-pointer" onclick="toggleCaseExpand('${c.id}')">
+              <div class="flex items-start justify-between gap-2 cursor-pointer" data-action="toggle-case" data-id="${esc(c.id)}">
                 <div>
                   <div class="text-base font-extrabold text-[#243b61]">УД ${esc(c.number)}</div>
                   <div class="flex flex-wrap gap-1 mt-1">
@@ -2105,16 +2146,16 @@
                       <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-white border border-slate-200 mb-1">
                         <span class="font-medium text-slate-700">${esc(doc.name)} <small class="text-slate-400">(${esc(doc.kind)})</small></span>
                         <div class="flex gap-1 shrink-0">
-                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" onclick="moveCaseDoc('${c.id}', ${idx}, -1)">↑</button>
-                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" onclick="moveCaseDoc('${c.id}', ${idx}, 1)">↓</button>
+                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" data-action="move-doc-up" data-id="${esc(c.id)}" data-idx="${idx}">↑</button>
+                          <button type="button" class="px-2 py-0.5 rounded border border-slate-200" data-action="move-doc-down" data-id="${esc(c.id)}" data-idx="${idx}">↓</button>
                         </div>
                       </div>
                     `).join('')}
                   </div>
 
                   <div class="flex items-center justify-between gap-2 pt-1">
-                    <button type="button" class="btn-soft-secondary text-xs" onclick="openEditCaseModal('${c.id}')">Редактировать дело</button>
-                    <button type="button" class="btn-soft-ghost text-red-600 text-xs" onclick="deleteCaseById('${c.id}')">Удалить дело</button>
+                    <button type="button" class="btn-soft-secondary text-xs" data-action="open-edit-case" data-id="${esc(c.id)}">Редактировать дело</button>
+                    <button type="button" class="btn-soft-ghost text-red-600 text-xs" data-action="delete-case" data-id="${esc(c.id)}">Удалить дело</button>
                   </div>
                 </div>
               ` : ''}
@@ -2249,7 +2290,7 @@
       document.getElementById('kbCatChips').innerHTML = KB_CATEGORIES
         .map((c) => {
           const act = kbSelectedCats.includes(c);
-          return `<button type="button" onclick="toggleKbCat('${esc(c)}')" class="px-2.5 py-1 rounded-full text-xs font-semibold border ${
+          return `<button type="button" data-action="toggle-kb-cat" data-cat="${esc(c)}" class="px-2.5 py-1 rounded-full text-xs font-semibold border ${
             act ? 'bg-[#334e7b] text-white border-[#334e7b]' : 'bg-white text-slate-600 border-slate-200'
           }">${esc(c)}</button>`;
         })
@@ -2297,62 +2338,3 @@
         .map((ev) => {
           const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
           return `
-            <div class="p-3 rounded-xl border mb-2 flex items-center justify-between gap-2 ${cat.cls}">
-              <div>
-                <div class="text-xs font-bold">${esc(ev.title)} • ${esc(ev.caseNum)}</div>
-                <div class="text-[11px] opacity-80">${esc((ev.dt || '').replace('T', ' '))} (${esc(cat.label)})</div>
-              </div>
-              <button type="button" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700"
-                onclick="openEventModal('${ev.id}')">Изменить</button>
-            </div>
-          `;
-        })
-        .join('');
-    }
-
-    function renderMetrics() {
-      const todayIso = getTodayIso();
-      document.getElementById('statCasesCount').textContent = String(ws.casesData.length);
-      document.getElementById('statUrgentCount').textContent = String(ws.casesData.filter((c) => daysUntil(c.deadline) <= (c.leadDays || 10)).length);
-      document.getElementById('statTodayCount').textContent = String(ws.eventsData.filter((e) => e.dt && e.dt.startsWith(todayIso)).length);
-    }
-
-    function renderAll() {
-      renderMetrics();
-      renderCalendarSection();
-      renderSvodkaDeadlines();
-      renderCasesList();
-      renderBlankSelect();
-      renderKbSection();
-    }
-
-    setNetIndicator();
-    window.addEventListener('online', () => {
-      setNetIndicator();
-      showToast('Связь восстановлена');
-      pushToCloud();
-    });
-    window.addEventListener('offline', () => {
-      setNetIndicator();
-      setCloudIndicator('warn', 'Офлайн');
-    });
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
-      });
-    }
-
-    (async function init() {
-      try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session && session.user) {
-          await enterApp(session.user);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    })();
-  </script>
-</body>
-</html>
