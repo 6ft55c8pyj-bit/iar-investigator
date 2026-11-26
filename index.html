@@ -1,1893 +1,663 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>АРМ следователя — Уголовные дела, Бланки и База знаний</title>
-<style>
-  :root {
-    --bg: #f3f5f8;
-    --surface: #ffffff;
-    --surface-2: #f8fafc;
-    --border: #dce2ea;
-    --border-strong: #c5ceda;
-    --text: #16202a;
-    --muted: #5c6b7a;
-    --accent: #1d4ed8;
-    --accent-hover: #1e40af;
-    --accent-soft: #eff6ff;
-    --success: #15803d;
-    --success-soft: #f0fdf4;
-    --warn: #b45309;
-    --warn-soft: #fffbeb;
-    --danger: #b91c1c;
-    --danger-soft: #fef2f2;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
-    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f8fc" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="IAR" />
+  <title>АРМ Следователя — Автоматизированное рабочее место</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='26' fill='%230d1b3e'/%3E%3Cpath d='M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z' fill='none' stroke='%23ffffff' stroke-width='6' stroke-linejoin='round'/%3E%3Cpath d='M36 66 L54 48 L65 58 L84 39' fill="none" stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70 39 H84 V53' fill="none" stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='60' y='88' text-anchor="middle" fill='%23ffffff' font-family='Inter, Arial, sans-serif' font-weight='800' font-size='22' letter-spacing='1'%3EIAR%3C/text%3E%3C/svg%3E" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      window.supabase = {
+        createClient: function(url) {
+          const projectRef = (url || '').replace(/^https?:\/\//, '').split('.')[0] || 'local';
+          const sessionKey = 'sb-' + projectRef + '-auth-token';
 
-  * {
-    box-sizing: border-box;
-  }
+          function readSession() {
+            try {
+              const raw = localStorage.getItem(sessionKey);
+              if (!raw) return null;
+              const parsed = JSON.parse(raw);
+              const s = parsed && parsed.currentSession ? parsed.currentSession : parsed;
+              if (s && s.user) return s;
+              return null;
+            } catch (e) {
+              return null;
+            }
+          }
 
-  body {
-    margin: 0;
-    font-family: var(--font);
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.45;
-  }
+          function writeSession(user) {
+            const session = {
+              access_token: 'offline_token',
+              token_type: 'bearer',
+              user: user
+            };
+            try {
+              localStorage.setItem(sessionKey, JSON.stringify(session));
+            } catch (e) {}
+            return session;
+          }
 
-  /* Header & Navigation */
-  .app-header {
-    background: #0f172a;
-    color: #fff;
-    padding: 14px 22px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.18);
-  }
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .brand-badge {
-    background: #2563eb;
-    color: #fff;
-    font-weight: 700;
-    font-size: 13px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    letter-spacing: 0.03em;
-  }
-
-  .brand-title {
-    font-size: 17px;
-    font-weight: 700;
-    margin: 0;
-  }
-
-  .brand-sub {
-    font-size: 12px;
-    color: #94a3b8;
-    margin: 0;
-  }
-
-  .nav-tabs {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .nav-tab {
-    background: rgba(255, 255, 255, 0.08);
-    color: #e2e8f0;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    padding: 8px 16px;
-    border-radius: 9px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.16s ease;
-  }
-
-  .nav-tab:hover {
-    background: rgba(255, 255, 255, 0.16);
-  }
-
-  .nav-tab.active {
-    background: #2563eb;
-    border-color: #3b82f6;
-    color: #fff;
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  /* Layout */
-  .container {
-    max-width: 1440px;
-    margin: 0 auto;
-    padding: 20px 22px 48px;
-  }
-
-  .view {
-    display: none;
-  }
-
-  .view.active {
-    display: block;
-  }
-
-  .grid-2 {
-    display: grid;
-    grid-template-columns: 360px 1fr;
-    gap: 18px;
-    align-items: start;
-  }
-
-  .grid-3 {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-  }
-
-  @media (max-width: 1080px) {
-    .grid-2 {
-      grid-template-columns: 1fr;
+          return {
+            auth: {
+              async getSession() {
+                return { data: { session: readSession() }, error: null };
+              },
+              async signInWithPassword({ email }) {
+                if (!navigator.onLine) {
+                  const existing = readSession();
+                  if (existing && existing.user && existing.user.email === email) {
+                    return { data: { session: existing, user: existing.user }, error: null };
+                  }
+                  const offlineUser = {
+                    id: 'offline_' + btoa(unescape(encodeURIComponent(email))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24),
+                    email: email
+                  };
+                  const s = writeSession(offlineUser);
+                  return { data: { session: s, user: offlineUser }, error: null };
+                }
+                return { data: { session: null, user: null }, error: { message: 'Нет соединения с сервером авторизации' } };
+              },
+              async signUp() {
+                return { data: { session: null, user: null }, error: { message: 'Регистрация требует подключения к сети' } };
+              },
+              async signOut() {
+                try { localStorage.removeItem(sessionKey); } catch (e) {}
+                return { error: null };
+              }
+            },
+            from() {
+              return {
+                select() {
+                  return {
+                    eq() {
+                      return {
+                        async maybeSingle() {
+                          return { data: null, error: { code: 'OFFLINE', message: 'Офлайн-режим' } };
+                        }
+                      };
+                    }
+                  };
+                },
+                async upsert() {
+                  return { error: { code: 'OFFLINE', message: 'Офлайн-режим' } };
+                }
+              };
+            }
+          };
+        }
+      };
     }
-    .grid-3 {
-      grid-template-columns: 1fr;
+  </script>
+  <style>
+    :root {
+      --bg: #f6f8fc;
+      --surface: #ffffff;
+      --surface-soft: #f9fbff;
+      --primary: #334e7b;
+      --primary-soft: #eef3fb;
+      --accent: #5b7bb2;
+      --accent-soft: #e6eefc;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e6ebf2;
+
+      --cat-court-bg: #fdf2f2;
+      --cat-court-border: #f5d0d0;
+      --cat-court-text: #9b3b3b;
+      --cat-court-dot: #d97777;
+
+      --cat-work-bg: #eff6ff;
+      --cat-work-border: #cfe0fc;
+      --cat-work-text: #2c5282;
+      --cat-work-dot: #5b7bb2;
+
+      --cat-expert-bg: #f0f9f4;
+      --cat-expert-border: #cbe8d6;
+      --cat-expert-text: #276749;
+      --cat-expert-dot: #489c73;
+
+      --cat-term-bg: #fffbeb;
+      --cat-term-border: #f6e0a6;
+      --cat-term-text: #8c5a19;
+      --cat-term-dot: #d69e2e;
+
+      --shadow-soft: 0 4px 20px rgba(51, 78, 123, 0.05);
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
     }
-  }
 
-  /* Cards & Buttons */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 18px;
-    box-shadow: var(--shadow);
-    margin-bottom: 16px;
-  }
-
-  .card-title {
-    font-size: 15px;
-    font-weight: 700;
-    margin: 0 0 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 13px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
-    background: var(--surface);
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.14s ease;
-    text-decoration: none;
-  }
-
-  .btn:hover {
-    background: var(--surface-2);
-    border-color: #9fb0c3;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-
-  .btn-primary:hover {
-    background: var(--accent-hover);
-    border-color: var(--accent-hover);
-  }
-
-  .btn-success {
-    background: var(--success);
-    border-color: var(--success);
-    color: #fff;
-  }
-
-  .btn-danger {
-    background: var(--danger);
-    border-color: var(--danger);
-    color: #fff;
-  }
-
-  .btn-soft {
-    background: var(--accent-soft);
-    border-color: #bfdbfe;
-    color: var(--accent);
-  }
-
-  .btn-sm {
-    padding: 5px 9px;
-    font-size: 12px;
-  }
-
-  /* Form controls */
-  label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--muted);
-    margin-bottom: 4px;
-  }
-
-  input[type="text"],
-  input[type="date"],
-  input[type="search"],
-  select,
-  textarea {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    font-family: inherit;
-    font-size: 13.5px;
-    color: var(--text);
-    background: #fff;
-  }
-
-  input:focus,
-  select:focus,
-  textarea:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-  }
-
-  textarea {
-    min-height: 82px;
-    resize: vertical;
-  }
-
-  .form-row {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-
-  .form-group {
-    margin-bottom: 10px;
-  }
-
-  /* Case List & Badges */
-  .case-item {
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 11px 12px;
-    margin-bottom: 9px;
-    cursor: pointer;
-    transition: all 0.14s ease;
-    background: #fff;
-  }
-
-  .case-item:hover {
-    border-color: #93c5fd;
-    background: #f8fbff;
-  }
-
-  .case-item.active {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-
-  .case-num {
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--text);
-  }
-
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 11.5px;
-    font-weight: 600;
-    background: #e2e8f0;
-    color: #334155;
-  }
-
-  .badge-blue {
-    background: #dbeafe;
-    color: #1d4ed8;
-  }
-
-  .badge-green {
-    background: #dcfce7;
-    color: #15803d;
-  }
-
-  .badge-warn {
-    background: #fef3c7;
-    color: #b45309;
-  }
-
-  .badge-red {
-    background: #fee2e2;
-    color: #b91c1c;
-  }
-
-  .deadline-banner {
-    padding: 10px 12px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-  }
-
-  /* Sub-tabs inside case card */
-  .subtabs {
-    display: flex;
-    gap: 6px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 10px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-  }
-
-  .subtab {
-    padding: 6px 12px;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    background: var(--surface-2);
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .subtab.active {
-    background: var(--accent-soft);
-    color: var(--accent);
-    border-color: #bfdbfe;
-  }
-
-  .subpanel {
-    display: none;
-  }
-
-  .subpanel.active {
-    display: block;
-  }
-
-  /* Tables & Lists */
-  .list-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 9px 11px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 8px;
-    background: var(--surface-2);
-  }
-
-  .list-row.done .row-title {
-    text-decoration: line-through;
-    color: var(--muted);
-  }
-
-  .row-title {
-    font-weight: 600;
-    font-size: 13.5px;
-  }
-
-  .row-meta {
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  /* Calendar summary */
-  .cal-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 10px;
-  }
-
-  .cal-item {
-    border: 1px solid var(--border);
-    border-left: 4px solid var(--accent);
-    border-radius: 8px;
-    padding: 10px 12px;
-    background: #fff;
-  }
-
-  .cal-item.urgent {
-    border-left-color: var(--danger);
-    background: #fffafa;
-  }
-
-  .cal-item.soon {
-    border-left-color: var(--warn);
-    background: #fffdf7;
-  }
-
-  /* Blanks & KB */
-  .filter-bar {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr auto;
-    gap: 10px;
-    margin-bottom: 14px;
-    align-items: end;
-  }
-
-  @media (max-width: 900px) {
-    .filter-bar {
-      grid-template-columns: 1fr;
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
-  }
 
-  .doc-catalog-list {
-    max-height: 540px;
-    overflow-y: auto;
-    padding-right: 4px;
-  }
-
-  .doc-card {
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    background: #fff;
-    transition: all 0.14s ease;
-  }
-
-  .doc-card:hover {
-    border-color: #93c5fd;
-    background: #f8fbff;
-  }
-
-  .doc-card.selected {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-
-  .mode-switch {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .mode-btn {
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border-strong);
-    background: var(--surface-2);
-    font-size: 12.5px;
-    font-weight: 700;
-    cursor: pointer;
-    text-align: center;
-  }
-
-  .mode-btn.active {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-  }
-
-  .doc-preview {
-    background: #fff;
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
-    padding: 20px;
-    font-family: "Times New Roman", Times, serif;
-    font-size: 15px;
-    line-height: 1.55;
-    white-space: pre-wrap;
-    min-height: 340px;
-    max-height: 580px;
-    overflow-y: auto;
-  }
-
-  .hint-box {
-    background: var(--warn-soft);
-    border: 1px solid #fde68a;
-    color: #78350f;
-    border-radius: 9px;
-    padding: 11px 13px;
-    font-size: 13px;
-    margin-bottom: 12px;
-  }
-
-  .hint-box ul {
-    margin: 6px 0 0;
-    padding-left: 18px;
-  }
-
-  .toast {
-    position: fixed;
-    right: 20px;
-    bottom: 20px;
-    background: #0f172a;
-    color: #fff;
-    padding: 11px 16px;
-    border-radius: 10px;
-    font-size: 13.5px;
-    font-weight: 600;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
-    opacity: 0;
-    transform: translateY(10px);
-    pointer-events: none;
-    transition: all 0.2s ease;
-    z-index: 100;
-  }
-
-  .toast.show {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  @media print {
-    .app-header, .no-print, .grid-2 > :first-child, .filter-bar, .mode-switch, .subtabs {
-      display: none !important;
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
     }
+
     body {
-      background: #fff;
+      margin: 0;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+      line-height: 1.45;
     }
-    .grid-2 {
-      display: block;
+
+    .auth-screen {
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: var(--bg);
     }
-    .doc-preview {
+
+    .auth-card {
+      width: 100%;
+      max-width: 410px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 26px 22px;
+      box-shadow: 0 14px 36px rgba(51, 78, 123, 0.1);
+    }
+
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg);
+      padding: 4px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .auth-tab {
       border: none;
-      max-height: none;
-      padding: 0;
+      background: transparent;
+      padding: 8px;
+      border-radius: 9px;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
     }
-  }
-</style>
+
+    .auth-tab.active {
+      background: var(--surface);
+      color: var(--primary);
+      box-shadow: 0 2px 6px rgba(51, 78, 123, 0.08);
+    }
+
+    .auth-msg {
+      font-size: 12.5px;
+      padding: 10px 12px;
+      border-radius: 11px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .auth-msg.error { display: block; background: #fef2f2; color: #b91c1c; }
+    .auth-msg.success { display: block; background: #ecfdf5; color: #047857; }
+
+    .app-container {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 12px 14px 28px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 15px;
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 12px;
+      min-width: 0;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .brand-hero {
+      text-align: center;
+      padding: 6px 8px 16px;
+    }
+
+    .brand-emblem {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 12px;
+      border-radius: 18px;
+      background: #0d1b3e;
+      border: 1.5px solid #1e356b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 20px rgba(13, 27, 62, 0.16);
+    }
+
+    .metric-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 6px;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      min-width: 0;
+    }
+
+    .metric-tile.active {
+      border-color: var(--accent);
+      background: var(--primary-soft);
+    }
+
+    .ios-week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+      width: 100%;
+    }
+
+    .ios-day-col {
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 5px 3px 6px;
+      min-height: 138px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .ios-day-col.selected {
+      background: #ffffff;
+      border-color: var(--accent);
+      box-shadow: 0 2px 10px rgba(91, 123, 178, 0.12);
+    }
+
+    .ios-day-letter {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .ios-day-num {
+      width: 24px;
+      height: 24px;
+      margin: 1px auto 3px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .ios-day-num.today {
+      background: #e06c6c;
+      color: #ffffff;
+    }
+
+    .ios-mini-event {
+      width: 100%;
+      border-radius: 7px;
+      padding: 3px 4px;
+      font-size: 9.5px;
+      line-height: 1.2;
+      font-weight: 600;
+      text-align: left;
+      overflow: hidden;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+
+    .ios-mini-event .ev-title {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ios-mini-event .ev-time {
+      display: block;
+      font-size: 8.5px;
+      opacity: 0.82;
+      margin-top: 1px;
+    }
+
+    .ev-court {
+      background: var(--cat-court-bg);
+      border-color: var(--cat-court-border);
+      color: var(--cat-court-text);
+    }
+
+    .ev-work {
+      background: var(--cat-work-bg);
+      border-color: var(--cat-work-border);
+      color: var(--cat-work-text);
+    }
+
+    .ev-expert {
+      background: var(--cat-expert-bg);
+      border-color: var(--cat-expert-border);
+      color: var(--cat-expert-text);
+    }
+
+    .ev-term {
+      background: var(--cat-term-bg);
+      border-color: var(--cat-term-border);
+      color: var(--cat-term-text);
+    }
+
+    .inner-accordion {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      margin-bottom: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .accordion-header {
+      width: 100%;
+      background: var(--surface);
+      border: none;
+      padding: 13px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .accordion-body {
+      padding: 0 15px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-soft);
+    }
+
+    .chevron-icon {
+      transition: transform 0.2s ease;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .chevron-icon.open {
+      transform: rotate(180deg);
+    }
+
+    .soft-input, .soft-select, .soft-textarea {
+      width: 100%;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13.5px;
+      color: var(--text);
+      background: #ffffff;
+      font-family: inherit;
+    }
+
+    .soft-input:focus, .soft-select:focus, .soft-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(91, 123, 178, 0.14);
+    }
+
+    .btn-soft-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 11px 15px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity 0.15s ease;
+    }
+
+    .btn-soft-secondary {
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid #d7e3f7;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-soft-ghost {
+      background: #ffffff;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 9px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(30, 41, 59, 0.35);
+      backdrop-filter: blur(3px);
+      z-index: 60;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    @media (min-width: 640px) {
+      .modal-overlay {
+        align-items: center;
+      }
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 540px;
+      background: #ffffff;
+      border-radius: 22px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 45px rgba(30, 41, 59, 0.16);
+      max-height: 88dvh;
+      overflow-y: auto;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 20px rgba(51, 78, 123, 0.06);
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      padding: 8px 4px calc(10px + env(safe-area-inset-bottom, 0px));
+      z-index: 45;
+    }
+
+    .nav-tab {
+      border: none;
+      background: transparent;
+      border-radius: 13px;
+      padding: 6px 2px;
+      min-height: 54px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 10.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-tab span {
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-tab.active {
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .toast-bar {
+      position: fixed;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--primary);
+      color: #ffffff;
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 80;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      max-width: 92vw;
+      text-align: center;
+    }
+
+    .toast-bar.show {
+      opacity: 1;
+    }
+
+    @media (max-width: 440px) {
+      .nav-tab {
+        font-size: 9px;
+      }
+      .ios-day-col {
+        padding: 4px 2px 5px;
+        min-height: 126px;
+      }
+      .ios-mini-event {
+        padding: 2.5px 3px;
+        font-size: 9px;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+      <div class="text-center mb-4">
+        <div class="brand-emblem" aria-label="Логотип IAR">
+          <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="#0d1b3e" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
+            <path d="M60 19 L93 32 V59 C93 81 78 96 60 103 C42 96 27 81 27 59 V32 Z" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
+            <path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M70 39 H84 V53" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="60" y="88" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="22" letter-spacing="1">IAR</text>
+          </svg>
+        </div>
+        <h1 class="text-base font-extrabold text-[#1e3a6e] uppercase m-0">АВТОМАТИЗИРОВАННОЕ РАБОЧЕЕ МЕСТО СЛЕДОВАТЕЛЯ</h1>
+        <p class="text-xs text-slate-500 mt-1 mb-0">Облачная синхронизация дел, календаря и бланков</p>
+      </div>
 
-<header class="app-header">
-  <div class="brand">
-    <div class="brand-badge">АРМ СЛЕДОВАТЕЛЯ</div>
-    <div>
-      <h1 class="brand-title">Автоматизированное рабочее место следователя</h1>
-      <p class="brand-sub">Уголовные дела • Календарь сроков • Бланки и генератор • База знаний</p>
+      <div class="auth-tabs">
+        <button type="button" id="tabLogin" class="auth-tab active">Вход</button>
+        <button type="button" id="tabRegister" class="auth-tab">Регистрация</button>
+      </div>
+
+      <div id="authMsg" class="auth-msg"></div>
+
+      <form id="authForm" class="space-y-3">
+        <div>
+          <label for="authEmail" class="block text-xs font-semibold text-slate-600 mb-1">Электронная почта</label>
+          <input type="email" id="authEmail" class="soft-input" placeholder="name@example.com" required autocomplete="email" />
+        </div>
+        <div>
+          <label for="authPassword" class="block text-xs font-semibold text-slate-600 mb-1">Пароль (от 6 символов)</label>
+          <input type="password" id="authPassword" class="soft-input" placeholder="••••••••" minlength="6" required autocomplete="current-password" />
+        </div>
+        <button type="submit" id="authSubmitBtn" class="btn-soft-primary w-full">Войти в рабочее место</button>
+      </form>
     </div>
   </div>
 
-  <nav class="nav-tabs no-print" aria-label="Основные разделы">
-    <button class="nav-tab active" data-view="cases">1. Уголовные дела</button>
-    <button class="nav-tab" data-view="blanks">2. Бланки и генератор</button>
-    <button class="nav-tab" data-view="kb">3. База знаний</button>
-  </nav>
-
-  <div class="header-actions no-print">
-    <button class="btn btn-sm" id="btnExportJson" title="Скачать резервную копию данных в JSON">Экспорт JSON</button>
-    <button class="btn btn-sm" id="btnResetDemo" title="Восстановить демонстрационные данные">Сброс</button>
-  </div>
-</header>
-
-<main class="container">
-  <!-- ==================== РАЗДЕЛ 1: УГОЛОВНЫЕ ДЕЛА ==================== -->
-  <section id="view-cases" class="view active">
-    <div class="card">
-      <div class="card-title">
-        <span>Календарь контроля сроков расследования и мер пресечения</span>
-        <span class="badge badge-blue" id="calCountBadge">0 событий</span>
-      </div>
-      <div id="deadlineCalendar" class="cal-grid"></div>
-    </div>
-
-    <div class="grid-2">
-      <!-- Левая колонка: список дел и создание -->
-      <div>
-        <div class="card">
-          <div class="card-title">
-            <span>Производства в работе</span>
-            <button class="btn btn-primary btn-sm" id="btnNewCase">+ Новое дело</button>
-          </div>
-          <div class="form-group">
-            <input type="search" id="caseSearch" placeholder="Поиск по № дела, статье УК РФ, фигуранту..." />
-          </div>
-          <div id="caseList"></div>
+  <div id="appShell" class="hidden">
+    <div class="app-container">
+      <div class="flex items-center justify-between mb-2 gap-2">
+        <span id="userEmailSub" class="text-xs font-medium text-slate-400 truncate">IAR • Рабочее пространство</span>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span id="netChip" class="status-chip" style="cursor:default;">
+            <span id="netDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="netText">Онлайн</span>
+          </span>
+          <button type="button" id="cloudChip" class="status-chip" onclick="pullFromCloud()" title="Синхронизировать с облаком">
+            <span id="cloudDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="cloudText">Облако</span>
+          </button>
         </div>
       </div>
 
-      <!-- Правая колонка: карточка выбранного дела -->
-      <div id="caseWorkspace"></div>
-    </div>
-  </section>
-
-  <!-- ==================== РАЗДЕЛ 2: БЛАНКИ И ГЕНЕРАТОР ==================== -->
-  <section id="view-blanks" class="view">
-    <div class="card">
-      <div class="card-title">
-        <span>Каталог процессуальных бланков и генератор документов</span>
-        <span class="badge badge-blue" id="blankStatsBadge">0 бланков</span>
-      </div>
-      <div class="filter-bar">
-        <div>
-          <label for="blankSearch">Поиск по названию, статье или коду</label>
-          <input type="search" id="blankSearch" placeholder="Например: протокол допроса, осмотр, постановление о возбуждении..." />
-        </div>
-        <div>
-          <label for="blankCategory">Систематизация по виду документа</label>
-          <select id="blankCategory">
-            <option value="all">Все виды (Постановления, Протоколы, Иные)</option>
-            <option value="Постановление">Постановления</option>
-            <option value="Протокол">Протоколы</option>
-            <option value="Иной документ">Иные процессуальные документы</option>
-          </select>
-        </div>
-        <div>
-          <label for="blankCaseSelect">Привязать дело для генерации</label>
-          <select id="blankCaseSelect"></select>
-        </div>
-        <div>
-          <button class="btn btn-soft" id="btnClearBlankFilters">Сбросить</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-title">
-          <span>Найденные бланки</span>
-          <span class="badge" id="blankFilteredCount">0</span>
-        </div>
-        <div id="blankCatalogList" class="doc-catalog-list"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <span id="selectedBlankTitle">Выберите бланк слева</span>
-          <div class="no-print" style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button class="btn btn-sm" id="btnCopyDoc">Копировать</button>
-            <button class="btn btn-sm" id="btnDownloadDocTxt">Скачать .TXT</button>
-            <button class="btn btn-sm btn-success" id="btnDownloadDocWord">Скачать .DOC (Word)</button>
-            <button class="btn btn-sm" onclick="window.print()">Печать</button>
-          </div>
-        </div>
-
-        <label>Режим формирования документа</label>
-        <div class="mode-switch">
-          <button class="mode-btn active" data-mode="blank">1. Пустой образец</button>
-          <button class="mode-btn" data-mode="header">2. С шапкой следователя и дела</button>
-          <button class="mode-btn" data-mode="full">3. Полная генерация по делу</button>
-        </div>
-
-        <div id="blankHintsBox" class="hint-box" style="display:none;"></div>
-
-        <div class="form-group">
-          <label for="docEditor">Текст документа (можно редактировать вручную перед выгрузкой)</label>
-          <textarea id="docEditor" class="doc-preview"></textarea>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== РАЗДЕЛ 3: БАЗА ЗНАНИЙ ==================== -->
-  <section id="view-kb" class="view">
-    <div class="grid-2">
-      <div>
-        <div class="card">
-          <div class="card-title">
-            <span>Добавить материал в базу знаний и бланки</span>
-          </div>
-          <form id="kbAddForm">
-            <div class="form-group">
-              <label for="kbTitle">Наименование документа / материала</label>
-              <input type="text" id="kbTitle" required placeholder="Например: Протокол допроса свидетеля (ст. 189–190 УПК РФ)" />
-            </div>
-            <div class="form-row">
-              <div>
-                <label for="kbSysType">Систематизация</label>
-                <select id="kbSysType">
-                  <option value="Постановление">Постановление</option>
-                  <option value="Протокол">Протокол</option>
-                  <option value="Иной документ">Иной документ</option>
-                </select>
-              </div>
-              <div>
-                <label for="kbCategory">Раздел базы знаний</label>
-                <select id="kbCategory">
-                  <option value="Бланки и шаблоны">Бланки и шаблоны</option>
-                  <option value="Тактика и методички">Тактика и методички</option>
-                  <option value="Экспертизы и вопросы">Экспертизы и вопросы</option>
-                  <option value="УПК и нормы">УПК и нормы</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="kbArticles">Статьи УК / УПК РФ (через запятую)</label>
-              <input type="text" id="kbArticles" placeholder="ст. 158 УК РФ, ст. 189 УПК РФ" />
-            </div>
-            <div class="form-group">
-              <label for="kbHints">Тактические подсказки / контрольные пункты (каждый с новой строки)</label>
-              <textarea id="kbHints" placeholder="Уточнить время и место события с точностью до минут&#10;Проверить наличие защитника / законного представителя"></textarea>
-            </div>
-            <div class="form-group">
-              <label for="kbBody">Шаблон текста / содержание материала (поддерживаются плейсхолдеры {{CASE_NUMBER}}, {{ARTICLES}}, {{SUMMARY}}, {{INVESTIGATOR}}, {{ORGAN}}, {{CITY}}, {{DATE}}, {{PARTICIPANTS}})</label>
-              <textarea id="kbBody" required style="min-height: 150px;" placeholder="ПРОТОКОЛ&#10;следственного действия по уголовному делу № {{CASE_NUMBER}}..."></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary" style="width:100%;">Сохранить в Базу знаний и Бланки</button>
-          </form>
-        </div>
-      </div>
-
-      <div>
-        <div class="card">
-          <div class="card-title">
-            <span>Материалы Базы знаний (основа генерации документов)</span>
-            <span class="badge badge-green" id="kbCountBadge">0 записей</span>
-          </div>
-          <div class="form-row" style="margin-bottom: 12px;">
-            <div>
-              <input type="search" id="kbSearch" placeholder="Поиск по базе знаний..." />
-            </div>
-            <div>
-              <select id="kbFilterCategory">
-                <option value="all">Все разделы</option>
-                <option value="Бланки и шаблоны">Бланки и шаблоны</option>
-                <option value="Тактика и методички">Тактика и методички</option>
-                <option value="Экспертизы и вопросы">Экспертизы и вопросы</option>
-                <option value="УПК и нормы">УПК и нормы</option>
-              </select>
-            </div>
-          </div>
-          <div id="kbList"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-</main>
-
-<div id="toast" class="toast"></div>
-
-<script>
-(function () {
-  const STORAGE_KEY = "arm_sledovatelya_state_v2026_11";
-
-  const DEFAULT_STATE = {
-    investigator: {
-      organ: "СО ОМВД России по Центральному району г. Волгограда",
-      rankAndName: "следователь СО майор юстиции Соколова И.А.",
-      city: "г. Волгоград"
-    },
-    cases: [
-      {
-        id: "case-101",
-        number: "12601480012000045",
-        articles: "ч. 2 ст. 158 УК РФ",
-        status: "В производстве",
-        openDate: "2026-10-12",
-        deadlineDate: "2026-12-12",
-        restraintMeasure: "Подписка о невыезде и надлежащем поведении (до 12.12.2026)",
-        summary: "11.10.2026 в период с 14:00 до 16:30 неустановленное лицо путем свободного доступа из раздевалки спортивного клуба тайно похитило рюкзак с ноутбуком и денежными средствами на сумму 68 000 рублей, принадлежащими гр. Морозову А.В.",
-        participants: [
-          { id: "p-1", role: "Потерпевший", fio: "Морозов Алексей Викторович", contacts: "+7 (904) 412-55-10, ул. Комсомольская, д. 14, кв. 8" },
-          { id: "p-2", role: "Подозреваемый", fio: "Волков Дмитрий Сергеевич, 19.04.1998 г.р.", contacts: "ул. Советская, д. 29, кв. 41" },
-          { id: "p-3", role: "Защитник", fio: "Орлова Елена Павловна (адвокат, ордер № 114)", contacts: "АП Волгоградской области" }
-        ],
-        plan: [
-          { id: "pl-1", title: "Допросить потерпевшего Морозова А.В. об обстоятельствах хищения и приметах", dueDate: "2026-11-28", done: true },
-          { id: "pl-2", title: "Истребовать видеозаписи с камер наблюдения спортклуба и прилегающей территории", dueDate: "2026-11-30", done: false },
-          { id: "pl-3", title: "Допросить подозреваемого Волкова Д.С. с участием защитника, предъявить улики", dueDate: "2026-12-03", done: false },
-          { id: "pl-4", title: "Направить товароведческую экспертизу для уточнения стоимости имущества", dueDate: "2026-12-06", done: false }
-        ],
-        documents: [
-          { id: "d-1", name: "Рапорт об обнаружении признаков преступления.doc", kind: "Word", addedAt: "2026-10-12" },
-          { id: "d-2", name: "Протокол осмотра места происшествия (спортклуб).doc", kind: "Word", addedAt: "2026-10-12" },
-          { id: "d-3", name: "Скан справки о стоимости похищенного.pdf", kind: "Скан", addedAt: "2026-10-18" }
-        ]
-      },
-      {
-        id: "case-102",
-        number: "12601480019000112",
-        articles: "ч. 1 ст. 228 УК РФ",
-        status: "В производстве",
-        openDate: "2026-11-01",
-        deadlineDate: "2026-12-01",
-        restraintMeasure: "Обязательство о явке",
-        summary: "01.11.2026 в ходе личного досмотра гражданина вблизи лесополосы обнаружен и изъят сверток с веществом растительного происхождения массой более значительного размера для личного употребления без цели сбыта.",
-        participants: [
-          { id: "p-4", role: "Подозреваемый", fio: "Громов Илья Андреевич, 03.09.2001 г.р.", contacts: "пр. Ленина, д. 82, кв. 19" },
-          { id: "p-5", role: "Специалист / Эксперт", fio: "Экспертно-криминалистический центр", contacts: "Постановление о назначении ФХЭ" }
-        ],
-        plan: [
-          { id: "pl-5", title: "Получить заключение физико-химической экспертизы изъятого вещества", dueDate: "2026-11-27", done: false },
-          { id: "pl-6", title: "Допросить подозреваемого Громова И.А. об источнике приобретения вещества", dueDate: "2026-11-29", done: false }
-        ],
-        documents: [
-          { id: "d-4", name: "Протокол личного досмотра и изъятия.doc", kind: "Word", addedAt: "2026-11-01" },
-          { id: "d-5", name: "Скан упаковок и бирок вещдоков.jpg", kind: "Скан", addedAt: "2026-11-02" }
-        ]
-      }
-    ],
-    kbItems: [
-      {
-        id: "kb-1",
-        title: "Постановление о возбуждении уголовного дела и принятии его к производству",
-        sysType: "Постановление",
-        category: "Бланки и шаблоны",
-        articles: "ст. 146, ст. 156 УПК РФ",
-        hints: [
-          "Указать повод и основание для возбуждения уголовного дела (ч. 1, 2 ст. 140 УПК РФ).",
-          "Проверить отсутствие обстоятельств, исключающих производство по делу (ст. 24 УПК РФ).",
-          "Направить копию постановления прокурору в течение 24 часов (ч. 4 ст. 146 УПК РФ)."
-        ],
-        body: "{{ORGAN}}
-
-ПОСТАНОВЛЕНИЕ
-о возбуждении уголовного дела и принятии его к производству
-
-{{CITY}}                                                                «{{DATE}}»
-
-{{INVESTIGATOR}}, рассмотрев материалы проверки сообщения о преступлении,
-
-УСТАНОВИЛ:
-{{SUMMARY}}
-
-Принимая во внимание, что имеются достаточные данные, указывающие на признаки преступления, предусмотренного {{ARTICLES}},
-
-ПОСТАНОВИЛ:
-1. Возбудить уголовное дело № {{CASE_NUMBER}} по признакам преступления, предусмотренного {{ARTICLES}}.
-2. Уголовное дело принять к своему производству и приступить к расследованию.
-3. Копию настоящего постановления направить прокурору.
-
-Следователь: _______________________ / {{INVESTIGATOR}} /"
-      },
-      {
-        id: "kb-2",
-        title: "Протокол допроса свидетеля / потерпевшего",
-        sysType: "Протокол",
-        category: "Бланки и шаблоны",
-        articles: "ст. 189, ст. 190 УПК РФ",
-        hints: [
-          "Разъяснить права и обязанности, а также ответственность по ст. 307 и ст. 308 УК РФ (кроме случаев свидетельского иммунитета по ст. 51 Конституции РФ).",
-          "Зафиксировать точное время начала и окончания допроса, а также перерывов.",
-          "Детализировать обстоятельства: где, когда, что именно видел/слышал, приметы, суммы, мотивы."
-        ],
-        body: "{{ORGAN}}
-
-ПРОТОКОЛ
-допроса по уголовному делу № {{CASE_NUMBER}} ({{ARTICLES}})
-
-{{CITY}}                                                                «{{DATE}}»
-Допрос начат в ___ ч ___ мин.
-Допрос окончен в ___ ч ___ мин.
-
-{{INVESTIGATOR}} с соблюдением требований ст. 164, 189 и 190 УПК РФ в помещении служебного кабинета произвел допрос по фабуле:
-{{SUMMARY}}
-
-Участники по делу: {{PARTICIPANTS}}.
-
-Показания допрашиваемого лица по существу дела:
-_____________________________________________________________________
-_____________________________________________________________________
-
-Протокол прочитан. Замечаний и дополнений не поступило.
-
-Допрашиваемое лицо: _______________________
-Следователь: _______________________ / {{INVESTIGATOR}} /"
-      },
-      {
-        id: "kb-3",
-        title: "Протокол осмотра места происшествия",
-        sysType: "Протокол",
-        category: "Бланки и шаблоны",
-        articles: "ст. 176, ст. 177 УПК РФ",
-        hints: [
-          "Обеспечить участие понятых либо применение технических средств фиксации хода и результатов осмотра (ч. 1.1, 3 ст. 170 УПК РФ).",
-          "Описать обстановку от общего к частному, указать условия освещения и погоды.",
-          "Подробно описать каждый изымаемый объект, способ упаковки и оттиск печати."
-        ],
-        body: "{{ORGAN}}
-
-ПРОТОКОЛ
-осмотра места происшествия по уголовному делу № {{CASE_NUMBER}} ({{ARTICLES}})
-
-{{CITY}}                                                                «{{DATE}}»
-Осмотр начат в ___ ч ___ мин.
-Осмотр окончен в ___ ч ___ мин.
-
-{{INVESTIGATOR}} на основании ст. 176 и 177 УПК РФ произвел осмотр места происшествия по материалам дела:
-{{SUMMARY}}
-
-Описание осматриваемого объекта и обнаруженных следов:
-_____________________________________________________________________
-
-Изъято при осмотре:
-_____________________________________________________________________
-
-Следователь: _______________________ / {{INVESTIGATOR}} /"
-      },
-      {
-        id: "kb-4",
-        title: "Постановление о назначении судебной экспертизы",
-        sysType: "Постановление",
-        category: "Экспертизы и вопросы",
-        articles: "ст. 195, ст. 199 УПК РФ",
-        hints: [
-          "Сформулировать четкие, не допускающие двусмысленного толкования вопросы эксперту.",
-          "Ознакомить подозреваемого, обвиняемого, защитника и потерпевшего с постановлением до направления в экспертное учреждение (ч. 3 ст. 195 УПК РФ).",
-          "Указать перечень направляемых объектов и материалов."
-        ],
-        body: "{{ORGAN}}
-
-ПОСТАНОВЛЕНИЕ
-о назначении судебной экспертизы
-
-{{CITY}}                                                                «{{DATE}}»
-
-{{INVESTIGATOR}}, рассмотрев материалы уголовного дела № {{CASE_NUMBER}} ({{ARTICLES}}),
-
-УСТАНОВИЛ:
-{{SUMMARY}}
-Для установления обстоятельств, имеющих значение для дела, требуются специальные знания.
-
-ПОСТАНОВИЛ:
-1. Назначить по уголовному делу № {{CASE_NUMBER}} судебную экспертизу, производство которой поручить экспертам экспертного учреждения.
-2. Поставить перед экспертом следующие вопросы:
-   - Каковы свойства, характеристики и состояние представленных объектов?
-   - Имеются ли на объектах следы, повреждения или иные признаки, связанные с событием по делу?
-3. Предоставить в распоряжение эксперта материалы и объекты согласно описи.
-
-Следователь: _______________________ / {{INVESTIGATOR}} /"
-      },
-      {
-        id: "kb-5",
-        title: "Уведомление о принятии уголовного дела к производству",
-        sysType: "Иной документ",
-        category: "Бланки и шаблоны",
-        articles: "ст. 156 УПК РФ",
-        hints: [
-          "Направляется участникам процесса и при необходимости руководителю органа / прокурору.",
-          "Проверьте актуальность почтовых и электронных адресов участников дела."
-        ],
-        body: "{{ORGAN}}
-
-УВЕДОМЛЕНИЕ
-о принятии уголовного дела к производству
-
-{{CITY}}                                                                «{{DATE}}»
-
-Уведомляю Вас о том, что уголовное дело № {{CASE_NUMBER}} по признакам преступления, предусмотренного {{ARTICLES}}, принято к производству должностным лицом: {{INVESTIGATOR}}.
-
-Фабула / сведения о производстве: {{SUMMARY}}
-Участники: {{PARTICIPANTS}}.
-
-Следователь: _______________________ / {{INVESTIGATOR}} /"
-      },
-      {
-        id: "kb-6",
-        title: "Методика подготовки к допросу при противоречивых показаниях",
-        sysType: "Тактика и методички",
-        category: "Тактика и методички",
-        articles: "ст. 189, ст. 192 УПК РФ",
-        hints: [
-          "Систематизируйте расхождения в показаниях допрашиваемого и других участников до начала допроса.",
-          "Предъявляйте доказательства последовательно — от менее значимых к более весомым.",
-          "При выявлении существенных противоречий рассмотрите проведение очной ставки (ст. 192 УПК РФ)."
-        ],
-        body: "МЕТОДИЧЕСКАЯ ПАМЯТКА: ТАКТИКА ДОПРОСА И ПРЕОДОЛЕНИЕ ПРОТИВОРЕЧИЙ
-
-1. Подготовка: изучите протоколы предыдущих следственных действий, заключения экспертов и характеристики личности.
-2. Установление психологического контакта: начните с нейтральных сведений, уточните хронологию.
-3. Детализация: задавайте конкретные вопросы («откуда стало известно», «кто еще присутствовал», «какие действия последовали далее»).
-4. Предъявление доказательств: фиксируйте реакцию и мотивировку изменений показаний."
-      }
-    ]
-  };
-
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return structuredClone(DEFAULT_STATE);
-      const parsed = JSON.parse(raw);
-      return {
-        investigator: { ...DEFAULT_STATE.investigator, ...(parsed.investigator || {}) },
-        cases: Array.isArray(parsed.cases) && parsed.cases.length ? parsed.cases : structuredClone(DEFAULT_STATE.cases),
-        kbItems: Array.isArray(parsed.kbItems) && parsed.kbItems.length ? parsed.kbItems : structuredClone(DEFAULT_STATE.kbItems)
-      };
-    } catch (e) {
-      return structuredClone(DEFAULT_STATE);
-    }
-  }
-
-  let state = loadState();
-  let activeCaseId = state.cases[0]?.id || null;
-  let activeCaseSubtab = "card";
-  let selectedBlankId = state.kbItems[0]?.id || null;
-  let genMode = "blank";
-
-  function saveState() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error("Ошибка сохранения в localStorage:", e);
-    }
-  }
-
-  function showToast(msg) {
-    const el = document.getElementById("toast");
-    el.textContent = msg;
-    el.classList.add("show");
-    clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => el.classList.remove("show"), 2400);
-  }
-
-  function escapeHtml(str) {
-    return String(str || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function daysUntil(dateStr) {
-    if (!dateStr) return null;
-    const target = new Date(dateStr + "T00:00:00");
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return Math.round((target - today) / (1000 * 60 * 60 * 24));
-  }
-
-  function formatDeadlineBadge(dateStr) {
-    const d = daysUntil(dateStr);
-    if (d === null || Number.isNaN(d)) {
-      return { text: "Срок не задан", cls: "badge", bannerCls: "badge", urgency: "" };
-    }
-    if (d < 0) {
-      return {
-        text: `Просрочен на ${Math.abs(d)} дн. (${dateStr})`,
-        cls: "badge badge-red",
-        urgency: "urgent"
-      };
-    }
-    if (d <= 5) {
-      return {
-        text: `Осталось ${d} дн. (до ${dateStr})`,
-        cls: "badge badge-warn",
-        urgency: "soon"
-      };
-    }
-    return {
-      text: `До ${dateStr} (осталось ${d} дн.)`,
-      cls: "badge badge-green",
-      urgency: ""
-    };
-  }
-
-  /* Navigation */
-  document.querySelectorAll(".nav-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".nav-tab").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById("view-" + btn.dataset.view).classList.add("active");
-      if (btn.dataset.view === "blanks") renderBlanksView();
-      if (btn.dataset.view === "kb") renderKbView();
-      if (btn.dataset.view === "cases") renderCasesView();
-    });
-  });
-
-  document.getElementById("btnExportJson").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "arm-sledovatelya-backup.json";
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Резервная копия JSON скачана");
-  });
-
-  document.getElementById("btnResetDemo").addEventListener("click", () => {
-    if (!confirm("Восстановить исходные демонстрационные дела и базу знаний?")) return;
-    state = structuredClone(DEFAULT_STATE);
-    activeCaseId = state.cases[0].id;
-    selectedBlankId = state.kbItems[0].id;
-    saveState();
-    renderAll();
-    showToast("Данные восстановлены");
-  });
-
-  /* ==================== РАЗДЕЛ 1: УГОЛОВНЫЕ ДЕЛА ==================== */
-  function renderDeadlineCalendar() {
-    const container = document.getElementById("deadlineCalendar");
-    const badge = document.getElementById("calCountBadge");
-    const sorted = [...state.cases].sort((a, b) => (a.deadlineDate || "9999-12-31").localeCompare(b.deadlineDate || "9999-12-31"));
-    badge.textContent = `${sorted.length} дел на контроле`;
-
-    container.innerHTML = sorted
-      .map((c) => {
-        const info = formatDeadlineBadge(c.deadlineDate);
-        return `
-          <div class="cal-item ${info.urgency}" style="cursor:pointer;" onclick="window.__selectCase('${escapeHtml(c.id)}')">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px;">
-              <strong>№ ${escapeHtml(c.number)}</strong>
-              <span class="${info.cls}">${escapeHtml(info.text)}</span>
-            </div>
-            <div class="row-meta"><strong>${escapeHtml(c.articles)}</strong> • ${escapeHtml(c.status)}</div>
-            <div class="row-meta" style="margin-top:4px;">МП: ${escapeHtml(c.restraintMeasure || "не указана")}</div>
-          </div>
-        `;
-      })
-      .join("");
-  }
-
-  function renderCaseList() {
-    const q = (document.getElementById("caseSearch").value || "").trim().toLowerCase();
-    const listEl = document.getElementById("caseList");
-    const filtered = state.cases.filter((c) => {
-      const partsText = (c.participants || []).map((p) => p.fio).join(" ");
-      return (
-        (c.number || "").toLowerCase().includes(q) ||
-        (c.articles || "").toLowerCase().includes(q) ||
-        (c.summary || "").toLowerCase().includes(q) ||
-        partsText.toLowerCase().includes(q)
-      );
-    });
-
-    if (!filtered.length) {
-      listEl.innerHTML = `<p class="row-meta">Дела по запросу не найдены.</p>`;
-      return;
-    }
-
-    listEl.innerHTML = filtered
-      .map((c) => {
-        const active = c.id === activeCaseId ? "active" : "";
-        const info = formatDeadlineBadge(c.deadlineDate);
-        const doneCount = (c.plan || []).filter((i) => i.done).length;
-        const totalCount = (c.plan || []).length;
-        return `
-          <div class="case-item ${active}" onclick="window.__selectCase('${escapeHtml(c.id)}')">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-              <span class="case-num">УД № ${escapeHtml(c.number)}</span>
-              <span class="${info.cls}">${escapeHtml(info.text)}</span>
-            </div>
-            <div style="margin-top:5px; display:flex; gap:6px; flex-wrap:wrap;">
-              <span class="badge badge-blue">${escapeHtml(c.articles)}</span>
-              <span class="badge">${escapeHtml(c.status)}</span>
-              <span class="badge">План: ${doneCount}/${totalCount}</span>
-            </div>
-            <div class="row-meta" style="margin-top:6px;">${escapeHtml((c.summary || "").slice(0, 95))}${(c.summary || "").length > 95 ? "…" : ""}</div>
-          </div>
-        `;
-      })
-      .join("");
-  }
-
-  function renderCaseWorkspace() {
-    const wrap = document.getElementById("caseWorkspace");
-    const c = state.cases.find((item) => item.id === activeCaseId) || state.cases[0];
-    if (!c) {
-      wrap.innerHTML = `<div class="card"><p>Нет активных уголовных дел. Создайте новое дело слева.</p></div>`;
-      return;
-    }
-    activeCaseId = c.id;
-    const dl = formatDeadlineBadge(c.deadlineDate);
-
-    wrap.innerHTML = `
-      <div class="card">
-        <div class="card-title">
-          <span>Карточка уголовного дела № ${escapeHtml(c.number)}</span>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <span class="${dl.cls}">${escapeHtml(dl.text)}</span>
-            <button class="btn btn-sm btn-soft" onclick="window.__openCaseInBlanks('${escapeHtml(c.id)}')">Сформировать документ по делу</button>
-            <button class="btn btn-sm btn-danger" onclick="window.__deleteCase('${escapeHtml(c.id)}')">Удалить дело</button>
-          </div>
-        </div>
-
-        <div class="subtabs">
-          <button class="subtab ${activeCaseSubtab === "card" ? "active" : ""}" onclick="window.__setCaseSubtab('card')">Карточка, статьи и сроки</button>
-          <button class="subtab ${activeCaseSubtab === "participants" ? "active" : ""}" onclick="window.__setCaseSubtab('participants')">Участники (${(c.participants || []).length})</button>
-          <button class="subtab ${activeCaseSubtab === "plan" ? "active" : ""}" onclick="window.__setCaseSubtab('plan')">План расследования (${(c.plan || []).filter(x => x.done).length}/${(c.plan || []).length})</button>
-          <button class="subtab ${activeCaseSubtab === "docs" ? "active" : ""}" onclick="window.__setCaseSubtab('docs')">Документы дела (${(c.documents || []).length})</button>
-        </div>
-
-        <!-- Вкладка 1: Карточка -->
-        <div class="subpanel ${activeCaseSubtab === "card" ? "active" : ""}">
-          <form id="editCaseForm">
-            <div class="form-row">
-              <div>
-                <label>Номер уголовного дела</label>
-                <input type="text" name="number" value="${escapeHtml(c.number)}" required />
-              </div>
-              <div>
-                <label>Квалификация (статьи УК РФ)</label>
-                <input type="text" name="articles" value="${escapeHtml(c.articles)}" required />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <label>Дата возбуждения / принятия</label>
-                <input type="date" name="openDate" value="${escapeHtml(c.openDate || "")}" />
-              </div>
-              <div>
-                <label>Срок следствия / контроля (синхронизируется с календарем)</label>
-                <input type="date" name="deadlineDate" value="${escapeHtml(c.deadlineDate || "")}" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <label>Статус производства</label>
-                <select name="status">
-                  ${["В производстве", "Приостановлено", "Направлено прокурору / в суд", "Прекращено"]
-                    .map((st) => `<option value="${st}" ${c.status === st ? "selected" : ""}>${st}</option>`)
-                    .join("")}
-                </select>
-              </div>
-              <div>
-                <label>Мера пресечения / процессуальное принуждение</label>
-                <input type="text" name="restraintMeasure" value="${escapeHtml(c.restraintMeasure || "")}" placeholder="Подписка о невыезде, залог, домашний арест..." />
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Фабула и краткие обстоятельства дела</label>
-              <textarea name="summary" style="min-height:110px;">${escapeHtml(c.summary || "")}</textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">Сохранить изменения карточки</button>
-          </form>
-        </div>
-
-        <!-- Вкладка 2: Участники -->
-        <div class="subpanel ${activeCaseSubtab === "participants" ? "active" : ""}">
-          <div id="participantsList" style="margin-bottom:14px;">
-            ${(c.participants || []).length
-              ? c.participants
-                  .map(
-                    (p) => `
-                  <div class="list-row">
-                    <div>
-                      <div class="row-title"><span class="badge badge-blue">${escapeHtml(p.role)}</span> ${escapeHtml(p.fio)}</div>
-                      <div class="row-meta">${escapeHtml(p.contacts || "Контакты/адрес не указаны")}</div>
-                    </div>
-                    <button class="btn btn-sm" onclick="window.__removeParticipant('${escapeHtml(p.id)}')">Удалить</button>
-                  </div>
-                `
-                  )
-                  .join("")
-              : `<p class="row-meta">Участники пока не добавлены.</p>`}
-          </div>
-          <form id="addParticipantForm">
-            <div class="form-row">
-              <div>
-                <label>Процессуальный статус / роль</label>
-                <select name="role">
-                  <option value="Потерпевший">Потерпевший</option>
-                  <option value="Подозреваемый">Подозреваемый</option>
-                  <option value="Обвиняемый">Обвиняемый</option>
-                  <option value="Свидетель">Свидетель</option>
-                  <option value="Защитник">Защитник</option>
-                  <option value="Гражданский истец">Гражданский истец</option>
-                  <option value="Специалист / Эксперт">Специалист / Эксперт</option>
-                </select>
-              </div>
-              <div>
-                <label>ФИО и данные участника</label>
-                <input type="text" name="fio" required placeholder="Иванов Иван Иванович, 01.01.1990 г.р." />
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Адрес, телефон, адвокатский ордер или примечание</label>
-              <input type="text" name="contacts" placeholder="г. Волгоград, ул. Мира, д. 10, +7..." />
-            </div>
-            <button type="submit" class="btn btn-primary btn-sm">+ Добавить участника</button>
-          </form>
-        </div>
-
-        <!-- Вкладка 3: План расследования -->
-        <div class="subpanel ${activeCaseSubtab === "plan" ? "active" : ""}">
-          <div id="planList" style="margin-bottom:14px;">
-            ${(c.plan || []).length
-              ? c.plan
-                  .map(
-                    (item) => `
-                  <div class="list-row ${item.done ? "done" : ""}">
-                    <label style="display:flex; align-items:center; gap:10px; margin:0; cursor:pointer; color:var(--text); flex:1;">
-                      <input type="checkbox" ${item.done ? "checked" : ""} onchange="window.__togglePlan('${escapeHtml(item.id)}')" />
-                      <span>
-                        <span class="row-title">${escapeHtml(item.title)}</span>
-                        ${item.dueDate ? `<span class="row-meta"> • срок: ${escapeHtml(item.dueDate)}</span>` : ""}
-                      </span>
-                    </label>
-                    <button class="btn btn-sm" onclick="window.__deletePlan('${escapeHtml(item.id)}')">Удалить</button>
-                  </div>
-                `
-                  )
-                  .join("")
-              : `<p class="row-meta">План расследования пуст.</p>`}
-          </div>
-          <form id="addPlanForm">
-            <div class="form-row">
-              <div>
-                <label>Следственное действие / мероприятие</label>
-                <input type="text" name="title" required placeholder="Например: Провести очную ставку, направить запрос..." />
-              </div>
-              <div>
-                <label>Контрольный срок</label>
-                <input type="date" name="dueDate" />
-              </div>
-            </div>
-            <button type="submit" class="btn btn-primary btn-sm">+ Добавить пункт плана</button>
-          </form>
-        </div>
-
-        <!-- Вкладка 4: Документы дела (сканы, Word, порядок) -->
-        <div class="subpanel ${activeCaseSubtab === "docs" ? "active" : ""}">
-          <div id="caseDocsList" style="margin-bottom:14px;">
-            ${(c.documents || []).length
-              ? c.documents
-                  .map(
-                    (doc, idx) => `
-                  <div class="list-row">
-                    <div>
-                      <div class="row-title">
-                        <span class="badge">${idx + 1}</span>
-                        <span class="badge ${doc.kind === "Скан" ? "badge-warn" : "badge-blue"}">${escapeHtml(doc.kind)}</span>
-                        ${escapeHtml(doc.name)}
-                      </div>
-                      <div class="row-meta">Добавлено: ${escapeHtml(doc.addedAt || "")}</div>
-                    </div>
-                    <div style="display:flex; gap:5px;">
-                      <button class="btn btn-sm" title="Переместить выше" onclick="window.__moveDoc('${escapeHtml(doc.id)}', -1)">↑</button>
-                      <button class="btn btn-sm" title="Переместить ниже" onclick="window.__moveDoc('${escapeHtml(doc.id)}', 1)">↓</button>
-                      <button class="btn btn-sm" onclick="window.__deleteCaseDoc('${escapeHtml(doc.id)}')">Удалить</button>
-                    </div>
-                  </div>
-                `
-                  )
-                  .join("")
-              : `<p class="row-meta">К делу пока не прикреплены документы или сканы.</p>`}
-          </div>
-
-          <form id="addCaseDocForm">
-            <div class="form-row">
-              <div>
-                <label>Наименование файла / скана / документа</label>
-                <input type="text" name="name" required placeholder="Например: Протокол выемки.doc или Скан ответа из банка.pdf" />
-              </div>
-              <div>
-                <label>Тип материала</label>
-                <select name="kind">
-                  <option value="Word">Word / процессуальный документ</option>
-                  <option value="Скан">Скан / фото / PDF</option>
-                  <option value="Вещдок / приложение">Вещдок / приложение</option>
-                </select>
-              </div>
-            </div>
-            <button type="submit" class="btn btn-primary btn-sm">+ Прикрепить документ к делу</button>
-          </form>
-        </div>
-      </div>
-    `;
-
-    // Bind forms inside active case
-    document.getElementById("editCaseForm")?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      c.number = String(fd.get("number") || "").trim();
-      c.articles = String(fd.get("articles") || "").trim();
-      c.openDate = String(fd.get("openDate") || "");
-      c.deadlineDate = String(fd.get("deadlineDate") || "");
-      c.status = String(fd.get("status") || "В производстве");
-      c.restraintMeasure = String(fd.get("restraintMeasure") || "").trim();
-      c.summary = String(fd.get("summary") || "").trim();
-      saveState();
-      renderCasesView();
-      showToast("Карточка уголовного дела и календарь сроков обновлены");
-    });
-
-    document.getElementById("addParticipantForm")?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      c.participants = c.participants || [];
-      c.participants.push({
-        id: "p-" + Date.now(),
-        role: String(fd.get("role") || "Участник"),
-        fio: String(fd.get("fio") || "").trim(),
-        contacts: String(fd.get("contacts") || "").trim()
-      });
-      saveState();
-      renderCaseWorkspace();
-      showToast("Участник добавлен в дело");
-    });
-
-    document.getElementById("addPlanForm")?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      c.plan = c.plan || [];
-      c.plan.push({
-        id: "pl-" + Date.now(),
-        title: String(fd.get("title") || "").trim(),
-        dueDate: String(fd.get("dueDate") || ""),
-        done: false
-      });
-      saveState();
-      renderCasesView();
-      showToast("Пункт добавлен в план расследования");
-    });
-
-    document.getElementById("addCaseDocForm")?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      c.documents = c.documents || [];
-      c.documents.push({
-        id: "d-" + Date.now(),
-        name: String(fd.get("name") || "").trim(),
-        kind: String(fd.get("kind") || "Word"),
-        addedAt: new Date().toISOString().slice(0, 10)
-      });
-      saveState();
-      renderCaseWorkspace();
-      showToast("Документ прикреплен к делу");
-    });
-  }
-
-  document.getElementById("btnNewCase").addEventListener("click", () => {
-    const num = prompt("Введите номер уголовного дела:", "12601480025000088");
-    if (!num || !num.trim()) return;
-    const articles = prompt("Введите статью УК РФ:", "ч. 1 ст. 158 УК РФ") || "ст. 158 УК РФ";
-    const today = new Date().toISOString().slice(0, 10);
-    const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-    const newCase = {
-      id: "case-" + Date.now(),
-      number: num.trim(),
-      articles: articles.trim(),
-      status: "В производстве",
-      openDate: today,
-      deadlineDate: nextMonth,
-      restraintMeasure: "Подписка о невыезде",
-      summary: "Краткие обстоятельства преступления уточняются в ходе предварительного расследования.",
-      participants: [],
-      plan: [{ id: "pl-" + Date.now(), title: "Допросить потерпевшего и свидетелей", dueDate: nextMonth, done: false }],
-      documents: []
-    };
-    state.cases.unshift(newCase);
-    activeCaseId = newCase.id;
-    activeCaseSubtab = "card";
-    saveState();
-    renderCasesView();
-    showToast("Новое уголовное дело создано");
-  });
-
-  document.getElementById("caseSearch").addEventListener("input", renderCaseList);
-
-  window.__selectCase = (id) => {
-    activeCaseId = id;
-    renderCasesView();
-  };
-
-  window.__setCaseSubtab = (sub) => {
-    activeCaseSubtab = sub;
-    renderCaseWorkspace();
-  };
-
-  window.__deleteCase = (id) => {
-    if (!confirm("Удалить выбранное уголовное дело из базы?")) return;
-    state.cases = state.cases.filter((c) => c.id !== id);
-    activeCaseId = state.cases[0]?.id || null;
-    saveState();
-    renderCasesView();
-    showToast("Дело удалено");
-  };
-
-  window.__removeParticipant = (pid) => {
-    const c = state.cases.find((x) => x.id === activeCaseId);
-    if (!c) return;
-    c.participants = (c.participants || []).filter((p) => p.id !== pid);
-    saveState();
-    renderCaseWorkspace();
-  };
-
-  window.__togglePlan = (plId) => {
-    const c = state.cases.find((x) => x.id === activeCaseId);
-    if (!c) return;
-    const item = (c.plan || []).find((x) => x.id === plId);
-    if (item) item.done = !item.done;
-    saveState();
-    renderCasesView();
-  };
-
-  window.__deletePlan = (plId) => {
-    const c = state.cases.find((x) => x.id === activeCaseId);
-    if (!c) return;
-    c.plan = (c.plan || []).filter((x) => x.id !== plId);
-    saveState();
-    renderCasesView();
-  };
-
-  window.__moveDoc = (docId, delta) => {
-    const c = state.cases.find((x) => x.id === activeCaseId);
-    if (!c || !Array.isArray(c.documents)) return;
-    const idx = c.documents.findIndex((d) => d.id === docId);
-    const targetIdx = idx + delta;
-    if (idx < 0 || targetIdx < 0 || targetIdx >= c.documents.length) return;
-    const [moved] = c.documents.splice(idx, 1);
-    c.documents.splice(targetIdx, 0, moved);
-    saveState();
-    renderCaseWorkspace();
-  };
-
-  window.__deleteCaseDoc = (docId) => {
-    const c = state.cases.find((x) => x.id === activeCaseId);
-    if (!c) return;
-    c.documents = (c.documents || []).filter((d) => d.id !== docId);
-    saveState();
-    renderCaseWorkspace();
-  };
-
-  window.__openCaseInBlanks = (caseId) => {
-    activeCaseId = caseId;
-    genMode = "full";
-    document.querySelectorAll(".nav-tab").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
-    document.querySelector('.nav-tab[data-view="blanks"]').classList.add("active");
-    document.getElementById("view-blanks").classList.add("active");
-    renderBlanksView();
-  };
-
-  function renderCasesView() {
-    renderDeadlineCalendar();
-    renderCaseList();
-    renderCaseWorkspace();
-  }
-
-  /* ==================== РАЗДЕЛ 2: БЛАНКИ И ГЕНЕРАТОР ==================== */
-  function getBlankItems() {
-    return state.kbItems.filter((item) => item.category === "Бланки и шаблоны" || item.category === "Экспертизы и вопросы" || Boolean(item.body));
-  }
-
-  function populateBlankCaseSelect() {
-    const sel = document.getElementById("blankCaseSelect");
-    const current = activeCaseId || (state.cases[0] && state.cases[0].id) || "";
-    sel.innerHTML = state.cases
-      .map(
-        (c) =>
-          `<option value="${escapeHtml(c.id)}" ${c.id === current ? "selected" : ""}>УД № ${escapeHtml(c.number)} (${escapeHtml(c.articles)})</option>`
-      )
-      .join("");
-  }
-
-  function buildGeneratedDocumentText(item, caseObj, mode) {
-    const todayStr = new Date().toLocaleDateString("ru-RU");
-    const inv = state.investigator;
-    const participantsStr =
-      caseObj && Array.isArray(caseObj.participants) && caseObj.participants.length
-        ? caseObj.participants.map((p) => `${p.role}: ${p.fio}`).join("; ")
-        : "_________________________";
-
-    if (mode === "blank") {
-      return (item.body || "")
-        .replace(/\{\{ORGAN\}\}/g, "____________________________________________________")
-        .replace(/\{\{CITY\}\}/g, "________________")
-        .replace(/\{\{DATE\}\}/g, "«___» _____________ 202_ г.")
-        .replace(/\{\{INVESTIGATOR\}\}/g, "________________________________________")
-        .replace(/\{\{CASE_NUMBER\}\}/g, "_____________________")
-        .replace(/\{\{ARTICLES\}\}/g, "__________________")
-        .replace(/\{\{SUMMARY\}\}/g, "
-_____________________________________________________________________
-_____________________________________________________________________")
-        .replace(/\{\{PARTICIPANTS\}\}/g, "_____________________________________________________");
-    }
-
-    if (mode === "header") {
-      return (item.body || "")
-        .replace(/\{\{ORGAN\}\}/g, inv.organ)
-        .replace(/\{\{CITY\}\}/g, inv.city)
-        .replace(/\{\{DATE\}\}/g, todayStr)
-        .replace(/\{\{INVESTIGATOR\}\}/g, inv.rankAndName)
-        .replace(/\{\{CASE_NUMBER\}\}/g, caseObj ? caseObj.number : "_____________________")
-        .replace(/\{\{ARTICLES\}\}/g, caseObj ? caseObj.articles : "__________________")
-        .replace(/\{\{SUMMARY\}\}/g, "
-_____________________________________________________________________
-_____________________________________________________________________")
-        .replace(/\{\{PARTICIPANTS\}\}/g, "_____________________________________________________");
-    }
-
-    // mode === 'full'
-    return (item.body || "")
-      .replace(/\{\{ORGAN\}\}/g, inv.organ)
-      .replace(/\{\{CITY\}\}/g, inv.city)
-      .replace(/\{\{DATE\}\}/g, todayStr)
-      .replace(/\{\{INVESTIGATOR\}\}/g, inv.rankAndName)
-      .replace(/\{\{CASE_NUMBER\}\}/g, caseObj ? caseObj.number : "_____________________")
-      .replace(/\{\{ARTICLES\}\}/g, caseObj ? caseObj.articles : "__________________")
-      .replace(/\{\{SUMMARY\}\}/g, caseObj ? caseObj.summary : "")
-      .replace(/\{\{PARTICIPANTS\}\}/g, participantsStr);
-  }
-
-  function renderBlanksView() {
-    populateBlankCaseSelect();
-    const search = (document.getElementById("blankSearch").value || "").trim().toLowerCase();
-    const cat = document.getElementById("blankCategory").value;
-    const allBlanks = getBlankItems();
-
-    document.getElementById("blankStatsBadge").textContent = `${allBlanks.length} бланков в системе`;
-
-    const filtered = allBlanks.filter((item) => {
-      const matchCat = cat === "all" || item.sysType === cat;
-      const matchText =
-        (item.title || "").toLowerCase().includes(search) ||
-        (item.articles || "").toLowerCase().includes(search) ||
-        (item.sysType || "").toLowerCase().includes(search);
-      return matchCat && matchText;
-    });
-
-    document.getElementById("blankFilteredCount").textContent = String(filtered.length);
-    const listEl = document.getElementById("blankCatalogList");
-
-    if (!filtered.length) {
-      listEl.innerHTML = `<p class="row-meta">Бланки по заданным параметрам не найдены.</p>`;
-      return;
-    }
-
-    if (!filtered.some((x) => x.id === selectedBlankId)) {
-      selectedBlankId = filtered[0].id;
-    }
-
-    listEl.innerHTML = filtered
-      .map((item) => {
-        const isSel = item.id === selectedBlankId;
-        const badgeCls =
-          item.sysType === "Постановление"
-            ? "badge-blue"
-            : item.sysType === "Протокол"
-            ? "badge-green"
-            : "badge-warn";
-        return `
-          <div class="doc-card ${isSel ? "selected" : ""}" onclick="window.__selectBlank('${escapeHtml(item.id)}')">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-              <span class="badge ${badgeCls}">${escapeHtml(item.sysType || "Иной документ")}</span>
-              <span class="row-meta">${escapeHtml(item.articles || "")}</span>
-            </div>
-            <div class="row-title" style="margin-top:5px;">${escapeHtml(item.title)}</div>
-          </div>
-        `;
-      })
-      .join("");
-
-    renderSelectedBlankEditor();
-  }
-
-  function renderSelectedBlankEditor() {
-    const item = state.kbItems.find((x) => x.id === selectedBlankId) || state.kbItems[0];
-    if (!item) return;
-    selectedBlankId = item.id;
-
-    document.querySelectorAll(".mode-btn").forEach((b) => {
-      b.classList.toggle("active", b.dataset.mode === genMode);
-    });
-
-    document.getElementById("selectedBlankTitle").textContent = `${item.sysType}: ${item.title}`;
-
-    const hintsBox = document.getElementById("blankHintsBox");
-    if (Array.isArray(item.hints) && item.hints.length) {
-      hintsBox.style.display = "block";
-      hintsBox.innerHTML = `
-        <strong>Тактические подсказки и контрольные пункты из Базы знаний:</strong>
-        <ul>${item.hints.map((h) => `<li>${escapeHtml(h)}</li>`).join("")}</ul>
-      `;
-    } else {
-      hintsBox.style.display = "none";
-    }
-
-    const caseId = document.getElementById("blankCaseSelect").value || activeCaseId;
-    const caseObj = state.cases.find((c) => c.id === caseId) || state.cases[0];
-    document.getElementById("docEditor").value = buildGeneratedDocumentText(item, caseObj, genMode);
-  }
-
-  window.__selectBlank = (id) => {
-    selectedBlankId = id;
-    renderBlanksView();
-  };
-
-  document.querySelectorAll(".mode-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      genMode = btn.dataset.mode;
-      renderSelectedBlankEditor();
-    });
-  });
-
-  document.getElementById("blankSearch").addEventListener("input", renderBlanksView);
-  document.getElementById("blankCategory").addEventListener("change", renderBlanksView);
-  document.getElementById("blankCaseSelect").addEventListener("change", (e) => {
-    activeCaseId = e.target.value;
-    renderSelectedBlankEditor();
-  });
-
-  document.getElementById("btnClearBlankFilters").addEventListener("click", () => {
-    document.getElementById("blankSearch").value = "";
-    document.getElementById("blankCategory").value = "all";
-    renderBlanksView();
-  });
-
-  document.getElementById("btnCopyDoc").addEventListener("click", async () => {
-    const text = document.getElementById("docEditor").value;
-    try {
-      await navigator.clipboard.writeText(text);
-      showToast("Текст документа скопирован в буфер обмена");
-    } catch (e) {
-      showToast("Выделите текст в окне и нажмите Ctrl+C");
-    }
-  });
-
-  document.getElementById("btnDownloadDocTxt").addEventListener("click", () => {
-    const item = state.kbItems.find((x) => x.id === selectedBlankId);
-    const title = (item?.title || "dokument").replace(/[^a-zA-Zа-яА-Я0-9_-]+/g, "_").slice(0, 40);
-    const blob = new Blob([document.getElementById("docEditor").value], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Файл .TXT скачан");
-  });
-
-  document.getElementById("btnDownloadDocWord").addEventListener("click", () => {
-    const item = state.kbItems.find((x) => x.id === selectedBlankId);
-    const title = (item?.title || "dokument").replace(/[^a-zA-Zа-яА-Я0-9_-]+/g, "_").slice(0, 40);
-    const paragraphs = document
-      .getElementById("docEditor")
-      .value.split("
-")
-      .map((line) => `<p style="margin:0 0 8pt 0; font-family:'Times New Roman',Times,serif; font-size:14pt;">${escapeHtml(line) || "&nbsp;"}</p>`)
-      .join("");
-    const htmlDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${paragraphs}</body></html>`;
-    const blob = new Blob(["﻿", htmlDoc], { type: "application/msword;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title}.doc`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Документ выгружен в формат .DOC");
-  });
-
-  /* ==================== РАЗДЕЛ 3: БАЗА ЗНАНИЙ ==================== */
-  document.getElementById("kbAddForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const title = document.getElementById("kbTitle").value.trim();
-    const sysType = document.getElementById("kbSysType").value;
-    const category = document.getElementById("kbCategory").value;
-    const articles = document.getElementById("kbArticles").value.trim();
-    const hintsRaw = document.getElementById("kbHints").value;
-    const body = document.getElementById("kbBody").value.trim();
-
-    const hints = hintsRaw
-      .split("
-")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const newItem = {
-      id: "kb-" + Date.now(),
-      title,
-      sysType,
-      category,
-      articles,
-      hints,
-      body
-    };
-
-    state.kbItems.unshift(newItem);
-    selectedBlankId = newItem.id;
-    saveState();
-    e.target.reset();
-    renderKbView();
-    renderBlanksView();
-    showToast("Материал добавлен в Базу знаний и доступен в Бланках");
-  });
-
-  document.getElementById("kbSearch").addEventListener("input", renderKbView);
-  document.getElementById("kbFilterCategory").addEventListener("change", renderKbView);
-
-  function renderKbView() {
-    const q = (document.getElementById("kbSearch").value || "").trim().toLowerCase();
-    const cat = document.getElementById("kbFilterCategory").value;
-    const listEl = document.getElementById("kbList");
-
-    const filtered = state.kbItems.filter((item) => {
-      const matchCat = cat === "all" || item.category === cat;
-      const matchText =
-        (item.title || "").toLowerCase().includes(q) ||
-        (item.articles || "").toLowerCase().includes(q) ||
-        (item.body || "").toLowerCase().includes(q);
-      return matchCat && matchText;
-    });
-
-    document.getElementById("kbCountBadge").textContent = `${state.kbItems.length} записей`;
-
-    if (!filtered.length) {
-      listEl.innerHTML = `<p class="row-meta">Записи в базе знаний не найдены.</p>`;
-      return;
-    }
-
-    listEl.innerHTML = filtered
-      .map(
-        (item) => `
-        <div class="doc-card" style="cursor:default;">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-            <div>
-              <span class="badge badge-blue">${escapeHtml(item.sysType)}</span>
-              <span class="badge">${escapeHtml(item.category)}</span>
-              ${item.articles ? `<span class="badge badge-green">${escapeHtml(item.articles)}</span>` : ""}
-            </div>
-            <div style="display:flex; gap:6px;">
-              <button class="btn btn-sm btn-soft" onclick="window.__useKbInGenerator('${escapeHtml(item.id)}')">В генератор</button>
-              <button class="btn btn-sm" onclick="window.__deleteKbItem('${escapeHtml(item.id)}')">Удалить</button>
-            </div>
-          </div>
-          <div class="row-title" style="margin-top:6px;">${escapeHtml(item.title)}</div>
-          ${
-            Array.isArray(item.hints) && item.hints.length
-              ? `<div class="row-meta" style="margin-top:4px;">Подсказки: ${escapeHtml(item.hints.join(" • "))}</div>`
-              : ""
-          }
-          <div class="row-meta" style="margin-top:6px; white-space:pre-wrap; background:var(--surface-2); padding:8px; border-radius:6px; border:1px solid var(--border);">${escapeHtml((item.body || "").slice(0, 260))}${(item.body || "").length > 260 ? "…" : ""}</div>
-        </div>
-      `
-      )
-      .join("");
-  }
-
-  window.__useKbInGenerator = (id) => {
-    selectedBlankId = id;
-    document.querySelectorAll(".nav-tab").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
-    document.querySelector('.nav-tab[data-view="blanks"]').classList.add("active");
-    document.getElementById("view-blanks").classList.add("active");
-    renderBlanksView();
-  };
-
-  window.__deleteKbItem = (id) => {
-    if (!confirm("Удалить запись из Базы знаний?")) return;
-    state.kbItems = state.kbItems.filter((x) => x.id !== id);
-    if (selectedBlankId === id) selectedBlankId = state.kbItems[0]?.id || null;
-    saveState();
-    renderKbView();
-    renderBlanksView();
-    showToast("Запись удалена");
-  };
-
-  function renderAll() {
-    renderCasesView();
-    renderBlanksView();
-    renderKbView();
-  }
-
-  renderAll();
-})();
-</script>
-</body>
-</html>
+      <!-- ==================== ВКЛАДКА 1: СВОДКА ==================== -->
+      <main id="view-svodka">
+        <header class="brand-hero">
+          <div class="brand-emblem" aria-label="Логотип IAR">
+            <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+              <path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="#0d1b3e" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
+              <path d="M60 19 L93 32 V59 C93 81 78 96 60 103 C42 96 27 81 27 59 V32 Z" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
+              <path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M70 39 H84 V53" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <text x="60" y="88" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="800" font
