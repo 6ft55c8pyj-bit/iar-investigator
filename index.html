@@ -3,16 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#f6f8fc" />
+  <meta name="theme-color" content="#ffffff" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="IAR" />
-  <title>АРМ Следователя — Автоматизированное рабочее место</title>
+  <title>АРМ Следователя</title>
   <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='26' fill='%230d1b3e'/%3E%3Cpath d='M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z' fill='none' stroke='%23ffffff' stroke-width='6' stroke-linejoin='round'/%3E%3Cpath d='M36 66 L54 48 L65 58 L84 39' fill="none" stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M70 39 H84 V53' fill="none" stroke='%2338bdf8' stroke-width='7.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='60' y='88' text-anchor='middle' fill='%23ffffff' font-family='Inter, Arial, sans-serif' font-weight='800' font-size='22' letter-spacing='1'%3EIAR%3C/text%3E%3C/svg%3E" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -21,1469 +16,829 @@
       const hash = await crypto.subtle.digest('SHA-256', buf);
       return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
     }
-
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
       window.supabase = {
         createClient: function(url) {
-          const projectRef = (url || '').replace(/^https?:\/\//, '').split('.')[0] || 'local';
-          const sessionKey = 'sb-' + projectRef + '-auth-token';
-
-          function readSession() {
-            try {
-              const raw = localStorage.getItem(sessionKey);
-              if (!raw) return null;
-              const parsed = JSON.parse(raw);
-              const s = parsed && parsed.currentSession ? parsed.currentSession : parsed;
-              if (s && s.user) return s;
-              return null;
-            } catch (e) { return null; }
-          }
-
-          function writeSession(user) {
-            const session = { access_token: 'offline_token', token_type: 'bearer', user: user };
-            try { localStorage.setItem(sessionKey, JSON.stringify(session)); } catch (e) {}
-            return session;
-          }
-
+          const sessionKey = 'sb-' + ((url || '').replace(/^https?:\/\//, '').split('.')[0] || 'local') + '-auth-token';
+          function readSession() { try { const raw = localStorage.getItem(sessionKey); if (!raw) return null; const p = JSON.parse(raw); const s = p.currentSession ? p.currentSession : p; return (s && s.user) ? s : null; } catch (e) { return null; } }
+          function writeSession(user) { const s = { access_token: 'offline', user }; try { localStorage.setItem(sessionKey, JSON.stringify(s)); } catch (e) {} return s; }
           return {
             auth: {
               async getSession() { return { data: { session: readSession() }, error: null }; },
               async signInWithPassword({ email, password }) {
                 if (!navigator.onLine) {
-                  if (!password || String(password).length < 6) {
-                    return { data: { session: null, user: null }, error: { message: 'Пароль должен содержать не менее 6 символов' } };
-                  }
-                  const passKey = 'iar_offline_pass_' + email;
-                  const storedHash = localStorage.getItem(passKey);
-                  const currentHash = await sha256Hex(email + ':' + password);
-
-                  if (storedHash) {
-                    if (currentHash !== storedHash) return { data: { session: null, user: null }, error: { message: 'Неверный пароль' } };
-                  } else {
-                    try { localStorage.setItem(passKey, currentHash); } catch (e) {}
-                  }
-
-                  const existing = readSession();
-                  let user = existing && existing.user && existing.user.email === email ? existing.user : { id: 'offline_' + btoa(unescape(encodeURIComponent(email))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24), email: email };
-                  const s = writeSession(user);
-                  return { data: { session: s, user: user }, error: null };
+                  if (!password || password.length < 6) return { error: { message: 'Пароль от 6 символов' } };
+                  const passKey = 'iar_pass_' + email; const stored = localStorage.getItem(passKey); const curr = await sha256Hex(email + ':' + password);
+                  if (stored && stored !== curr) return { error: { message: 'Неверный пароль' } };
+                  if (!stored) localStorage.setItem(passKey, curr);
+                  let user = readSession()?.user; if (!user || user.email !== email) user = { id: 'off_' + btoa(email).slice(0,10), email };
+                  const s = writeSession(user); return { data: { session: s, user }, error: null };
                 }
-                return { data: { session: null, user: null }, error: { message: 'Нет соединения с сервером авторизации' } };
+                return { error: { message: 'Нет сети' } };
               },
-              async signUp() { return { data: { session: null, user: null }, error: { message: 'Регистрация требует подключения к сети' } }; },
-              async signOut() { try { localStorage.removeItem(sessionKey); } catch (e) {} return { error: null }; }
+              async signUp() { return { error: { message: 'Требуется сеть' } }; },
+              async signOut() { localStorage.removeItem(sessionKey); return { error: null }; }
             },
-            from() {
-              return {
-                select() { return { eq() { return { async maybeSingle() { return { data: null, error: { code: 'OFFLINE', message: 'Офлайн-режим' } }; } }; } }; },
-                async upsert() { return { error: { code: 'OFFLINE', message: 'Офлайн-режим' } }; }
-              };
-            }
+            from() { return { select() { return { eq() { return { async maybeSingle() { return { data: null, error: { code: 'OFF' } }; } }; }, async order() { return { data: [], error: null }; } }; }, async upsert() { return { error: { code: 'OFF' } }; } }; },
+            storage: { from() { return { async upload() { return { error: { message: 'Офлайн' } }; }, getPublicUrl() { return { data: { publicUrl: '' } }; } }; } }
           };
         }
       };
     }
   </script>
   <style>
-    :root {
-      --bg: #f6f8fc; --surface: #ffffff; --surface-soft: #f9fbff; --primary: #334e7b; --primary-soft: #eef3fb;
-      --accent: #5b7bb2; --accent-soft: #e6eefc; --text: #1e293b; --muted: #64748b; --border: #e6ebf2;
-      --cat-court-bg: #fdf2f2; --cat-court-border: #f5d0d0; --cat-court-text: #9b3b3b; --cat-court-dot: #d97777;
-      --cat-work-bg: #eff6ff; --cat-work-border: #cfe0fc; --cat-work-text: #2c5282; --cat-work-dot: #5b7bb2;
-      --cat-expert-bg: #f0f9f4; --cat-expert-border: #cbe8d6; --cat-expert-text: #276749; --cat-expert-dot: #489c73;
-      --cat-term-bg: #fffbeb; --cat-term-border: #f6e0a6; --cat-term-text: #8c5a19; --cat-term-dot: #d69e2e;
-      --shadow-soft: 0 4px 20px rgba(51, 78, 123, 0.05); --radius-lg: 20px; --radius-md: 14px; --radius-sm: 10px;
-    }
+    :root { --primary: #334e7b; --primary-soft: #eef3fb; --text: #1e293b; --muted: #64748b; --border: #e6ebf2; --bg: #f6f8fc; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { margin: 0; font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding-bottom: 96px; line-height: 1.45; }
-    .auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--bg); }
-    .auth-card { width: 100%; max-width: 410px; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 26px 22px; box-shadow: 0 14px 36px rgba(51, 78, 123, 0.1); }
-    .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); padding: 4px; border-radius: 12px; margin-bottom: 16px; }
-    .auth-tab { border: none; background: transparent; padding: 8px; border-radius: 9px; font-weight: 600; font-size: 13px; color: var(--muted); cursor: pointer; }
-    .auth-tab.active { background: var(--surface); color: var(--primary); box-shadow: 0 2px 6px rgba(51, 78, 123, 0.08); }
-    .auth-msg { font-size: 12.5px; padding: 10px 12px; border-radius: 11px; margin-bottom: 12px; display: none; }
-    .auth-msg.error { display: block; background: #fef2f2; color: #b91c1c; }
-    .auth-msg.success { display: block; background: #ecfdf5; color: #047857; }
+    body { margin: 0; font-family: "Inter", sans-serif; background: var(--bg); color: var(--text); padding-bottom: 96px; }
+    
     .app-container { max-width: 820px; margin: 0 auto; padding: 12px 14px 28px; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 15px; box-shadow: var(--shadow-soft); margin-bottom: 12px; }
-    .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; transition: all 0.15s ease; }
-    .brand-hero { text-align: center; padding: 6px 8px 16px; }
-    .brand-emblem { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px; background: #0d1b3e; border: 1.5px solid #1e356b; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(13, 27, 62, 0.16); }
-    .metric-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 6px; text-align: center; box-shadow: var(--shadow-soft); cursor: pointer; transition: all 0.15s ease; }
-    .metric-tile.active { border-color: var(--accent); background: var(--primary-soft); }
-    .ios-week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-    .ios-day-col { background: var(--surface-soft); border: 1px solid var(--border); border-radius: 12px; padding: 5px 3px 6px; min-height: 138px; display: flex; flex-direction: column; align-items: stretch; gap: 4px; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
-    .ios-day-col.selected { background: #ffffff; border-color: var(--accent); box-shadow: 0 2px 10px rgba(91, 123, 178, 0.12); }
-    .ios-day-letter { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
-    .ios-day-num { width: 24px; height: 24px; margin: 1px auto 3px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--text); }
-    .ios-day-num.today { background: #e06c6c; color: #ffffff; }
-    .ios-mini-event { border-radius: 7px; padding: 3px 4px; font-size: 9.5px; line-height: 1.2; font-weight: 600; text-align: left; overflow: hidden; border: 1px solid transparent; cursor: pointer; }
-    .ios-mini-event .ev-title { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ios-mini-event .ev-time { display: block; font-size: 8.5px; opacity: 0.82; margin-top: 1px; }
-    .ev-court { background: var(--cat-court-bg); border-color: var(--cat-court-border); color: var(--cat-court-text); }
-    .ev-work { background: var(--cat-work-bg); border-color: var(--cat-work-border); color: var(--cat-work-text); }
-    .ev-expert { background: var(--cat-expert-bg); border-color: var(--cat-expert-border); color: var(--cat-expert-text); }
-    .ev-term { background: var(--cat-term-bg); border-color: var(--cat-term-border); color: var(--cat-term-text); }
-    .inner-accordion { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); margin-bottom: 10px; overflow: hidden; box-shadow: var(--shadow-soft); }
-    .accordion-header { width: 100%; background: var(--surface); border: none; padding: 13px 15px; display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; text-align: left; }
-    .accordion-body { padding: 0 15px 14px; border-top: 1px solid var(--border); background: var(--surface-soft); }
-    .chevron-icon { transition: transform 0.2s ease; color: var(--muted); }
-    .chevron-icon.open { transform: rotate(180deg); }
-    .soft-input, .soft-select, .soft-textarea { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; color: var(--text); background: #ffffff; font-family: inherit; }
-    .soft-input:focus, .soft-select:focus, .soft-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91, 123, 178, 0.14); }
-    .btn-soft-primary { background: var(--primary); color: #ffffff; border: none; border-radius: 12px; padding: 11px 15px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: opacity 0.15s ease; }
-    .btn-soft-secondary { background: var(--primary-soft); color: var(--primary); border: 1px solid #d7e3f7; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-    .btn-soft-ghost { background: #ffffff; color: var(--muted); border: 1px solid var(--border); border-radius: 12px; padding: 9px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(30, 41, 59, 0.35); backdrop-filter: blur(3px); z-index: 60; display: flex; align-items: flex-end; justify-content: center; padding: 10px; }
+    .top-header { background: #fff; border-bottom: 2px solid var(--primary); padding: 15px 10px 20px; margin-bottom: 15px; text-align: center; border-radius: 0 0 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+    .brand-emblem { width: 50px; height: 50px; margin: 0 auto 10px; border-radius: 12px; background: #0d1b3e; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(13, 27, 62, 0.2); }
+    .top-status { font-size: 11px; font-weight: 600; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; text-transform: uppercase; }
+    
+    .card { background: #fff; border: 2px solid var(--primary-soft); border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(51, 78, 123, 0.04); margin-bottom: 16px; }
+    .card-title { font-size: 14px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+    .metric-tile { background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 10px 6px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .metric-tile.active { border-color: var(--primary); background: var(--primary-soft); }
+    .metric-num { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; border: 2px solid var(--primary); border-radius: 8px; color: var(--primary); background: #fff; }
+
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 5px; }
+    .calendar-title { font-size: 16px; font-weight: 800; color: var(--primary); text-transform: uppercase; }
+    .color-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .color-chip { font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+    .color-chip.active { border-color: var(--primary); }
+    
+    .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; border-top: 2px solid var(--primary-soft); padding-top: 8px; }
+    .weekday { text-align: center; font-size: 10px; font-weight: 800; color: var(--muted); padding-bottom: 4px; text-transform: uppercase; }
+    .day-cell { border: 1px solid var(--border); border-radius: 6px; min-height: 65px; padding: 3px; display: flex; flex-direction: column; align-items: stretch; gap: 3px; cursor: pointer; background: #fff; }
+    .day-cell.selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+    .day-cell.other-month { opacity: 0.4; background: var(--bg); }
+    .day-num { font-size: 11px; font-weight: 800; text-align: right; padding-right: 2px; }
+    .day-cell.today .day-num { color: #d97777; background: #fdf2f2; border-radius: 4px; padding: 0 3px; display: inline-block; }
+    .mini-event { font-size: 8px; font-weight: 700; padding: 2px 3px; border-radius: 3px; border-left: 3px solid; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; cursor: pointer; margin-bottom: 1px; }
+
+    .btn-primary { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .btn-secondary { background: var(--primary-soft); color: var(--primary); border: 1px solid #d7e3f7; border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .btn-ghost { background: #fff; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    
+    .soft-input, .soft-select, .soft-textarea { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px; font-family: inherit; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(3px); z-index: 60; display: flex; align-items: flex-end; justify-content: center; padding: 10px; }
     @media (min-width: 640px) { .modal-overlay { align-items: center; } }
-    .modal-sheet { width: 100%; max-width: 540px; background: #ffffff; border-radius: 22px; padding: 18px; border: 1px solid var(--border); box-shadow: 0 20px 45px rgba(30, 41, 59, 0.16); max-height: 88vh; overflow-y: auto; }
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(51, 78, 123, 0.06); display: grid; grid-template-columns: repeat(6, 1fr); padding: 8px 4px 12px; z-index: 45; }
-    .nav-tab { border: none; background: transparent; border-radius: 13px; padding: 6px 2px; min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-size: 10.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
-    .nav-tab.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
-    .toast-bar { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #ffffff; padding: 9px 16px; border-radius: 999px; font-size: 12px; font-weight: 600; z-index: 80; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; max-width: 92vw; text-align: center; }
+    .modal-sheet { width: 100%; max-width: 540px; background: #fff; border-radius: 20px; padding: 18px; max-height: 88vh; overflow-y: auto; }
+    
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 4px 12px; z-index: 45; }
+    .nav-tab { border: none; background: transparent; border-radius: 12px; padding: 6px 2px; min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-size: 10px; font-weight: 700; cursor: pointer; }
+    .nav-tab.active { background: var(--primary-soft); color: var(--primary); }
+    
+    .toast-bar { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #fff; padding: 9px 16px; border-radius: 999px; font-size: 12px; font-weight: 600; z-index: 80; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
     .toast-bar.show { opacity: 1; }
-    @media (max-width: 440px) { .nav-tab { font-size: 9.5px; } .ios-day-col { padding: 4px 2px 5px; min-height: 126px; } .ios-mini-event { padding: 2.5px 3px; font-size: 9px; } }
+    
+    .sub-block { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; background: #fff; }
+    .sub-header { padding: 12px 15px; background: var(--bg); font-weight: 800; font-size: 12px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; cursor: pointer; text-transform: uppercase; }
+    .sub-body { padding: 15px; border-top: 1px solid var(--border); }
   </style>
 </head>
 <body>
-  <div id="authScreen" class="auth-screen">
-    <div class="auth-card">
-      <div class="text-center mb-4">
-        <div class="brand-emblem" aria-label="Логотип IAR">
-          <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-            <path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="#0d1b3e" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
-            <path d="M60 19 L93 32 V59 C93 81 78 96 60 103 C42 96 27 81 27 59 V32 Z" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
-            <path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M70 39 H84 V53" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="60" y="88" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="22" letter-spacing="1">IAR</text>
-          </svg>
-        </div>
-        <h1 class="text-base font-extrabold text-[#1e3a6e] uppercase m-0">АВТОМАТИЗИРОВАННОЕ РАБОЧЕЕ МЕСТО СЛЕДОВАТЕЛЯ</h1>
-        <p class="text-xs text-slate-500 mt-1 mb-0">Облачная синхронизация дел, календаря и бланков</p>
+  <!-- АВТОРИЗАЦИЯ -->
+  <div id="authScreen" class="fixed inset-0 bg-[#f6f8fc] flex items-center justify-center p-4 z-50">
+    <div class="w-full max-w-[410px] bg-white rounded-[22px] p-6 shadow-xl border border-[var(--border)]">
+      <div class="text-center mb-6">
+        <div class="brand-emblem"><svg width="30" height="30" viewBox="0 0 120 120"><path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="none" stroke="#fff" stroke-width="6"/><path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5"/></svg></div>
+        <h1 class="text-base font-extrabold text-[#1e3a6e] uppercase m-0">АРМ Следователя</h1>
       </div>
-
-      <div class="auth-tabs">
-        <button type="button" id="tabLogin" class="auth-tab active">Вход</button>
-        <button type="button" id="tabRegister" class="auth-tab">Регистрация</button>
+      <div class="auth-tabs grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-lg mb-4">
+        <button type="button" id="tabLogin" class="py-2 text-sm font-bold text-[#334e7b] bg-white shadow-sm rounded">Вход</button>
+        <button type="button" id="tabRegister" class="py-2 text-sm font-bold text-gray-500 rounded">Регистрация</button>
       </div>
-
-      <div id="authMsg" class="auth-msg"></div>
-
+      <div id="authMsg" class="text-xs p-2 rounded mb-3 hidden"></div>
       <form id="authForm" class="space-y-3">
-        <div>
-          <label for="authEmail" class="block text-xs font-semibold text-slate-600 mb-1">Электронная почта</label>
-          <input type="email" id="authEmail" class="soft-input" placeholder="name@example.com" required autocomplete="email" />
-        </div>
-        <div>
-          <label for="authPassword" class="block text-xs font-semibold text-slate-600 mb-1">Пароль (от 6 символов)</label>
-          <input type="password" id="authPassword" class="soft-input" placeholder="••••••••" minlength="6" required autocomplete="current-password" />
-        </div>
-        <button type="submit" id="authSubmitBtn" class="btn-soft-primary w-full">Войти в рабочее место</button>
+        <div><label class="text-xs font-bold text-gray-600">Почта</label><input type="email" id="authEmail" class="soft-input" required /></div>
+        <div><label class="text-xs font-bold text-gray-600">Пароль</label><input type="password" id="authPassword" class="soft-input" minlength="6" required /></div>
+        <button type="submit" id="authSubmitBtn" class="btn-primary w-full py-3">Войти</button>
       </form>
     </div>
   </div>
 
+  <!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
   <div id="appShell" class="hidden">
     <div class="app-container">
-      <div class="flex items-center justify-between mb-2 gap-2">
-        <span id="userEmailSub" class="text-xs font-medium text-slate-400 truncate">IAR • Рабочее пространство</span>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <span id="netChip" class="status-chip" style="cursor:default;">
-            <span id="netDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span id="netText">Онлайн</span>
-          </span>
-          <button type="button" id="cloudChip" class="status-chip" data-action="pull-from-cloud" title="Синхронизировать с облаком">
-            <span id="cloudDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span id="cloudText">Облако</span>
-          </button>
+      <div class="top-header">
+        <div class="brand-emblem"><svg width="30" height="30" viewBox="0 0 120 120"><path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="none" stroke="#fff" stroke-width="6"/><path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5"/></svg></div>
+        <div class="top-status">
+          <span id="userEmailSub">почта</span><span>•</span>
+          <span id="netText" class="flex items-center gap-1"><span id="netDot" class="w-2 h-2 rounded-full bg-emerald-400"></span> Онлайн</span><span>•</span>
+          <span id="cloudText" class="flex items-center gap-1 cursor-pointer" data-action="pull-from-cloud"><span id="cloudDot" class="w-2 h-2 rounded-full bg-emerald-400"></span> Облако</span>
         </div>
+        <h1 class="text-[15px] font-extrabold text-[#243b61] tracking-wide uppercase leading-snug m-0">Автоматизированное рабочее место<br>следователя</h1>
       </div>
 
+      <!-- ВКЛАДКА 1: СВОДКА -->
       <main id="view-svodka">
-        <header class="brand-hero">
-          <div class="brand-emblem" aria-label="Логотип IAR">
-            <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-              <path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="#0d1b3e" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
-              <path d="M60 19 L93 32 V59 C93 81 78 96 60 103 C42 96 27 81 27 59 V32 Z" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
-              <path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M70 39 H84 V53" fill="none" stroke="#38bdf8" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <text x="60" y="88" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="22" letter-spacing="1">IAR</text>
-            </svg>
-          </div>
-          <h1 class="text-base sm:text-lg font-extrabold text-[#1e3a6e] tracking-wide uppercase leading-snug max-w-md mx-auto m-0">
-            АВТОМАТИЗИРОВАННОЕ РАБОЧЕЕ МЕСТО СЛЕДОВАТЕЛЯ
-          </h1>
-        </header>
-
-        <section class="grid grid-cols-3 gap-2 mb-3" aria-label="Показатели">
-          <button type="button" id="tileCases" class="metric-tile" data-action="focus-metric" data-kind="cases">
-            <div id="statCasesCount" class="text-xl font-extrabold text-[#334e7b]">0</div>
-            <div class="text-[11px] font-semibold text-slate-500 mt-0.5">В производстве</div>
-          </button>
-          <button type="button" id="tileUrgent" class="metric-tile" data-action="focus-metric" data-kind="urgent">
-            <div id="statUrgentCount" class="text-xl font-extrabold text-[#b45353]">0</div>
-            <div class="text-[11px] font-semibold text-slate-500 mt-0.5">Срок &le; 10 дн.</div>
-          </button>
-          <button type="button" id="tileToday" class="metric-tile active" data-action="focus-metric" data-kind="today">
-            <div id="statTodayCount" class="text-xl font-extrabold text-[#4a6fa5]">0</div>
-            <div class="text-[11px] font-semibold text-slate-500 mt-0.5">На сегодня</div>
-          </button>
+        <section class="grid grid-cols-3 gap-2 mb-4">
+          <button type="button" id="tileCases" class="metric-tile" data-action="focus-metric" data-kind="cases"><div class="metric-num">0</div><div class="text-[10px] font-bold text-slate-500 uppercase leading-tight">В производстве</div></button>
+          <button type="button" id="tileUrgent" class="metric-tile" data-action="focus-metric" data-kind="urgent"><div class="metric-num" style="color:#b45353; border-color:#b45353;">0</div><div class="text-[10px] font-bold text-slate-500 uppercase leading-tight">Срок &le; 10 дн.</div></button>
+          <button type="button" id="tileToday" class="metric-tile active" data-action="focus-metric" data-kind="today"><div class="metric-num" style="color:#4a6fa5; border-color:#4a6fa5;">0</div><div class="text-[10px] font-bold text-slate-500 uppercase leading-tight">На сегодня</div></button>
         </section>
 
-        <section class="card" aria-label="Рабочий календарь на неделю">
-          <div class="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
-            <div class="flex items-center gap-1.5">
-              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" data-action="shift-week" data-delta="-1" aria-label="Предыдущая неделя">◀</button>
-              <span id="calendarMonthTitle" class="text-base font-extrabold text-[#243b61] px-1"></span>
-              <button type="button" class="btn-soft-ghost py-1.5 px-2.5 text-xs" data-action="shift-week" data-delta="1" aria-label="Следующая неделя">▶</button>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <button type="button" class="btn-soft-secondary py-1.5 px-3 text-xs" data-action="go-today">Сегодня</button>
-              <button type="button" class="btn-soft-primary py-1.5 px-3 text-xs" data-action="open-event-new">+ Событие</button>
-            </div>
+        <section class="card">
+          <div class="calendar-header">
+            <button type="button" class="btn-ghost px-2 py-1" data-action="shift-month" data-delta="-1">◀</button>
+            <div id="calendarMonthTitle" class="calendar-title">Ноябрь 2026</div>
+            <button type="button" class="btn-ghost px-2 py-1" data-action="shift-month" data-delta="1">▶</button>
           </div>
-
-          <div class="flex flex-wrap items-center gap-1.5 mb-3" id="calendarColorFilterBar"></div>
-          <div id="iosWeekGrid" class="ios-week-grid"></div>
+          <div class="flex justify-between items-center mb-2">
+            <button type="button" class="btn-secondary text-[10px] py-1 px-3" data-action="go-today">Сегодня</button>
+            <button type="button" class="btn-primary text-[10px] py-1 px-3" data-action="open-event-new">+ Событие</button>
+          </div>
+          <div class="color-filters" id="calendarColorFilterBar"></div>
+          <div class="month-grid">
+            <div class="weekday">Пн</div><div class="weekday">Вт</div><div class="weekday">Ср</div><div class="weekday">Чт</div><div class="weekday">Пт</div><div class="weekday">Сб</div><div class="weekday">Вс</div>
+          </div>
+          <div id="calendarMonthGrid" class="month-grid"></div>
         </section>
 
-        <div class="grid grid-cols-2 gap-2.5 mb-3">
-          <button type="button" class="btn-soft-primary w-full" data-action="open-event-new">
-            <span>+ Событие в календарь</span>
-          </button>
-          <button type="button" class="btn-soft-secondary w-full" data-action="switch-tab" data-tab="blanks">
-            <span>Создать бланк</span>
-          </button>
+        <div class="card">
+          <div class="card-title"><span>События</span><span id="selectedDaySubtitle" class="text-[11px] font-semibold text-slate-400 normal-case"></span></div>
+          <div id="selectedDayEventsList"></div>
         </div>
 
-        <div class="inner-accordion">
-          <button type="button" class="accordion-header" data-action="toggle-accordion" data-target="accDayEvents">
-            <div>
-              <div class="text-sm font-bold text-[#243b61]">События выбранного дня</div>
-              <div id="selectedDaySubtitle" class="text-xs text-slate-500"></div>
-            </div>
-            <svg id="chev-accDayEvents" class="chevron-icon open w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-            </svg>
-          </button>
-          <div id="accDayEvents" class="accordion-body pt-3">
-            <div id="selectedDayEventsList"></div>
-          </div>
-        </div>
-
-        <div class="inner-accordion">
-          <button type="button" class="accordion-header" data-action="toggle-accordion" data-target="accDeadlines">
-            <div>
-              <div class="text-sm font-bold text-[#243b61]">Контроль процессуальных сроков</div>
-              <div class="text-xs text-slate-500">Нажмите, чтобы раскрыть сроки следствия и ходатайств</div>
-            </div>
-            <svg id="chev-accDeadlines" class="chevron-icon w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-            </svg>
-          </button>
-          <div id="accDeadlines" class="accordion-body hidden pt-3">
-            <div id="svodkaDeadlinesList"></div>
-          </div>
+        <div class="card">
+          <div class="card-title" data-action="toggle-accordion" data-target="accDeadlines" style="cursor:pointer;"><span>Контроль сроков</span><span>▼</span></div>
+          <div id="accDeadlines" class="pt-2"><div id="svodkaDeadlinesList"></div></div>
         </div>
       </main>
 
+      <!-- ВКЛАДКА 2: ДЕЛА -->
       <main id="view-cases" class="hidden">
-        <div class="mb-3">
-          <h2 class="text-lg font-extrabold text-[#243b61] m-0">Уголовные дела</h2>
-          <p class="text-xs text-slate-500 mt-0.5 mb-0">Сначала отображаются дела в производстве; раскрывайте нужное дело для просмотра подразделов и редактирования.</p>
+        <div class="mb-3"><h2 class="text-lg font-extrabold text-[#243b61] m-0 uppercase">Уголовные дела</h2></div>
+        <div class="flex gap-2 mb-3">
+          <input type="text" id="caseSearchInput" class="soft-input" placeholder="Поиск по номеру, статьям или фабуле..." oninput="renderCasesList()" />
+          <select id="caseFilterSelect" class="soft-select w-32" onchange="renderCasesList()"><option value="all">Все дела</option><option value="urgent">Срочные</option></select>
         </div>
-
         <div id="casesCardsContainer"></div>
-
-        <div id="addCaseTriggerWrap" class="mt-2 mb-3">
-          <button type="button" class="btn-soft-primary w-full py-3" data-action="new-case-open">
-            <span>+ Добавить дело</span>
-          </button>
-        </div>
-
+        <div id="addCaseTriggerWrap" class="mt-2 mb-3"><button type="button" class="btn-primary w-full py-3" data-action="new-case-open">+ Добавить дело</button></div>
         <section id="newCaseFormCard" class="card hidden">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-base font-extrabold text-[#243b61] m-0">Новое уголовное дело</h3>
-            <button type="button" class="text-slate-400 font-bold px-2 py-1" data-action="new-case-close">✕</button>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Номер уголовного дела *</label>
-              <input type="text" id="ncNumber" class="soft-input" placeholder="Например: № 34901" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Дата возбуждения</label>
-              <input type="date" id="ncOpened" class="soft-input" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Срок окончания следствия до</label>
-              <input type="date" id="ncDeadline" class="soft-input" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Напомнить о ходатайстве за (дн.)</label>
-              <input type="number" id="ncLeadDays" class="soft-input" value="10" min="1" max="60" />
-            </div>
-          </div>
-
-          <div class="mb-2.5">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Квалификация (статьи УК РФ)</label>
-            <div class="flex gap-2 mb-1.5">
-              <input type="text" id="ncArticleInput" class="soft-input" placeholder="Например: ч. 2 ст. 158 УК РФ" />
-              <button type="button" class="btn-soft-secondary shrink-0" data-action="add-temp-art">+ Статья</button>
-            </div>
-            <div id="tempArticlesList" class="flex flex-wrap gap-1.5"></div>
-          </div>
-
-          <div class="mb-2.5">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Фабула дела</label>
-            <textarea id="ncFabula" class="soft-textarea" rows="2" placeholder="Краткие обстоятельства преступления..."></textarea>
-          </div>
-
-          <div class="mb-2.5">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Участники (ФИО и процессуальный статус)</label>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-1.5">
-              <input type="text" id="ncPartName" class="soft-input sm:col-span-2" placeholder="ФИО участника" />
-              <div class="flex gap-1.5">
-                <select id="ncPartRole" class="soft-select">
-                  <option value="Свидетель">Свидетель</option>
-                  <option value="Потерпевший">Потерпевший</option>
-                  <option value="Подозреваемый">Подозреваемый</option>
-                  <option value="Обвиняемый">Обвиняемый</option>
-                </select>
-                <button type="button" class="btn-soft-secondary shrink-0" data-action="add-temp-part">+</button>
-              </div>
-            </div>
-            <div id="tempParticipantsList" class="space-y-1"></div>
-          </div>
-
-          <div class="mb-3">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">План: что необходимо провести</label>
-            <div class="flex gap-2 mb-1.5">
-              <input type="text" id="ncPlanInput" class="soft-input" placeholder="Например: Допросить свидетеля / Назначить экспертизу" />
-              <button type="button" class="btn-soft-secondary shrink-0" data-action="add-temp-plan">+</button>
-            </div>
-            <div id="tempPlanList" class="space-y-1"></div>
-          </div>
-
-          <div class="flex justify-end gap-2">
-            <button type="button" class="btn-soft-ghost" data-action="new-case-close">Отмена</button>
-            <button type="button" class="btn-soft-primary" data-action="save-new-case">Сохранить дело</button>
-          </div>
+          <div class="flex items-center justify-between mb-3 border-b pb-2"><h3 class="text-sm font-extrabold text-[#243b61] uppercase m-0">Новое дело</h3><button type="button" class="text-slate-400 font-bold" data-action="new-case-close">✕</button></div>
+          <div class="grid grid-cols-2 gap-2 mb-2"><div><label class="text-[11px] font-bold">Номер УД *</label><input type="text" id="ncNumber" class="soft-input" /></div><div><label class="text-[11px] font-bold">Дата возбуждения</label><input type="date" id="ncOpened" class="soft-input" /></div></div>
+          <div class="grid grid-cols-2 gap-2 mb-2"><div><label class="text-[11px] font-bold">Срок следствия</label><input type="date" id="ncDeadline" class="soft-input" /></div><div><label class="text-[11px] font-bold">Напомнить за (дн.)</label><input type="number" id="ncLeadDays" class="soft-input" value="10" /></div></div>
+          <div class="mb-2"><label class="text-[11px] font-bold">Статьи</label><div class="flex gap-1 mb-1"><input type="text" id="ncArticleInput" class="soft-input" /><button type="button" class="btn-secondary" data-action="add-temp-art">+</button></div><div id="tempArticlesList" class="flex flex-wrap gap-1"></div></div>
+          <div class="mb-2"><label class="text-[11px] font-bold">Фабула</label><textarea id="ncFabula" class="soft-textarea" rows="2"></textarea></div>
+          <div class="mb-2"><label class="text-[11px] font-bold">Участники</label><div class="flex gap-1 mb-1"><input type="text" id="ncPartName" class="soft-input" /><select id="ncPartRole" class="soft-select w-24"><option>Свидетель</option><option>Потерпевший</option><option>Обвиняемый</option></select><button type="button" class="btn-secondary" data-action="add-temp-part">+</button></div><div id="tempParticipantsList" class="space-y-1"></div></div>
+          <div class="mb-3"><label class="text-[11px] font-bold">План</label><div class="flex gap-1 mb-1"><input type="text" id="ncPlanInput" class="soft-input" /><button type="button" class="btn-secondary" data-action="add-temp-plan">+</button></div><div id="tempPlanList" class="space-y-1"></div></div>
+          <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" data-action="new-case-close">Отмена</button><button type="button" class="btn-primary" data-action="save-new-case">Сохранить</button></div>
         </section>
       </main>
 
+      <!-- ВКЛАДКА 3: БЛАНКИ (Берет данные из GLOBAL_BLANKS) -->
       <main id="view-blanks" class="hidden">
         <div class="card">
-          <h2 class="text-base font-extrabold text-[#243b61] mb-1">Процессуальные бланки</h2>
-          <p class="text-xs text-slate-500 mb-3">Форма сохраняется по образцу, а генерация по УД опирается на Базу знаний и материалы дела.</p>
-
-          <input type="text" id="blankSearch" class="soft-input mb-2.5" placeholder="Поиск бланка (выемка, допрос, экспертиза, запрос)..." oninput="renderBlankSelect()" />
-
-          <div class="grid grid-cols-3 gap-1.5 mb-3">
-            <button type="button" id="bGrp-Постановления" class="btn-soft-secondary text-xs py-2" data-action="set-blank-group" data-grp="Постановления">Постановления</button>
-            <button type="button" id="bGrp-Протоколы" class="btn-soft-ghost text-xs py-2" data-action="set-blank-group" data-grp="Протоколы">Протоколы</button>
-            <button type="button" id="bGrp-Иные документы" class="btn-soft-ghost text-xs py-2" data-action="set-blank-group" data-grp="Иные документы">Иные документы</button>
+          <div class="card-title">Бланки следователя</div>
+          <input type="text" id="blankSearch" class="soft-input mb-2" placeholder="Поиск..." oninput="renderBlankSelect()" />
+          <div class="grid grid-cols-3 gap-1 mb-3">
+            <button type="button" id="bGrp-Постановления" class="btn-secondary text-[10px] py-1" data-action="set-blank-group" data-grp="Постановления">Постановления</button>
+            <button type="button" id="bGrp-Протоколы" class="btn-ghost text-[10px] py-1" data-action="set-blank-group" data-grp="Протоколы">Протоколы</button>
+            <button type="button" id="bGrp-Иные" class="btn-ghost text-[10px] py-1" data-action="set-blank-group" data-grp="Иные">Иные</button>
           </div>
-
           <select id="blankPicker" class="soft-select mb-3" onchange="updateBlankDraft()"></select>
-
-          <div class="space-y-2 mb-3">
-            <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 text-xs font-semibold cursor-pointer">
-              <input type="radio" name="bMode" value="empty" onchange="updateBlankDraft()" />
-              <span>Пустой (по образцу)</span>
-            </label>
-            <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 text-xs font-semibold cursor-pointer">
-              <input type="radio" name="bMode" value="header" onchange="updateBlankDraft()" />
-              <span>Пустой с шапкой следователя</span>
-            </label>
-            <div class="p-2.5 rounded-xl border border-blue-200 bg-blue-50/40">
-              <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer mb-2">
-                <input type="radio" name="bMode" value="case" checked onchange="updateBlankDraft()" />
-                <span>Сгенерировать по УД (на основе Базы знаний и дела)</span>
-              </label>
-              <select id="blankCaseSelect" class="soft-select text-xs py-2" onchange="updateBlankDraft()"></select>
-            </div>
+          
+          <div class="mb-2 bg-slate-50 p-2 rounded border border-slate-200">
+            <label class="flex items-center gap-2 text-[11px] font-bold mb-1"><input type="radio" name="bMode" value="empty" onchange="updateBlankDraft()" />Пустой</label>
+            <label class="flex items-center gap-2 text-[11px] font-bold mb-1"><input type="radio" name="bMode" value="header" onchange="updateBlankDraft()" />С шапкой</label>
+            <label class="flex items-center gap-2 text-[11px] font-bold mb-2"><input type="radio" name="bMode" value="case" checked onchange="updateBlankDraft()" />По УД (с данными)</label>
+            <select id="blankCaseSelect" class="soft-select text-xs" onchange="updateBlankDraft()"></select>
           </div>
 
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn-soft-primary flex-1" data-action="download-docx">Скачать .DOCX</button>
-            <button type="button" class="btn-soft-secondary flex-1" data-action="attach-blank">В документы дела</button>
+          <div class="flex gap-2">
+            <button type="button" class="btn-primary flex-1 text-[11px]" data-action="download-docx">Скачать .DOCX</button>
+            <button type="button" class="btn-secondary flex-1 text-[11px]" data-action="download-original-file">Скачать оригинал</button>
           </div>
         </div>
-
         <div class="card">
-          <div class="text-xs font-bold text-[#243b61] mb-2">Предпросмотр и правка перед скачиванием в Word</div>
-          <textarea id="blankEditor" class="soft-textarea" rows="10" style="font-family:'Times New Roman',serif;"></textarea>
+          <div class="text-[11px] font-bold mb-1">Предпросмотр для генерации</div>
+          <textarea id="blankEditor" class="soft-textarea" rows="12" style="font-family:'Times New Roman',serif; font-size:12px;"></textarea>
         </div>
       </main>
 
-      <main id="view-kb" class="hidden">
-        <div class="card">
-          <h2 class="text-base font-extrabold text-[#243b61] mb-1">База знаний</h2>
-          <p class="text-xs text-slate-500 mb-3">Загружайте учебные пособия, образцы бланков и материалы для расчёта сроков по УПК и вопросов экспертиз.</p>
-
-          <div class="flex flex-wrap gap-1.5 mb-2.5" id="kbCatChips"></div>
-          <input type="text" id="kbNewTitle" class="soft-input mb-2" placeholder="Название пособия или бланка..." />
-          <textarea id="kbNewNotes" class="soft-textarea mb-2.5" rows="2" placeholder="Ключевые положения, сроки по УПК или примерные вопросы для экспертизы..."></textarea>
-          <button type="button" class="btn-soft-primary w-full" data-action="add-kb-material">+ Вставить материал в Базу знаний</button>
-        </div>
-
-        <div id="kbMaterialList"></div>
-      </main>
-
+      <!-- ВКЛАДКА 4: ДЕЙСТВИЯ -->
       <main id="view-actions" class="hidden">
-        <div class="card">
-          <h2 class="text-base font-extrabold text-[#243b61] mb-1">Следственные действия и экспертизы</h2>
-          <p class="text-xs text-slate-500 mb-3">Все запланированные действия и контрольные сроки с цветовым разделением по категориям.</p>
-          <div id="allActionsContainer"></div>
-        </div>
+        <div class="card"><div class="card-title">Все действия</div><div id="allActionsContainer"></div></div>
       </main>
 
+      <!-- ВКЛАДКА 5: ПРОФИЛЬ -->
       <main id="view-profile" class="hidden">
-        <div class="card">
-          <h2 class="text-base font-extrabold text-[#243b61] mb-3">Профиль следователя (шапка документов)</h2>
-          <div class="space-y-2.5">
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Следственный орган</label>
-              <input type="text" id="profOrg" class="soft-input" oninput="onProfileInput()" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Должность и звание</label>
-              <input type="text" id="profRank" class="soft-input" oninput="onProfileInput()" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">ФИО следователя</label>
-              <input type="text" id="profFio" class="soft-input" oninput="onProfileInput()" />
+        
+        <div class="sub-block">
+          <div class="sub-header" data-action="toggle-accordion" data-target="profInfoBody"><span>Личная информация</span><span id="chev-profInfoBody">▼</span></div>
+          <div id="profInfoBody" class="sub-body">
+            <div class="space-y-2">
+              <div><label class="text-[11px] font-bold">Следственный орган</label><input type="text" id="profOrg" class="soft-input" oninput="onProfileInput()" /></div>
+              <div><label class="text-[11px] font-bold">Должность и звание</label><input type="text" id="profRank" class="soft-input" oninput="onProfileInput()" /></div>
+              <div><label class="text-[11px] font-bold">ФИО</label><input type="text" id="profFio" class="soft-input" oninput="onProfileInput()" /></div>
             </div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="text-xs font-bold text-[#243b61] mb-1">Облачная синхронизация</div>
-          <div class="text-xs text-slate-500 mb-3">
-            Аккаунт: <strong id="settingsEmail">-</strong> • Синхронизация: <strong id="lastSyncTime">ожидание...</strong>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn-soft-secondary text-xs" data-action="pull-from-cloud">Обновить из облака</button>
-            <button type="button" class="btn-soft-ghost text-xs" data-action="export-backup">Экспорт .JSON</button>
-            <button type="button" class="btn-soft-ghost text-xs text-red-600" data-action="logout">Выйти</button>
+        <div class="sub-block">
+          <div class="sub-header" data-action="toggle-accordion" data-target="profColorsBody"><span>Цвета событий</span><span id="chev-profColorsBody">▼</span></div>
+          <div id="profColorsBody" class="sub-body">
+            <div id="categorySettingsList" class="space-y-2 mb-3"></div>
+            <div class="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
+              <input type="color" id="newCatColor" class="w-8 h-8 p-0 border-0 rounded cursor-pointer" value="#5b7bb2" />
+              <input type="text" id="newCatName" class="soft-input" placeholder="Название" />
+              <button type="button" class="btn-secondary shrink-0 px-3" data-action="add-category">+</button>
+            </div>
           </div>
         </div>
+
+        <!-- БАЗА ЗНАНИЙ (ЛИЧНЫЕ ФАЙЛЫ) -->
+        <div class="sub-block">
+          <div class="sub-header" data-action="toggle-accordion" data-target="profKbBody"><span>Моя база знаний</span><span id="chev-profKbBody">▼</span></div>
+          <div id="profKbBody" class="sub-body">
+            <div class="flex flex-wrap gap-1 mb-2" id="kbCatChips"></div>
+            <input type="text" id="kbNewTitle" class="soft-input mb-1" placeholder="Название материала..." />
+            <textarea id="kbNewNotes" class="soft-textarea mb-2" rows="2" placeholder="Текст или краткое описание..."></textarea>
+            <div class="bg-blue-50/50 p-2 rounded border border-blue-200 mb-3">
+              <label class="block text-[11px] font-bold mb-1 text-blue-800">Прикрепить файл</label>
+              <input type="file" id="kbFileInput" class="text-xs w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-100 file:text-blue-700" />
+            </div>
+            <div class="flex gap-2 mb-3"><button type="button" id="btnAddKb" class="btn-primary flex-1 text-xs" data-action="add-kb-material">Добавить</button></div>
+            <div id="kbMaterialList"></div>
+          </div>
+        </div>
+
+        <!-- АДМИН-ПАНЕЛЬ (Видна только админу) -->
+        <div id="adminPanelBlock" class="sub-block hidden border-2 border-red-200">
+          <div class="sub-header bg-red-50 text-red-800" data-action="toggle-accordion" data-target="adminPanelBody">
+            <span>Управление общими бланками (Админ)</span><span id="chev-adminPanelBody">▼</span>
+          </div>
+          <div id="adminPanelBody" class="sub-body">
+            <div class="bg-red-50 p-2 rounded mb-3 border border-red-200">
+              <label class="text-[11px] font-bold text-red-800 block mb-1">Загрузить общий бланк для всех</label>
+              <input type="text" id="adminTitle" class="soft-input mb-1 text-xs" placeholder="Название (напр. Протокол осмотра)" />
+              <select id="adminCategory" class="soft-select mb-1 text-xs">
+                <option value="Постановления">Постановления</option>
+                <option value="Протоколы">Протоколы</option>
+                <option value="Иные">Иные документы</option>
+              </select>
+              <input type="file" id="adminFileInput" class="text-xs w-full mb-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-red-100 file:text-red-700" />
+              <button type="button" class="btn-primary w-full text-xs bg-red-600 hover:bg-red-700" data-action="admin-upload-blank">Загрузить</button>
+            </div>
+            <div id="adminBlanksList" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <div class="sub-block">
+          <div class="sub-header" data-action="toggle-accordion" data-target="profSyncBody"><span>Синхронизация</span><span id="chev-profSyncBody">▼</span></div>
+          <div id="profSyncBody" class="sub-body">
+            <div class="text-[11px] mb-3">Аккаунт: <span id="settingsEmail"></span><br>Последняя синхр: <span id="lastSyncTime">-</span></div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="btn-secondary text-[11px]" data-action="pull-from-cloud">Обновить</button>
+              <button type="button" class="btn-ghost text-[11px]" data-action="export-backup">Экспорт .JSON</button>
+              <button type="button" class="btn-ghost text-[11px] text-red-600" data-action="logout">Выйти</button>
+            </div>
+          </div>
+        </div>
+
       </main>
     </div>
 
-    <nav class="bottom-nav" aria-label="Навигация">
-      <button type="button" id="tab-svodka" class="nav-tab active" data-action="switch-tab" data-tab="svodka">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-        <span>Сводка</span>
-      </button>
-      <button type="button" id="tab-cases" class="nav-tab" data-action="switch-tab" data-tab="cases">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg>
-        <span>Дела</span>
-      </button>
-      <button type="button" id="tab-blanks" class="nav-tab" data-action="switch-tab" data-tab="blanks">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h5" /></svg>
-        <span>Бланки</span>
-      </button>
-      <button type="button" id="tab-kb" class="nav-tab" data-action="switch-tab" data-tab="kb">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /></svg>
-        <span>База знаний</span>
-      </button>
-      <button type="button" id="tab-actions" class="nav-tab" data-action="switch-tab" data-tab="actions">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 7h14M5 7l-2 5h4l-2-5zM19 7l-2 5h4l-2-5z" /></svg>
-        <span>Действия</span>
-      </button>
-      <button type="button" id="tab-profile" class="nav-tab" data-action="switch-tab" data-tab="profile">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4" /><path d="M4 20c1.8-3.6 5-5 8-5s6.2 1.4 8 5" /></svg>
-        <span>Профиль</span>
-      </button>
+    <nav class="bottom-nav">
+      <button type="button" id="tab-svodka" class="nav-tab active" data-action="switch-tab" data-tab="svodka"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M16 2v4M8 2v4M3 10h18" /></svg><span>Сводка</span></button>
+      <button type="button" id="tab-cases" class="nav-tab" data-action="switch-tab" data-tab="cases"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg><span>Дела</span></button>
+      <button type="button" id="tab-blanks" class="nav-tab" data-action="switch-tab" data-tab="blanks"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h5" /></svg><span>Бланки</span></button>
+      <button type="button" id="tab-actions" class="nav-tab" data-action="switch-tab" data-tab="actions"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 7h14M5 7l-2 5h4l-2-5zM19 7l-2 5h4l-2-5z" /></svg><span>Действия</span></button>
+      <button type="button" id="tab-profile" class="nav-tab" data-action="switch-tab" data-tab="profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4" /><path d="M4 20c1.8-3.6 5-5 8-5s6.2 1.4 8 5" /></svg><span>Профиль</span></button>
     </nav>
   </div>
 
+  <!-- МОДАЛКИ -->
   <div id="editCaseModal" class="modal-overlay hidden" data-action="overlay-close" data-modal="editCaseModal">
     <div class="modal-sheet">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-base font-extrabold text-[#243b61] m-0">Редактирование уголовного дела</h3>
-        <button type="button" class="text-slate-400 font-bold px-2 py-1" data-action="close-edit-case">✕</button>
-      </div>
+      <div class="flex justify-between items-center mb-3"><h3 class="text-sm font-extrabold uppercase">Редактирование УД</h3><button type="button" data-action="close-edit-case">✕</button></div>
       <input type="hidden" id="ecId" />
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Номер уголовного дела *</label>
-          <input type="text" id="ecNumber" class="soft-input" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Дата возбуждения</label>
-          <input type="date" id="ecOpened" class="soft-input" />
-        </div>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Срок окончания следствия до</label>
-          <input type="date" id="ecDeadline" class="soft-input" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Напомнить о ходатайстве за (дн.)</label>
-          <input type="number" id="ecLeadDays" class="soft-input" min="1" max="60" />
-        </div>
-      </div>
-      <div class="mb-2.5">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Квалификация (статьи УК РФ)</label>
-        <div class="flex gap-2 mb-1.5">
-          <input type="text" id="ecArticleInput" class="soft-input" placeholder="Например: ч. 2 ст. 158 УК РФ" />
-          <button type="button" class="btn-soft-secondary shrink-0" data-action="add-edit-art">+ Статья</button>
-        </div>
-        <div id="editArticlesList" class="flex flex-wrap gap-1.5"></div>
-      </div>
-      <div class="mb-2.5">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Фабула дела</label>
-        <textarea id="ecFabula" class="soft-textarea" rows="2"></textarea>
-      </div>
-      <div class="mb-2.5">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Участники</label>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-1.5">
-          <input type="text" id="ecPartName" class="soft-input sm:col-span-2" placeholder="ФИО участника" />
-          <div class="flex gap-1.5">
-            <select id="ecPartRole" class="soft-select">
-              <option value="Свидетель">Свидетель</option>
-              <option value="Потерпевший">Потерпевший</option>
-              <option value="Подозреваемый">Подозреваемый</option>
-              <option value="Обвиняемый">Обвиняемый</option>
-            </select>
-            <button type="button" class="btn-soft-secondary shrink-0" data-action="add-edit-part">+</button>
-          </div>
-        </div>
-        <div id="editParticipantsList" class="space-y-1"></div>
-      </div>
-      <div class="mb-3">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">План: что необходимо провести</label>
-        <div class="flex gap-2 mb-1.5">
-          <input type="text" id="ecPlanInput" class="soft-input" placeholder="Новый пункт плана..." />
-          <button type="button" class="btn-soft-secondary shrink-0" data-action="add-edit-plan">+</button>
-        </div>
-        <div id="editPlanList" class="space-y-1"></div>
-      </div>
-      <div class="flex justify-end gap-2">
-        <button type="button" class="btn-soft-ghost" data-action="close-edit-case">Отмена</button>
-        <button type="button" class="btn-soft-primary" data-action="save-edited-case">Сохранить изменения</button>
-      </div>
+      <div class="grid grid-cols-2 gap-2 mb-2"><div><label class="text-[11px] font-bold">Номер</label><input type="text" id="ecNumber" class="soft-input" /></div><div><label class="text-[11px] font-bold">Дата возб.</label><input type="date" id="ecOpened" class="soft-input" /></div></div>
+      <div class="grid grid-cols-2 gap-2 mb-2"><div><label class="text-[11px] font-bold">Срок до</label><input type="date" id="ecDeadline" class="soft-input" /></div><div><label class="text-[11px] font-bold">Напомнить за</label><input type="number" id="ecLeadDays" class="soft-input" /></div></div>
+      <div class="mb-2"><label class="text-[11px] font-bold">Статьи</label><div class="flex gap-1 mb-1"><input type="text" id="ecArticleInput" class="soft-input" /><button class="btn-secondary" data-action="add-edit-art">+</button></div><div id="editArticlesList" class="flex flex-wrap gap-1"></div></div>
+      <div class="mb-2"><label class="text-[11px] font-bold">Фабула</label><textarea id="ecFabula" class="soft-textarea" rows="2"></textarea></div>
+      <div class="mb-2"><label class="text-[11px] font-bold">Участники</label><div class="flex gap-1 mb-1"><input type="text" id="ecPartName" class="soft-input" /><select id="ecPartRole" class="soft-select w-24"><option>Свидетель</option><option>Потерпевший</option><option>Обвиняемый</option></select><button class="btn-secondary" data-action="add-edit-part">+</button></div><div id="editParticipantsList" class="space-y-1"></div></div>
+      <div class="mb-3"><label class="text-[11px] font-bold">План</label><div class="flex gap-1 mb-1"><input type="text" id="ecPlanInput" class="soft-input" /><button class="btn-secondary" data-action="add-edit-plan">+</button></div><div id="editPlanList" class="space-y-1"></div></div>
+      <div class="flex justify-end gap-2"><button type="button" class="btn-ghost" data-action="close-edit-case">Отмена</button><button type="button" class="btn-primary" data-action="save-edited-case">Сохранить</button></div>
     </div>
   </div>
 
   <div id="eventModal" class="modal-overlay hidden" data-action="overlay-close" data-modal="eventModal">
     <div class="modal-sheet">
-      <div class="flex items-center justify-between mb-3">
-        <h3 id="evModalHeading" class="text-base font-extrabold text-[#243b61] m-0">Событие календаря</h3>
-        <button type="button" class="text-slate-400 font-bold px-2 py-1" data-action="close-event">✕</button>
-      </div>
+      <div class="flex justify-between items-center mb-3"><h3 id="evModalHeading" class="text-sm font-extrabold uppercase">Событие</h3><button type="button" data-action="close-event">✕</button></div>
       <input type="hidden" id="evEditId" />
-      <div class="mb-2.5">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Краткое название для календаря</label>
-        <input type="text" id="evTitleInput" class="soft-input" placeholder="Например: Допрос свидетеля или Продление срока" />
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Дата и время</label>
-          <input type="datetime-local" id="evDtInput" class="soft-input" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Уголовное дело</label>
-          <input type="text" id="evCaseInput" class="soft-input" placeholder="УД № 116611" />
-        </div>
-      </div>
-      <div class="mb-3">
-        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Цветовое выделение категории</label>
-        <div class="grid grid-cols-2 gap-2" id="evColorChoices"></div>
-      </div>
-      <div class="flex items-center justify-between gap-2">
-        <button type="button" id="evDeleteBtn" class="btn-soft-ghost text-red-600 hidden" data-action="delete-event">Удалить</button>
-        <div class="flex gap-2 ml-auto">
-          <button type="button" class="btn-soft-ghost" data-action="close-event">Отмена</button>
-          <button type="button" class="btn-soft-primary" data-action="save-event">Сохранить</button>
-        </div>
+      <div class="mb-2"><label class="text-[11px] font-bold">Название</label><input type="text" id="evTitleInput" class="soft-input" /></div>
+      <div class="grid grid-cols-2 gap-2 mb-2"><div><label class="text-[11px] font-bold">Дата/Время</label><input type="datetime-local" id="evDtInput" class="soft-input" /></div><div><label class="text-[11px] font-bold">УД</label><input type="text" id="evCaseInput" class="soft-input" /></div></div>
+      <div class="mb-3"><label class="text-[11px] font-bold mb-1 block">Цвет</label><div class="grid grid-cols-2 gap-2" id="evColorChoices"></div></div>
+      <div class="flex justify-between items-center gap-2">
+        <button type="button" id="evDeleteBtn" class="btn-ghost text-red-600 hidden" data-action="delete-event">Удалить</button>
+        <div class="flex gap-2 ml-auto"><button type="button" class="btn-ghost" data-action="close-event">Отмена</button><button type="button" class="btn-primary" data-action="save-event">Сохранить</button></div>
       </div>
     </div>
   </div>
 
-  <div id="toastBar" class="toast-bar" role="status"></div>
+  <div id="toastBar" class="toast-bar"></div>
 
   <script>
+    const ADMIN_EMAIL = 'filari2005@icloud.com'; // ВАША ПОЧТА
     const SUPABASE_URL = 'https://xazxltujkizmnpkbqfgr.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_UssySBK5fWV_MZa2_RDmHA_Ksrwfvxz';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    function getTodayIso() {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    }
+    // Глобальные бланки (загружаются из базы)
+    let globalBlanks = [];
 
-    function addMonthsIso(isoStr, months) {
-      const [y, m, d] = isoStr.split('-').map(Number);
-      const dt = new Date(Date.UTC(y, m - 1 + months, d));
-      return dt.toISOString().slice(0, 10);
-    }
-
-    function shiftIsoDays(isoStr, days) {
-      const [y, m, d] = isoStr.split('-').map(Number);
-      const dt = new Date(Date.UTC(y, m - 1, d + days));
-      return dt.toISOString().slice(0, 10);
-    }
-
-    const EVENT_CATEGORIES = {
-      court: { label: 'Суд / Прокурор / Рук. СО', cls: 'ev-court', dot: '#d97777' },
-      work: { label: 'Следств. действия (гибкие)', cls: 'ev-work', dot: '#5b7bb2' },
-      expert: { label: 'Экспертизы и запросы', cls: 'ev-expert', dot: '#489c73' },
-      term: { label: 'Контроль сроков', cls: 'ev-term', dot: '#d69e2e' }
+    const DEFAULT_CATEGORIES = {
+      court: { label: 'Суд / Прокурор', bg: '#fdf2f2', text: '#9b3b3b', border: '#d97777' },
+      work: { label: 'Следствие', bg: '#eff6ff', text: '#2c5282', border: '#5b7bb2' },
+      expert: { label: 'Экспертиза', bg: '#f0f9f4', text: '#276749', border: '#489c73' },
+      term: { label: 'Контроль', bg: '#fffbeb', text: '#8c5a19', border: '#d69e2e' }
     };
 
-    const BLANKS_LIST = [
-      { id: 'b_vyemka', group: 'Постановления', title: 'Постановление о производстве выемки', ref: 'ст. 183 УПК РФ' },
-      { id: 'b_eksp', group: 'Постановления', title: 'Постановление о назначении судебной экспертизы', ref: 'ст. 195 УПК РФ' },
-      { id: 'b_dopros', group: 'Протоколы', title: 'Протокол допроса свидетеля', ref: 'ст. 189 УПК РФ' },
-      { id: 'b_zapros', group: 'Иные документы', title: 'Запрос в порядке ч. 4 ст. 21 УПК РФ', ref: 'ч. 4 ст. 21 УПК РФ' }
-    ];
+    const KB_CATEGORIES = ['УПК', 'Учебники', 'Запросы', 'Личное'];
 
-    const KB_CATEGORIES = ['УПК', 'Учебники', 'Запросы', 'Постановления', 'Экспертизы'];
-
+    function getTodayIso() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
+    function addMonthsIso(isoStr, months) { const [y, m, d] = isoStr.split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1 + months, d)); return dt.toISOString().slice(0, 10); }
+    function shiftIsoDays(isoStr, days) { const [y, m, d] = isoStr.split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d + days)); return dt.toISOString().slice(0, 10); }
+    function parseDate(str) { const [y, m, d] = str.split('-').map(Number); return new Date(y, m - 1, d); }
+    function toIsoDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+    function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    
     const defaultWorkspace = () => ({
-      eventsData: [],
-      casesData: [],
-      kbMaterials: [
-        { title: 'Криминалистика и тактика следственных действий (учебное пособие)', cats: ['Учебники', 'Экспертизы'], notes: 'Тактика допроса, выемки и постановки вопросов при назначении судебных экспертиз.' },
-        { title: 'Сроки предварительного следствия и ходатайства по УПК РФ', cats: ['УПК', 'Постановления'], notes: 'Расчёт сроков по ст. 162 УПК РФ и порядок уведомления прокурора и руководителя СО.' }
-      ],
-      profile: { org: 'СО ОП № 4 СУ УМВД России', rank: 'следователь лейтенант юстиции', fio: '' },
+      eventsData: [], casesData: [], 
+      kbMaterials: [], // Личные бланки теперь пустые по умолчанию
+      eventCategories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
+      profile: { org: 'СО ОП № 4 СУ УМВД России', rank: 'следователь', fio: '' },
       updatedAt: new Date().toISOString()
     });
 
     function normalizeWorkspacePayload(raw) {
-      const base = defaultWorkspace();
-      if (!raw || typeof raw !== 'object') return base;
-
-      let casesArr = Array.isArray(raw.casesData) ? raw.casesData : [];
-      if (!casesArr.length && Array.isArray(raw.cases) && raw.cases.length) {
-        casesArr = raw.cases.map((c, i) => {
-          const effDeadline = c.extendedUntil || c.deadlineDate || addMonthsIso(getTodayIso(), 2);
-          const arts = Array.isArray(c.qualifications) && c.qualifications.length
-            ? c.qualifications.map((q) => [q.point, q.part, q.article ? `ст. ${String(q.article).replace(/^ст\.?\s*/i, '')} УК РФ` : ''].filter(Boolean).join(' ')).filter(Boolean)
-            : (c.article ? [c.article] : ['ст. 158 УК РФ']);
-          return {
-            id: c.id || ('ud_mig_' + i),
-            number: c.number ? (String(c.number).startsWith('№') ? String(c.number) : '№ ' + c.number) : '№ —',
-            opened: c.startDate || getTodayIso(),
-            deadline: effDeadline,
-            leadDays: c.motionLeadDays || 10,
-            articles: arts.length ? arts : ['ст. 158 УК РФ'],
-            fabula: c.notes || c.extraInfo || 'Фабула не заполнена.',
-            participants: Array.isArray(c.participants) ? c.participants.map((p) => ({ name: p.name || '', role: p.role || 'Участник' })) : [],
-            plan: Array.isArray(c.planTasks) ? c.planTasks.map((t) => t.title || '').filter(Boolean) : [],
-            docs: Array.isArray(c.documents) && c.documents.length ? c.documents.map((d) => ({ name: d.title || d.name || 'Документ', kind: d.kind || 'Фото / скан' })) : [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }],
-            expanded: false
-          };
-        });
-      }
-
-      let eventsArr = Array.isArray(raw.eventsData) ? raw.eventsData : [];
-      if (!eventsArr.length && Array.isArray(raw.events) && raw.events.length) {
-        eventsArr = raw.events.map((ev, i) => ({
-          id: ev.id || ('ev_mig_' + i),
-          title: [ev.type, ev.person].filter(Boolean).join(' — ') || 'Следственное действие',
-          caseNum: ev.caseRef || '',
-          dt: ev.dateTime || `${getTodayIso()}T10:00`,
-          color: 'work'
-        }));
-      }
-
-      const legacyCfg = raw.docConfig || {};
-      const prof = { org: (raw.profile && raw.profile.org) || legacyCfg.department || base.profile.org, rank: (raw.profile && raw.profile.rank) || legacyCfg.rank || base.profile.rank, fio: (raw.profile && raw.profile.fio) !== undefined ? raw.profile.fio : (legacyCfg.name || '') };
-
-      return { eventsData: eventsArr, casesData: casesArr, kbMaterials: Array.isArray(raw.kbMaterials) && raw.kbMaterials.length ? raw.kbMaterials : base.kbMaterials, profile: prof, updatedAt: raw.updatedAt || base.updatedAt };
+      const base = defaultWorkspace(); if (!raw || typeof raw !== 'object') return base;
+      return {
+        eventsData: Array.isArray(raw.eventsData) ? raw.eventsData : [],
+        casesData: Array.isArray(raw.casesData) ? raw.casesData : [],
+        kbMaterials: Array.isArray(raw.kbMaterials) ? raw.kbMaterials : base.kbMaterials,
+        eventCategories: raw.eventCategories ? raw.eventCategories : base.eventCategories,
+        profile: raw.profile || base.profile,
+        updatedAt: raw.updatedAt || base.updatedAt
+      };
     }
 
-    let currentUser = null;
-    let authMode = 'login';
-    let syncTimer = null;
-    let ws = defaultWorkspace();
+    let currentUser = null; let authMode = 'login'; let syncTimer = null; let ws = defaultWorkspace();
+    let currentViewDate = new Date(); let selectedDay = getTodayIso(); let activeColorFilter = 'all'; let modalPickedColor = 'work';
+    let tempArticles = []; let tempParticipants = []; let tempPlans = []; let editArticles = []; let editParticipants = []; let editPlans = [];
+    let currentBlankGrp = 'Постановления'; let kbSelectedCats = [];
 
-    let selectedDay = getTodayIso();
-    let weekDelta = 0;
-    let activeColorFilter = 'all';
-    let modalPickedColor = 'work';
+    function showToast(msg) { const bar = document.getElementById('toastBar'); bar.textContent = msg; bar.classList.add('show'); clearTimeout(bar._t); bar._t = setTimeout(() => bar.classList.remove('show'), 2300); }
+    function daysUntil(deadlineIso) { if (!deadlineIso) return 999; return Math.ceil((parseDate(deadlineIso) - parseDate(getTodayIso())) / (1000 * 60 * 60 * 24)); }
 
-    let tempArticles = [];
-    let tempParticipants = [];
-    let tempPlans = [];
-    let editArticles = [];
-    let editParticipants = [];
-    let editPlans = [];
-
-    let currentBlankGrp = 'Постановления';
-    let kbSelectedCats = ['Учебники', 'УПК'];
-
-    function showToast(msg) {
-      const bar = document.getElementById('toastBar');
-      bar.textContent = msg;
-      bar.classList.add('show');
-      clearTimeout(bar._t);
-      bar._t = setTimeout(() => bar.classList.remove('show'), 2300);
-    }
-
-    function esc(s) {
-      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    function parseDate(str) {
-      const [y, m, d] = str.split('-').map(Number);
-      return new Date(y, m - 1, d);
-    }
-
-    function toIsoDate(d) {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-
-    function daysUntil(deadlineIso) {
-      if (!deadlineIso) return 999;
-      return Math.ceil((parseDate(deadlineIso) - parseDate(getTodayIso())) / (1000 * 60 * 60 * 24));
-    }
-
-    function syncCaseDeadlineInCalendar(kase) {
-      if (!kase || !kase.id || !kase.deadline) return;
-      const numClean = String(kase.number || '').replace(/^№\s*/, '').trim();
-      const caseLabel = `УД № ${numClean}`;
-      const deadlineEvId = `term_end_${kase.id}`;
-      const deadlineTitle = `Окончание срока • ${caseLabel}`;
-      const existingEnd = ws.eventsData.find((e) => e.id === deadlineEvId);
-      if (existingEnd) {
-        existingEnd.title = deadlineTitle; existingEnd.caseNum = caseLabel; existingEnd.dt = `${kase.deadline}T18:00`; existingEnd.color = 'term';
-      } else {
-        ws.eventsData.push({ id: deadlineEvId, title: deadlineTitle, caseNum: caseLabel, dt: `${kase.deadline}T18:00`, color: 'term' });
-      }
-
-      const leadDays = Number(kase.leadDays) || 10;
-      const warnDate = shiftIsoDays(kase.deadline, -leadDays);
-      const warnEvId = `term_warn_${kase.id}`;
-      const warnTitle = `Ходатайство о продлении (${leadDays} дн.) • ${caseLabel}`;
-      const existingWarn = ws.eventsData.find((e) => e.id === warnEvId);
-      if (existingWarn) {
-        existingWarn.title = warnTitle; existingWarn.caseNum = caseLabel; existingWarn.dt = `${warnDate}T10:00`; existingWarn.color = 'term';
-      } else {
-        ws.eventsData.push({ id: warnEvId, title: warnTitle, caseNum: caseLabel, dt: `${warnDate}T10:00`, color: 'term' });
-      }
-    }
-
-    function removeCaseDeadlineEvents(caseId) {
-      ws.eventsData = ws.eventsData.filter((e) => e.id !== `term_end_${caseId}` && e.id !== `term_warn_${caseId}`);
-    }
-
-    function setNetIndicator() {
-      const online = navigator.onLine;
-      document.getElementById('netDot').className = `w-2 h-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-amber-400'}`;
-      document.getElementById('netText').textContent = online ? 'Онлайн' : 'Офлайн';
-    }
-
-    function setCloudIndicator(mode, label) {
-      const dot = document.getElementById('cloudDot');
-      const txt = document.getElementById('cloudText');
-      if (mode === 'ok') dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
-      else if (mode === 'sync') dot.className = 'w-2 h-2 rounded-full bg-sky-400';
-      else dot.className = 'w-2 h-2 rounded-full bg-amber-400';
-      txt.textContent = label;
-    }
-
-    function newCacheKey() { return currentUser ? `iar_ws_cache_${currentUser.id}` : 'iar_ws_guest'; }
-    function oldCacheKey() { return currentUser ? `iar_workspace_cache_${currentUser.id}` : 'iar_workspace_guest'; }
-
-    function saveLocal() { try { localStorage.setItem(newCacheKey(), JSON.stringify(ws)); } catch (e) {} }
-
+    function setNetIndicator() { const online = navigator.onLine; document.getElementById('netDot').className = `w-2 h-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-amber-400'}`; document.getElementById('netText').innerHTML = `<span class="w-2 h-2 rounded-full ${online?'bg-emerald-400':'bg-amber-400'}"></span> ${online ? 'Онлайн' : 'Офлайн'}`; }
+    function setCloudIndicator(mode, label) { const dot = document.getElementById('cloudDot'); dot.className = `w-2 h-2 rounded-full ${mode==='ok'?'bg-emerald-400':mode==='sync'?'bg-sky-400':'bg-amber-400'}`; document.getElementById('cloudText').innerHTML = `<span class="w-2 h-2 rounded-full ${mode==='ok'?'bg-emerald-400':mode==='sync'?'bg-sky-400':'bg-amber-400'}"></span> ${label}`; }
+    
+    function saveLocal() { try { localStorage.setItem(currentUser ? `iar_ws_${currentUser.id}` : 'iar_ws_guest', JSON.stringify(ws)); } catch (e) {} }
     function loadLocal() {
+      try { const raw = localStorage.getItem(currentUser ? `iar_ws_${currentUser.id}` : 'iar_ws_guest'); if (raw) ws = normalizeWorkspacePayload(JSON.parse(raw)); ws.casesData.forEach(c => syncCaseDeadlineInCalendar(c)); } catch (e) {}
+    }
+
+    async function fetchGlobalBlanks() {
+      if (!navigator.onLine) return;
       try {
-        const rawNew = localStorage.getItem(newCacheKey());
-        const rawOld = localStorage.getItem(oldCacheKey());
-        if (rawNew) {
-          ws = normalizeWorkspacePayload(JSON.parse(rawNew));
-          if (!ws.casesData.length && rawOld) {
-            const oldNorm = normalizeWorkspacePayload(JSON.parse(rawOld));
-            if (oldNorm.casesData.length) ws.casesData = oldNorm.casesData;
-            if (!ws.profile.fio && oldNorm.profile.fio) ws.profile.fio = oldNorm.profile.fio;
-          }
-        } else if (rawOld) {
-          ws = normalizeWorkspacePayload(JSON.parse(rawOld));
+        const { data, error } = await supabaseClient.from('global_blanks').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          globalBlanks = data;
+          renderBlankSelect();
         }
-        ws.casesData.forEach((c) => syncCaseDeadlineInCalendar(c));
-      } catch (e) {}
+      } catch (e) { console.log('Global blanks fetch error:', e); }
     }
 
     async function pullFromCloud() {
-      if (!currentUser) return;
-      if (!navigator.onLine) { setCloudIndicator('warn', 'Офлайн'); return; }
+      if (!currentUser || !navigator.onLine) { setCloudIndicator('warn', 'Офлайн'); return; }
       setCloudIndicator('sync', 'Загрузка...');
       try {
         const { data, error } = await supabaseClient.from('iar_user_workspaces').select('workspace_data, updated_at').eq('user_id', currentUser.id).maybeSingle();
         if (error) throw error;
         if (data && data.workspace_data) {
           const cloudWs = normalizeWorkspacePayload(data.workspace_data);
-          const localTs = new Date(ws.updatedAt || 0).getTime();
-          const cloudTs = new Date(data.updated_at || cloudWs.updatedAt || 0).getTime();
-          if (cloudTs >= localTs || (!ws.casesData.length && cloudWs.casesData.length)) {
-            ws = cloudWs;
-            ws.casesData.forEach((c) => syncCaseDeadlineInCalendar(c));
-            saveLocal();
-          } else {
-            await pushToCloud();
-          }
-        } else {
-          await pushToCloud();
-        }
-        syncProfileInputs();
-        setCloudIndicator('ok', 'Облако');
-        document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
-        renderAll();
-      } catch (err) {
-        console.error(err);
-        setCloudIndicator('warn', err.code || 'Сеть');
-        showToast('Синхронизация: ' + (err.message || err.code || 'ошибка'));
-      }
+          if (new Date(data.updated_at || 0).getTime() >= new Date(ws.updatedAt || 0).getTime()) { ws = cloudWs; ws.casesData.forEach(c => syncCaseDeadlineInCalendar(c)); saveLocal(); }
+          else { await pushToCloud(); }
+        } else { await pushToCloud(); }
+        syncProfileInputs(); renderAll(); setCloudIndicator('ok', 'Облако'); document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
+      } catch (err) { setCloudIndicator('warn', 'Сеть'); }
     }
 
     async function pushToCloud() {
-      if (!currentUser) return;
-      ws.updatedAt = new Date().toISOString();
-      saveLocal();
+      if (!currentUser) return; ws.updatedAt = new Date().toISOString(); saveLocal();
       if (!navigator.onLine) { setCloudIndicator('warn', 'Офлайн'); return; }
-      setCloudIndicator('sync', 'Сохранение...');
-      try {
-        const { error } = await supabaseClient.from('iar_user_workspaces').upsert({ user_id: currentUser.id, workspace_data: ws, updated_at: ws.updatedAt }, { onConflict: 'user_id' });
-        if (error) throw error;
-        setCloudIndicator('ok', 'Облако');
-        document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
-      } catch (err) {
-        console.error(err);
-        setCloudIndicator('warn', err.code || 'Сеть');
-        showToast('Сохранено локально: ' + (err.message || err.code || 'ошибка'));
-      }
+      setCloudIndicator('sync', 'Сохр...');
+      try { await supabaseClient.from('iar_user_workspaces').upsert({ user_id: currentUser.id, workspace_data: ws, updated_at: ws.updatedAt }); setCloudIndicator('ok', 'Облако'); document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU'); }
+      catch (err) { setCloudIndicator('warn', 'Сеть'); }
     }
-
     function scheduleSync() { saveLocal(); clearTimeout(syncTimer); syncTimer = setTimeout(() => pushToCloud(), 450); }
 
-    const tabLogin = document.getElementById('tabLogin');
-    const tabRegister = document.getElementById('tabRegister');
-    const authSubmitBtn = document.getElementById('authSubmitBtn');
-    const authMsg = document.getElementById('authMsg');
-
-    function showAuthMsg(text, type) { authMsg.textContent = text; authMsg.className = 'auth-msg ' + type; }
-
-    tabLogin.addEventListener('click', () => {
-      authMode = 'login'; tabLogin.classList.add('active'); tabRegister.classList.remove('active');
-      authSubmitBtn.textContent = 'Войти в рабочее место'; authMsg.className = 'auth-msg';
-    });
-
-    tabRegister.addEventListener('click', () => {
-      authMode = 'register'; tabRegister.classList.add('active'); tabLogin.classList.remove('active');
-      authSubmitBtn.textContent = 'Создать аккаунт'; authMsg.className = 'auth-msg';
-    });
-
     document.getElementById('authForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('authEmail').value.trim();
-      const password = document.getElementById('authPassword').value;
-      authSubmitBtn.disabled = true;
-      authMsg.className = 'auth-msg';
-
+      e.preventDefault(); const email = document.getElementById('authEmail').value.trim(); const password = document.getElementById('authPassword').value;
+      const btn = document.getElementById('authSubmitBtn'); const msg = document.getElementById('authMsg'); btn.disabled = true; msg.className = 'text-xs p-2 rounded mb-3 hidden';
       try {
-        if (authMode === 'login') {
-          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-          if (error) throw error;
-          await enterApp(data.user);
-        } else {
-          const { data, error } = await supabaseClient.auth.signUp({ email, password });
-          if (error) throw error;
-          if (data.session && data.user) {
-            await enterApp(data.user); showToast('Аккаунт создан');
-          } else {
-            showAuthMsg('Аккаунт создан! Проверьте почту для подтверждения.', 'success');
-          }
-        }
-      } catch (err) {
-        showAuthMsg(err.message || 'Ошибка входа', 'error');
-      } finally {
-        authSubmitBtn.disabled = false;
-      }
+        if (authMode === 'login') { const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password }); if (error) throw error; await enterApp(data.user); }
+        else { const { data, error } = await supabaseClient.auth.signUp({ email, password }); if (error) throw error; if (data.session) await enterApp(data.user); else { msg.textContent = 'Проверьте почту'; msg.className = 'text-xs p-2 rounded mb-3 bg-green-100 text-green-700 block'; } }
+      } catch (err) { msg.textContent = err.message; msg.className = 'text-xs p-2 rounded mb-3 bg-red-100 text-red-700 block'; } finally { btn.disabled = false; }
     });
+    document.getElementById('tabLogin').onclick = () => { authMode='login'; document.getElementById('tabLogin').className='py-2 text-sm font-bold text-[#334e7b] bg-white shadow-sm rounded'; document.getElementById('tabRegister').className='py-2 text-sm font-bold text-gray-500 rounded'; };
+    document.getElementById('tabRegister').onclick = () => { authMode='register'; document.getElementById('tabRegister').className='py-2 text-sm font-bold text-[#334e7b] bg-white shadow-sm rounded'; document.getElementById('tabLogin').className='py-2 text-sm font-bold text-gray-500 rounded'; };
 
     async function enterApp(user) {
-      currentUser = user;
-      document.getElementById('authScreen').classList.add('hidden');
-      document.getElementById('appShell').classList.remove('hidden');
-      document.getElementById('userEmailSub').textContent = user.email;
-      document.getElementById('settingsEmail').textContent = user.email;
+      currentUser = user; document.getElementById('authScreen').classList.add('hidden'); document.getElementById('appShell').classList.remove('hidden');
+      document.getElementById('userEmailSub').textContent = user.email; document.getElementById('settingsEmail').textContent = user.email;
+      
+      // Показываем админку, если это админ
+      if (user.email === ADMIN_EMAIL) {
+        document.getElementById('adminPanelBlock').classList.remove('hidden');
+      }
 
-      ws = defaultWorkspace(); loadLocal(); initCaseFormDates(); syncProfileInputs(); renderAll();
-
-      if (navigator.onLine) await pullFromCloud();
-      else setCloudIndicator('warn', 'Офлайн');
-    }
-
-    async function logoutUser() {
-      await supabaseClient.auth.signOut();
-      currentUser = null;
-      document.getElementById('appShell').classList.add('hidden');
-      document.getElementById('authScreen').classList.remove('hidden');
-      showToast('Вы вышли из аккаунта');
-    }
-
-    function exportBackupJson() {
-      const blob = new Blob([JSON.stringify(ws, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `ARM_Sledovatelya_${getTodayIso()}.json`; a.click(); URL.revokeObjectURL(url);
+      ws = defaultWorkspace(); loadLocal(); initCaseFormDates(); syncProfileInputs(); 
+      await fetchGlobalBlanks(); // Загружаем общие бланки
+      renderAll();
+      if (navigator.onLine) await pullFromCloud(); else setCloudIndicator('warn', 'Офлайн');
     }
 
     function switchTab(tab) {
-      ['svodka', 'cases', 'blanks', 'kb', 'actions', 'profile'].forEach((t) => {
-        document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
-        document.getElementById('tab-' + t).classList.toggle('active', t === tab);
-      });
-      if (tab === 'profile') syncProfileInputs();
+      ['svodka', 'cases', 'blanks', 'actions', 'profile'].forEach(t => { document.getElementById('view-' + t).classList.toggle('hidden', t !== tab); document.getElementById('tab-' + t).classList.toggle('active', t === tab); });
+      if (tab === 'profile') { syncProfileInputs(); renderCategorySettings(); renderKbSection(); if(currentUser?.email === ADMIN_EMAIL) renderAdminBlanks(); }
       if (tab === 'actions') renderAllActionsList();
     }
-
-    function toggleAccordion(bodyId) {
-      const body = document.getElementById(bodyId);
-      const chev = document.getElementById('chev-' + bodyId);
-      const isHidden = body.classList.toggle('hidden');
-      if (chev) chev.classList.toggle('open', !isHidden);
-    }
-
+    function toggleAccordion(id) { const el = document.getElementById(id); el.classList.toggle('hidden'); const chev = document.getElementById('chev-' + id); if (chev) chev.textContent = el.classList.contains('hidden') ? '▼' : '▲'; }
     function focusMetric(kind) {
-      ['tileCases', 'tileUrgent', 'tileToday'].forEach((id) => document.getElementById(id).classList.remove('active'));
+      ['tileCases', 'tileUrgent', 'tileToday'].forEach(id => document.getElementById(id).classList.remove('active'));
       if (kind === 'cases') { document.getElementById('tileCases').classList.add('active'); switchTab('cases'); }
-      else if (kind === 'urgent') {
-        document.getElementById('tileUrgent').classList.add('active');
-        const body = document.getElementById('accDeadlines');
-        body.classList.remove('hidden'); document.getElementById('chev-accDeadlines').classList.add('open');
-        body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } else { document.getElementById('tileToday').classList.add('active'); goToday(); }
+      else if (kind === 'urgent') { document.getElementById('tileUrgent').classList.add('active'); document.getElementById('accDeadlines').classList.remove('hidden'); document.getElementById('accDeadlines').scrollIntoView({behavior:'smooth'}); }
+      else { document.getElementById('tileToday').classList.add('active'); goToday(); }
     }
 
-    function getCurrentWeekDates() {
-      const today = parseDate(getTodayIso());
-      const mondayOffset = (today.getDay() + 6) % 7;
-      const monday = new Date(today);
-      monday.setDate(today.getDate() - mondayOffset + weekDelta * 7);
-      const res = [];
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(monday); d.setDate(monday.getDate() + i); res.push(toIsoDate(d));
-      }
-      return res;
-    }
-
-    function shiftWeek(delta) { weekDelta += delta; const days = getCurrentWeekDates(); selectedDay = days[0]; renderCalendarSection(); }
-    function goToday() { weekDelta = 0; selectedDay = getTodayIso(); renderCalendarSection(); }
-
-    function jumpToDate(isoDate) {
-      if (!isoDate) return;
-      const target = parseDate(isoDate);
-      const today = parseDate(getTodayIso());
-      const targetMonday = new Date(target); targetMonday.setDate(target.getDate() - ((target.getDay() + 6) % 7));
-      const todayMonday = new Date(today); todayMonday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-      weekDelta = Math.round((targetMonday - todayMonday) / (7 * 24 * 60 * 60 * 1000));
-      selectedDay = isoDate;
-    }
-
-    function selectDay(isoDate) { selectedDay = isoDate; renderCalendarSection(); }
+    function shiftMonth(delta) { currentViewDate.setMonth(currentViewDate.getMonth() + delta); renderCalendarSection(); }
+    function goToday() { currentViewDate = new Date(); selectedDay = getTodayIso(); renderCalendarSection(); }
+    function jumpToDate(iso) { if(!iso) return; currentViewDate = parseDate(iso); selectedDay = iso; }
+    function selectDay(iso) { selectedDay = iso; renderCalendarSection(); }
     function setColorFilter(key) { activeColorFilter = key; renderCalendarSection(); }
 
     function renderCalendarSection() {
-      const filterBar = document.getElementById('calendarColorFilterBar');
-      const filterItems = [{ key: 'all', label: 'Все цвета', dot: '#64748b' }, ...Object.entries(EVENT_CATEGORIES).map(([k, v]) => ({ key: k, label: v.label, dot: v.dot }))];
-
-      filterBar.innerHTML = filterItems.map((f) => {
+      const cats = ws.eventCategories;
+      document.getElementById('calendarColorFilterBar').innerHTML = [{ key: 'all', label: 'Все', border: '#64748b' }, ...Object.entries(cats).map(([k, v]) => ({ key: k, label: v.label, border: v.border }))].map(f => {
         const active = activeColorFilter === f.key;
-        return `<button type="button" data-action="set-color-filter" data-key="${f.key}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${active ? 'bg-[#eef3fb] border-[#5b7bb2] text-[#243b61]' : 'bg-white border-slate-200 text-slate-600'}"><span class="w-2 h-2 rounded-full" style="background:${f.dot}"></span><span>${esc(f.label)}</span></button>`;
+        return `<button type="button" data-action="set-color-filter" data-key="${f.key}" class="color-chip ${active ? 'active bg-white' : 'bg-slate-100'}"><span class="w-2 h-2 rounded-full" style="background:${f.border}"></span>${esc(f.label)}</button>`;
       }).join('');
 
-      const weekDays = getCurrentWeekDates();
-      const monthsNom = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-      const midDate = parseDate(weekDays[3]);
-      document.getElementById('calendarMonthTitle').textContent = `${monthsNom[midDate.getMonth()]} ${midDate.getFullYear()}`;
+      const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+      document.getElementById('calendarMonthTitle').textContent = `${months[currentViewDate.getMonth()]} ${currentViewDate.getFullYear()}`;
 
-      const letters = ['п', 'в', 'с', 'ч', 'п', 'с', 'в'];
-      const todayIso = getTodayIso();
-      const grid = document.getElementById('iosWeekGrid');
+      const year = currentViewDate.getFullYear(), month = currentViewDate.getMonth();
+      const firstDay = new Date(year, month, 1), lastDay = new Date(year, month + 1, 0);
+      const startDayOfWeek = (firstDay.getDay() + 6) % 7, daysInMonth = lastDay.getDate();
+      const todayIso = getTodayIso(); let gridHtml = '';
 
-      grid.innerHTML = weekDays.map((iso, idx) => {
-        const dObj = parseDate(iso);
-        const isToday = iso === todayIso;
-        const isSel = iso === selectedDay;
-        const dayEvs = ws.eventsData.filter((e) => e.dt && e.dt.startsWith(iso)).filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a, b) => a.dt.localeCompare(b.dt));
+      for (let i = 0; i < startDayOfWeek; i++) gridHtml += `<div class="day-cell other-month"></div>`;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isToday = dateStr === todayIso, isSel = dateStr === selectedDay;
+        const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(dateStr)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a, b) => a.dt.localeCompare(b.dt));
+        
+        let evHtml = dayEvs.slice(0, 3).map(ev => {
+          const cat = cats[ev.color] || { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+          return `<div class="mini-event" style="background:${cat.bg}; color:${cat.text}; border-left-color:${cat.border};" data-action="open-event" data-id="${esc(ev.id)}">${esc(ev.title)}</div>`;
+        }).join('');
+        if (dayEvs.length > 3) evHtml += `<div class="text-[8px] font-bold text-center text-slate-400">+${dayEvs.length - 3}</div>`;
 
-        return `
-          <div class="ios-day-col ${isSel ? 'selected' : ''}" data-action="select-day" data-id="${iso}">
-            <div class="ios-day-letter">${letters[idx]}</div>
-            <div class="ios-day-num ${isToday ? 'today' : ''}">${dObj.getDate()}</div>
-            ${dayEvs.map((ev) => {
-              const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
-              const timeStr = (ev.dt.split('T')[1] || '').slice(0, 5);
-              return `<button type="button" class="ios-mini-event ${cat.cls}" data-action="open-event" data-id="${esc(ev.id)}"><span class="ev-title">${esc(ev.title)}</span><span class="ev-time">${esc(timeStr)}</span></button>`;
-            }).join('')}
-          </div>
-        `;
-      }).join('');
-
+        gridHtml += `<div class="day-cell ${isSel ? 'selected' : ''} ${isToday ? 'today' : ''}" data-action="select-day" data-id="${dateStr}"><div class="day-num">${d}</div><div class="flex-1 flex flex-col gap-0.5 overflow-hidden">${evHtml}</div></div>`;
+      }
+      document.getElementById('calendarMonthGrid').innerHTML = gridHtml;
       renderSelectedDayEvents();
     }
 
     function renderSelectedDayEvents() {
       const dObj = parseDate(selectedDay);
-      const wdFull = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+      const wdFull = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
       const monthsGen = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
       document.getElementById('selectedDaySubtitle').textContent = `${wdFull[dObj.getDay()]}, ${dObj.getDate()} ${monthsGen[dObj.getMonth()]}`;
 
       const listEl = document.getElementById('selectedDayEventsList');
-      const items = ws.eventsData.filter((e) => e.dt && e.dt.startsWith(selectedDay)).filter((e) => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a, b) => a.dt.localeCompare(b.dt));
+      const items = ws.eventsData.filter(e => e.dt && e.dt.startsWith(selectedDay)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a, b) => a.dt.localeCompare(b.dt));
+      if (!items.length) { listEl.innerHTML = '<div class="text-xs text-slate-400 py-2 text-center">Нет событий</div>'; return; }
 
-      if (!items.length) { listEl.innerHTML = '<div class="text-xs text-slate-400 py-2">На этот день событий нет.</div>'; return; }
-
-      listEl.innerHTML = items.map((ev) => {
-        const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
-        return `
-          <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 flex-wrap ${cat.cls}">
-            <div class="min-w-0"><div class="text-xs font-bold">${esc(ev.title)} <span class="opacity-75">• ${esc(ev.caseNum)}</span></div><div class="text-[11px] opacity-80">${esc(cat.label)}</div></div>
-            <div class="flex items-center gap-1.5">
-              <input type="datetime-local" value="${esc(ev.dt)}" data-action="quick-shift" data-id="${esc(ev.id)}" class="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white text-slate-700" />
-              <button type="button" class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-600" data-action="open-event" data-id="${esc(ev.id)}">Цвет</button>
-            </div>
-          </div>
-        `;
+      listEl.innerHTML = items.map(ev => {
+        const cat = ws.eventCategories[ev.color] || { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+        return `<div class="p-2 rounded-lg border-l-4 mb-2 flex items-center justify-between bg-slate-50" style="border-left-color:${cat.border}"><div><div class="text-[13px] font-bold text-slate-800">${esc(ev.title)}</div><div class="text-[11px] text-slate-500">${esc(ev.caseNum)}</div></div><div class="flex gap-1 items-center"><span class="text-[11px] font-bold text-slate-600">${esc((ev.dt.split('T')[1]||'').slice(0,5))}</span><button class="text-[11px] bg-white border px-2 py-1 rounded" data-action="open-event" data-id="${esc(ev.id)}">Изм.</button></div></div>`;
       }).join('');
     }
 
-    function quickShiftEvent(id, newDt) {
-      const ev = ws.eventsData.find((x) => x.id === id);
-      if (!ev || !newDt) return;
-      ev.dt = newDt; selectedDay = newDt.split('T')[0]; renderAll(); scheduleSync(); showToast('Дата и время обновлены');
-    }
-
     function openEventModal(eventId) {
-      const modal = document.getElementById('eventModal');
-      const delBtn = document.getElementById('evDeleteBtn');
-
+      const modal = document.getElementById('eventModal'), delBtn = document.getElementById('evDeleteBtn');
       if (eventId) {
-        const ev = ws.eventsData.find((x) => x.id === eventId);
-        if (!ev) return;
-        document.getElementById('evModalHeading').textContent = 'Настройка события';
-        document.getElementById('evEditId').value = ev.id;
-        document.getElementById('evTitleInput').value = ev.title;
-        document.getElementById('evDtInput').value = ev.dt;
-        document.getElementById('evCaseInput').value = ev.caseNum || '';
-        modalPickedColor = ev.color || 'work';
-        delBtn.classList.remove('hidden');
+        const ev = ws.eventsData.find(x => x.id === eventId); if (!ev) return;
+        document.getElementById('evModalHeading').textContent = 'Настройка';
+        document.getElementById('evEditId').value = ev.id; document.getElementById('evTitleInput').value = ev.title;
+        document.getElementById('evDtInput').value = ev.dt; document.getElementById('evCaseInput').value = ev.caseNum || '';
+        modalPickedColor = ev.color || 'work'; delBtn.classList.remove('hidden');
       } else {
         document.getElementById('evModalHeading').textContent = 'Новое событие';
-        document.getElementById('evEditId').value = '';
-        document.getElementById('evTitleInput').value = '';
-        document.getElementById('evDtInput').value = `${selectedDay}T10:00`;
-        document.getElementById('evCaseInput').value = ws.casesData[0] ? `УД ${ws.casesData[0].number}` : '';
-        modalPickedColor = 'work';
-        delBtn.classList.add('hidden');
+        document.getElementById('evEditId').value = ''; document.getElementById('evTitleInput').value = '';
+        document.getElementById('evDtInput').value = `${selectedDay}T10:00`; document.getElementById('evCaseInput').value = ws.casesData[0] ? `УД ${ws.casesData[0].number}` : '';
+        modalPickedColor = Object.keys(ws.eventCategories)[0] || 'work'; delBtn.classList.add('hidden');
       }
       renderModalColorChoices(); modal.classList.remove('hidden');
     }
 
     function renderModalColorChoices() {
-      const wrap = document.getElementById('evColorChoices');
-      wrap.innerHTML = Object.entries(EVENT_CATEGORIES).map(([key, cfg]) => {
+      document.getElementById('evColorChoices').innerHTML = Object.entries(ws.eventCategories).map(([key, cfg]) => {
         const active = modalPickedColor === key;
-        return `<button type="button" data-action="pick-color" data-key="${key}" class="p-2 rounded-xl border text-left text-xs font-semibold flex items-center gap-2 ${cfg.cls} ${active ? 'ring-2 ring-[#5b7bb2]' : ''}"><span class="w-3 h-3 rounded-full shrink-0" style="background:${cfg.dot}"></span><span class="truncate">${esc(cfg.label)}</span></button>`;
+        return `<button type="button" data-action="pick-color" data-key="${key}" class="p-2 rounded border text-left text-[11px] font-bold flex items-center gap-2 ${active ? 'ring-2 ring-primary bg-slate-50' : 'bg-white'}"><span class="w-3 h-3 rounded-full shrink-0" style="background:${cfg.border}"></span><span class="truncate">${esc(cfg.label)}</span></button>`;
       }).join('');
     }
 
     function pickModalColor(key) { modalPickedColor = key; renderModalColorChoices(); }
     function closeEventModal() { document.getElementById('eventModal').classList.add('hidden'); }
-
     function saveCalendarEvent() {
-      const id = document.getElementById('evEditId').value;
-      const title = (document.getElementById('evTitleInput').value || '').trim();
-      const dt = document.getElementById('evDtInput').value || `${selectedDay}T10:00`;
-      const caseNum = (document.getElementById('evCaseInput').value || '').trim();
-
-      if (!title) { showToast('Укажите название события'); return; }
-
-      if (id) {
-        const ev = ws.eventsData.find((x) => x.id === id);
-        if (ev) { ev.title = title; ev.dt = dt; ev.caseNum = caseNum; ev.color = modalPickedColor; }
-        showToast('Событие сохранено');
-      } else {
-        ws.eventsData.push({ id: 'e_' + Date.now(), title, dt, caseNum, color: modalPickedColor });
-        showToast('Событие добавлено в календарь');
-      }
-
-      selectedDay = dt.split('T')[0]; closeEventModal(); renderAll(); scheduleSync();
+      const id = document.getElementById('evEditId').value, title = document.getElementById('evTitleInput').value.trim();
+      const dt = document.getElementById('evDtInput').value, caseNum = document.getElementById('evCaseInput').value.trim();
+      if (!title) { showToast('Укажите название'); return; }
+      if (id) { const ev = ws.eventsData.find(x => x.id === id); if (ev) { ev.title = title; ev.dt = dt; ev.caseNum = caseNum; ev.color = modalPickedColor; } }
+      else { ws.eventsData.push({ id: 'e_' + Date.now(), title, dt, caseNum, color: modalPickedColor }); }
+      selectedDay = dt.split('T')[0]; currentViewDate = parseDate(selectedDay); closeEventModal(); renderAll(); scheduleSync(); showToast('Сохранено');
     }
-
-    function deleteCalendarEvent() {
-      const id = document.getElementById('evEditId').value;
-      ws.eventsData = ws.eventsData.filter((x) => x.id !== id);
-      closeEventModal(); renderAll(); scheduleSync(); showToast('Событие удалено');
-    }
-
-    function initCaseFormDates() {
-      const t = getTodayIso();
-      document.getElementById('ncOpened').value = t;
-      document.getElementById('ncDeadline').value = addMonthsIso(t, 2);
-    }
-
-    function toggleNewCaseForm(show) {
-      const card = document.getElementById('newCaseFormCard');
-      const btnWrap = document.getElementById('addCaseTriggerWrap');
-      if (show) {
-        tempArticles = []; tempParticipants = []; tempPlans = [];
-        initCaseFormDates(); renderTempFormLists();
-        card.classList.remove('hidden'); btnWrap.classList.add('hidden'); card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else { card.classList.add('hidden'); btnWrap.classList.remove('hidden'); }
-    }
-
-    function addTempArticle() { const inp = document.getElementById('ncArticleInput'); const val = (inp.value || '').trim(); if (!val) return; tempArticles.push(val); inp.value = ''; renderTempFormLists(); }
-    function addTempParticipant() { const nameInp = document.getElementById('ncPartName'); const roleSel = document.getElementById('ncPartRole'); const name = (nameInp.value || '').trim(); if (!name) return; tempParticipants.push({ name, role: roleSel.value }); nameInp.value = ''; renderTempFormLists(); }
-    function addTempPlan() { const inp = document.getElementById('ncPlanInput'); const val = (inp.value || '').trim(); if (!val) return; tempPlans.push(val); inp.value = ''; renderTempFormLists(); }
-
-    function renderTempFormLists() {
-      document.getElementById('tempArticlesList').innerHTML = tempArticles.map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-temp-art" data-idx="${idx}">×</button></span>`).join('');
-      document.getElementById('tempParticipantsList').innerHTML = tempParticipants.map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" data-action="remove-temp-part" data-idx="${idx}">×</button></div>`).join('');
-      document.getElementById('tempPlanList').innerHTML = tempPlans.map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" data-action="remove-temp-plan" data-idx="${idx}">×</button></div>`).join('');
-    }
-
-    function saveNewCase() {
-      const numRaw = (document.getElementById('ncNumber').value || '').trim();
-      if (!numRaw) { showToast('Введите номер уголовного дела'); return; }
-      const pendingArt = (document.getElementById('ncArticleInput').value || '').trim();
-      if (pendingArt) tempArticles.push(pendingArt);
-
-      const openedVal = document.getElementById('ncOpened').value || getTodayIso();
-      const deadlineVal = document.getElementById('ncDeadline').value || addMonthsIso(openedVal, 2);
-      const leadDaysVal = parseInt(document.getElementById('ncLeadDays').value, 10) || 10;
-
-      const newCase = {
-        id: 'ud_' + Date.now(), number: numRaw.startsWith('№') ? numRaw : '№ ' + numRaw, opened: openedVal, deadline: deadlineVal, leadDays: leadDaysVal,
-        articles: tempArticles.length ? [...tempArticles] : ['ст. 158 УК РФ'], fabula: (document.getElementById('ncFabula').value || '').trim() || 'Фабула не заполнена.',
-        participants: [...tempParticipants], plan: [...tempPlans], docs: [{ name: 'Постановление о возбуждении уголовного дела', kind: 'Фото / скан' }], expanded: true
-      };
-
-      ws.casesData.unshift(newCase);
-      syncCaseDeadlineInCalendar(newCase);
-      jumpToDate(deadlineVal);
-
-      document.getElementById('ncNumber').value = ''; document.getElementById('ncArticleInput').value = ''; document.getElementById('ncFabula').value = '';
-      toggleNewCaseForm(false); renderAll(); scheduleSync(); showToast('Дело сохранено, срок отмечен в календаре');
-    }
-
-    function openEditCaseModal(caseId) {
-      const item = ws.casesData.find((c) => c.id === caseId);
-      if (!item) return;
-      document.getElementById('ecId').value = item.id; document.getElementById('ecNumber').value = item.number || '';
-      document.getElementById('ecOpened').value = item.opened || getTodayIso(); document.getElementById('ecDeadline').value = item.deadline || addMonthsIso(getTodayIso(), 2);
-      document.getElementById('ecLeadDays').value = item.leadDays || 10; document.getElementById('ecFabula').value = item.fabula || '';
-      document.getElementById('ecArticleInput').value = ''; document.getElementById('ecPartName').value = ''; document.getElementById('ecPlanInput').value = '';
-
-      editArticles = [...(item.articles || [])]; editParticipants = (item.participants || []).map((p) => ({ ...p })); editPlans = [...(item.plan || [])];
-      renderEditFormLists(); document.getElementById('editCaseModal').classList.remove('hidden');
-    }
-
-    function closeEditCaseModal() { document.getElementById('editCaseModal').classList.add('hidden'); }
-
-    function addEditArticle() { const inp = document.getElementById('ecArticleInput'); const val = (inp.value || '').trim(); if (!val) return; editArticles.push(val); inp.value = ''; renderEditFormLists(); }
-    function addEditParticipant() { const nameInp = document.getElementById('ecPartName'); const roleSel = document.getElementById('ecPartRole'); const name = (nameInp.value || '').trim(); if (!name) return; editParticipants.push({ name, role: roleSel.value }); nameInp.value = ''; renderEditFormLists(); }
-    function addEditPlan() { const inp = document.getElementById('ecPlanInput'); const val = (inp.value || '').trim(); if (!val) return; editPlans.push(val); inp.value = ''; renderEditFormLists(); }
-
-    function renderEditFormLists() {
-      document.getElementById('editArticlesList').innerHTML = editArticles.map((a, idx) => `<span class="px-2.5 py-1 rounded-full bg-[#eef3fb] text-[#334e7b] text-xs font-semibold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-edit-art" data-idx="${idx}">×</button></span>`).join('');
-      document.getElementById('editParticipantsList').innerHTML = editParticipants.map((p, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>${esc(p.name)} — <b>${esc(p.role)}</b></span><button type="button" class="text-slate-400" data-action="remove-edit-part" data-idx="${idx}">×</button></div>`).join('');
-      document.getElementById('editPlanList').innerHTML = editPlans.map((pl, idx) => `<div class="text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex justify-between items-center"><span>• ${esc(pl)}</span><button type="button" class="text-slate-400" data-action="remove-edit-plan" data-idx="${idx}">×</button></div>`).join('');
-    }
-
-    function saveEditedCase() {
-      const id = document.getElementById('ecId').value;
-      const item = ws.casesData.find((c) => c.id === id);
-      if (!item) return;
-
-      const numRaw = (document.getElementById('ecNumber').value || '').trim();
-      if (!numRaw) { showToast('Укажите номер уголовного дела'); return; }
-
-      const pendingArt = (document.getElementById('ecArticleInput').value || '').trim();
-      if (pendingArt) editArticles.push(pendingArt);
-
-      item.number = numRaw.startsWith('№') ? numRaw : '№ ' + numRaw;
-      item.opened = document.getElementById('ecOpened').value || item.opened;
-      item.deadline = document.getElementById('ecDeadline').value || item.deadline;
-      item.leadDays = parseInt(document.getElementById('ecLeadDays').value, 10) || 10;
-      item.fabula = (document.getElementById('ecFabula').value || '').trim() || 'Фабула не заполнена.';
-      item.articles = editArticles.length ? [...editArticles] : ['ст. 158 УК РФ'];
-      item.participants = [...editParticipants];
-      item.plan = [...editPlans];
-      item.expanded = true;
-
-      syncCaseDeadlineInCalendar(item);
-      jumpToDate(item.deadline);
-      closeEditCaseModal(); renderAll(); scheduleSync(); showToast('Изменения сохранены, срок в календаре обновлён');
-    }
-
-    function toggleCaseExpand(caseId) {
-      const item = ws.casesData.find((c) => c.id === caseId);
-      if (item) { item.expanded = !item.expanded; renderCasesList(); }
-    }
-
-    function moveCaseDoc(caseId, idx, delta) {
-      const item = ws.casesData.find((c) => c.id === caseId);
-      if (!item) return;
-      const target = idx + delta;
-      if (target < 0 || target >= item.docs.length) return;
-      const [moved] = item.docs.splice(idx, 1); item.docs.splice(target, 0, moved);
-      renderCasesList(); scheduleSync();
-    }
-
-    function deleteCaseById(caseId) {
-      ws.casesData = ws.casesData.filter((c) => c.id !== caseId);
-      removeCaseDeadlineEvents(caseId); renderAll(); scheduleSync(); showToast('Дело удалено');
-    }
+    function deleteCalendarEvent() { ws.eventsData = ws.eventsData.filter(x => x.id !== document.getElementById('evEditId').value); closeEventModal(); renderAll(); scheduleSync(); showToast('Удалено'); }
 
     function renderCasesList() {
-      const container = document.getElementById('casesCardsContainer');
-      if (!ws.casesData.length) { container.innerHTML = '<div class="card text-xs text-slate-400">Дел в производстве пока нет. Нажмите «+ Добавить дело» ниже.</div>'; return; }
-
-      container.innerHTML = ws.casesData.map((c) => {
+      const q = (document.getElementById('caseSearchInput')?.value || '').toLowerCase();
+      const filter = document.getElementById('caseFilterSelect')?.value || 'all';
+      let filtered = ws.casesData.filter(c => {
+        const matchQ = c.number.toLowerCase().includes(q) || c.fabula.toLowerCase().includes(q) || c.articles.join(' ').toLowerCase().includes(q);
         const left = daysUntil(c.deadline);
-        const isUrgent = left <= (c.leadDays || 10);
-        const badgeCls = isUrgent ? 'bg-red-50 text-red-700 border-red-200' : 'bg-[#eef3fb] text-[#334e7b] border-[#d7e3f7]';
-
-        return `
-          <div class="card">
-            <div class="flex items-start justify-between gap-2 cursor-pointer" data-action="toggle-case" data-id="${esc(c.id)}">
-              <div>
-                <div class="text-base font-extrabold text-[#243b61]">УД ${esc(c.number)}</div>
-                <div class="flex flex-wrap gap-1 mt-1">${(c.articles || []).map((a) => `<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">${esc(a)}</span>`).join('')}</div>
-              </div>
-              <div class="text-right shrink-0">
-                <span class="inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${badgeCls}">${left} дн.</span>
-                <div class="text-[11px] text-slate-400 mt-1">${c.expanded ? 'Свернуть ▲' : 'Подразделы ▼'}</div>
-              </div>
-            </div>
-            ${c.expanded ? `
-              <div class="mt-3 pt-3 border-t border-slate-100 space-y-2.5 text-xs">
-                <div class="p-2.5 rounded-xl bg-slate-50">
-                  <div class="font-bold text-[#243b61] mb-0.5">Фабула и сроки</div>
-                  <div class="text-slate-600 mb-1">${esc(c.fabula)}</div>
-                  <div class="text-slate-500">Возбуждено: ${esc(c.opened)} • Срок до: ${esc(c.deadline)}</div>
-                </div>
-                <div class="p-2.5 rounded-xl bg-slate-50">
-                  <div class="font-bold text-[#243b61] mb-1">Участники (${(c.participants || []).length})</div>
-                  ${(c.participants || []).length ? c.participants.map((p) => `<div class="text-slate-700">• ${esc(p.name)} — <span class="text-slate-500">${esc(p.role)}</span></div>`).join('') : '<div class="text-slate-400">Участники пока не добавлены</div>'}
-                </div>
-                <div class="p-2.5 rounded-xl bg-slate-50">
-                  <div class="font-bold text-[#243b61] mb-1">План: что провести</div>
-                  ${(c.plan || []).length ? c.plan.map((pl) => `<div class="text-slate-700">• ${esc(pl)}</div>`).join('') : '<div class="text-slate-400">Пунктов плана нет</div>'}
-                </div>
-                <div class="p-2.5 rounded-xl bg-slate-50">
-                  <div class="font-bold text-[#243b61] mb-1.5">Документы дела (порядок для описи)</div>
-                  ${(c.docs || []).map((doc, idx) => `
-                    <div class="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg bg-white border border-slate-200 mb-1">
-                      <span class="font-medium text-slate-700">${esc(doc.name)} <small class="text-slate-400">(${esc(doc.kind)})</small></span>
-                      <div class="flex gap-1 shrink-0">
-                        <button type="button" class="px-2 py-0.5 rounded border border-slate-200" data-action="move-doc-up" data-id="${esc(c.id)}" data-idx="${idx}">↑</button>
-                        <button type="button" class="px-2 py-0.5 rounded border border-slate-200" data-action="move-doc-down" data-id="${esc(c.id)}" data-idx="${idx}">↓</button>
-                      </div>
-                    </div>
-                  `).join('')}
-                </div>
-                <div class="flex items-center justify-between gap-2 pt-1">
-                  <button type="button" class="btn-soft-secondary text-xs" data-action="open-edit-case" data-id="${esc(c.id)}">Редактировать дело</button>
-                  <button type="button" class="btn-soft-ghost text-red-600 text-xs" data-action="delete-case" data-id="${esc(c.id)}">Удалить дело</button>
-                </div>
-              </div>
-            ` : ''}
-          </div>
-        `;
+        const matchF = filter === 'all' || (filter === 'urgent' && left <= (c.leadDays || 10));
+        return matchQ && matchF;
+      });
+      const container = document.getElementById('casesCardsContainer');
+      if (!filtered.length) { container.innerHTML = '<div class="text-xs text-slate-400 p-4 text-center">Ничего не найдено</div>'; return; }
+      container.innerHTML = filtered.map(c => {
+        const left = daysUntil(c.deadline), isUrgent = left <= (c.leadDays || 10);
+        const badgeCls = isUrgent ? 'bg-red-50 text-red-700 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-200';
+        return `<div class="card mb-2 p-3"><div class="flex justify-between items-start cursor-pointer" data-action="toggle-case" data-id="${esc(c.id)}"><div><div class="text-sm font-extrabold text-[#243b61]">УД ${esc(c.number)}</div><div class="text-[10px] font-bold text-slate-500 mt-1">${esc(c.articles.join(', '))}</div></div><div class="text-right"><span class="text-[10px] font-bold px-2 py-1 rounded border ${badgeCls}">${left} дн.</span></div></div>${c.expanded ? `<div class="mt-3 pt-3 border-t text-xs"><div class="mb-2"><span class="font-bold">Фабула:</span> ${esc(c.fabula)}</div><div class="mb-2"><span class="font-bold">Участники:</span> ${c.participants.map(p => esc(p.name)).join(', ') || 'нет'}</div><div class="mb-3"><span class="font-bold">План:</span> ${c.plan.map(pl => esc(pl)).join('; ') || 'нет'}</div><div class="flex justify-between gap-2"><button class="btn-secondary text-[10px] px-2 py-1" data-action="open-edit-case" data-id="${esc(c.id)}">Изменить</button><button class="btn-ghost text-red-600 text-[10px] px-2 py-1" data-action="delete-case" data-id="${esc(c.id)}">Удалить</button></div></div>` : ''}</div>`;
       }).join('');
     }
+    function initCaseFormDates() { const t = getTodayIso(); document.getElementById('ncOpened').value = t; document.getElementById('ncDeadline').value = addMonthsIso(t, 2); }
+    function toggleNewCaseForm(show) { const card = document.getElementById('newCaseFormCard'); const btn = document.getElementById('addCaseTriggerWrap'); if(show){tempArticles=[];tempParticipants=[];tempPlans=[];initCaseFormDates();renderTempFormLists();card.classList.remove('hidden');btn.classList.add('hidden');}else{card.classList.add('hidden');btn.classList.remove('hidden');} }
+    function addTempArticle() { const v=document.getElementById('ncArticleInput').value.trim(); if(v){tempArticles.push(v);document.getElementById('ncArticleInput').value='';renderTempFormLists();} }
+    function addTempParticipant() { const n=document.getElementById('ncPartName').value.trim(); if(n){tempParticipants.push({name:n,role:document.getElementById('ncPartRole').value});document.getElementById('ncPartName').value='';renderTempFormLists();} }
+    function addTempPlan() { const v=document.getElementById('ncPlanInput').value.trim(); if(v){tempPlans.push(v);document.getElementById('ncPlanInput').value='';renderTempFormLists();} }
+    function renderTempFormLists() {
+      document.getElementById('tempArticlesList').innerHTML=tempArticles.map((a,i)=>`<span class="px-2 py-1 rounded bg-[#eef3fb] text-[11px] font-bold">${esc(a)} <button data-action="remove-temp-art" data-idx="${i}">×</button></span>`).join('');
+      document.getElementById('tempParticipantsList').innerHTML=tempParticipants.map((p,i)=>`<div class="text-[11px] bg-slate-100 p-1 rounded flex justify-between"><span>${esc(p.name)} — ${esc(p.role)}</span><button data-action="remove-temp-part" data-idx="${i}">×</button></div>`).join('');
+      document.getElementById('tempPlanList').innerHTML=tempPlans.map((pl,i)=>`<div class="text-[11px] bg-slate-100 p-1 rounded flex justify-between"><span>• ${esc(pl)}</span><button data-action="remove-temp-plan" data-idx="${i}">×</button></div>`).join('');
+    }
+    function saveNewCase() {
+      const num=document.getElementById('ncNumber').value.trim(); if(!num){showToast('Введите номер');return;}
+      const newCase={id:'ud_'+Date.now(),number:num.startsWith('№')?num:'№ '+num,opened:document.getElementById('ncOpened').value,deadline:document.getElementById('ncDeadline').value,leadDays:parseInt(document.getElementById('ncLeadDays').value)||10,articles:tempArticles.length?[...tempArticles]:['ст. 158 УК РФ'],fabula:document.getElementById('ncFabula').value.trim()||'Фабула',participants:[...tempParticipants],plan:[...tempPlans],docs:[],expanded:true};
+      ws.casesData.unshift(newCase); syncCaseDeadlineInCalendar(newCase); jumpToDate(newCase.deadline); document.getElementById('ncNumber').value=''; toggleNewCaseForm(false); renderAll(); scheduleSync(); showToast('Сохранено');
+    }
+    function openEditCaseModal(id) { const item=ws.casesData.find(c=>c.id===id); if(!item)return; document.getElementById('ecId').value=item.id;document.getElementById('ecNumber').value=item.number;document.getElementById('ecOpened').value=item.opened;document.getElementById('ecDeadline').value=item.deadline;document.getElementById('ecLeadDays').value=item.leadDays;document.getElementById('ecFabula').value=item.fabula; editArticles=[...item.articles];editParticipants=item.participants.map(p=>({...p}));editPlans=[...item.plan]; renderEditFormLists(); document.getElementById('editCaseModal').classList.remove('hidden'); }
+    function closeEditCaseModal() { document.getElementById('editCaseModal').classList.add('hidden'); }
+    function addEditArticle() { const v=document.getElementById('ecArticleInput').value.trim(); if(v){editArticles.push(v);document.getElementById('ecArticleInput').value='';renderEditFormLists();} }
+    function addEditParticipant() { const n=document.getElementById('ecPartName').value.trim(); if(n){editParticipants.push({name:n,role:document.getElementById('ecPartRole').value});document.getElementById('ecPartName').value='';renderEditFormLists();} }
+    function addEditPlan() { const v=document.getElementById('ecPlanInput').value.trim(); if(v){editPlans.push(v);document.getElementById('ecPlanInput').value='';renderEditFormLists();} }
+    function renderEditFormLists() { document.getElementById('editArticlesList').innerHTML=editArticles.map((a,i)=>`<span class="px-2 py-1 rounded bg-[#eef3fb] text-[11px] font-bold">${esc(a)} <button data-action="remove-edit-art" data-idx="${i}">×</button></span>`).join(''); document.getElementById('editParticipantsList').innerHTML=editParticipants.map((p,i)=>`<div class="text-[11px] bg-slate-100 p-1 rounded flex justify-between"><span>${esc(p.name)}</span><button data-action="remove-edit-part" data-idx="${i}">×</button></div>`).join(''); document.getElementById('editPlanList').innerHTML=editPlans.map((pl,i)=>`<div class="text-[11px] bg-slate-100 p-1 rounded flex justify-between"><span>• ${esc(pl)}</span><button data-action="remove-edit-plan" data-idx="${i}">×</button></div>`).join(''); }
+    function saveEditedCase() { const item=ws.casesData.find(c=>c.id===document.getElementById('ecId').value); if(!item)return; item.number=document.getElementById('ecNumber').value;item.opened=document.getElementById('ecOpened').value;item.deadline=document.getElementById('ecDeadline').value;item.leadDays=parseInt(document.getElementById('ecLeadDays').value)||10;item.fabula=document.getElementById('ecFabula').value;item.articles=[...editArticles];item.participants=[...editParticipants];item.plan=[...editPlans]; syncCaseDeadlineInCalendar(item); jumpToDate(item.deadline); closeEditCaseModal(); renderAll(); scheduleSync(); showToast('Обновлено'); }
+    function toggleCaseExpand(id) { const item=ws.casesData.find(c=>c.id===id); if(item){item.expanded=!item.expanded;renderCasesList();} }
+    function deleteCaseById(id) { ws.casesData=ws.casesData.filter(c=>c.id!==id); ws.eventsData=ws.eventsData.filter(e=>e.id!==`term_end_${id}`&&e.id!==`term_warn_${id}`); renderAll(); scheduleSync(); showToast('Удалено'); }
+    function syncCaseDeadlineInCalendar(kase) { if(!kase||!kase.id||!kase.deadline)return; const lbl=`УД № ${kase.number.replace(/^№\s*/,'')}`; const endId=`term_end_${kase.id}`, warnId=`term_warn_${kase.id}`; const wDate=shiftIsoDays(kase.deadline,-(kase.leadDays||10)); let endEv=ws.eventsData.find(e=>e.id===endId), warnEv=ws.eventsData.find(e=>e.id===warnId); if(endEv){endEv.title=`Срок • ${lbl}`;endEv.dt=`${kase.deadline}T18:00`;}else{ws.eventsData.push({id:endId,title:`Срок • ${lbl}`,dt:`${kase.deadline}T18:00`,color:'term',caseNum:lbl});} if(warnEv){warnEv.title=`Ходатайство (${kase.leadDays} дн.)`;warnEv.dt=`${wDate}T10:00`;}else{ws.eventsData.push({id:warnId,title:`Ходатайство (${kase.leadDays} дн.)`,dt:`${wDate}T10:00`,color:'term',caseNum:lbl});} }
 
     function renderSvodkaDeadlines() {
       const el = document.getElementById('svodkaDeadlinesList');
-      if (!ws.casesData.length) { el.innerHTML = '<div class="text-xs text-slate-400">Дел с контролем сроков пока нет.</div>'; return; }
-
-      el.innerHTML = ws.casesData.map((c) => {
-        const left = daysUntil(c.deadline);
-        const urgent = left <= (c.leadDays || 10);
-        return `
-          <div class="p-2.5 rounded-xl border mb-2 flex items-center justify-between gap-2 ${urgent ? 'bg-red-50/70 border-red-200' : 'bg-white border-slate-200'}">
-            <div>
-              <div class="text-xs font-bold text-[#243b61]">УД ${esc(c.number)} • ${esc((c.articles || []).join(', '))}</div>
-              <div class="text-[11px] text-slate-500">Срок до ${esc(c.deadline)}</div>
-            </div>
-            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${urgent ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-700'}">${left} дн.</span>
-          </div>
-        `;
-      }).join('');
+      if (!ws.casesData.length) { el.innerHTML = '<div class="text-xs text-slate-400">Нет дел</div>'; return; }
+      el.innerHTML = ws.casesData.map(c => { const left=daysUntil(c.deadline),urg=left<=(c.leadDays||10); return `<div class="p-2 border rounded mb-1 flex justify-between items-center ${urg?'bg-red-50 border-red-200':'bg-white border-slate-200'}"><div class="text-xs font-bold">УД ${esc(c.number)}</div><span class="text-[11px] font-bold ${urg?'text-red-600':'text-slate-600'}">${left} дн.</span></div>`; }).join('');
     }
 
-    function syncProfileInputs() {
-      document.getElementById('profOrg').value = ws.profile.org || '';
-      document.getElementById('profRank').value = ws.profile.rank || '';
-      document.getElementById('profFio').value = ws.profile.fio || '';
+    function renderCategorySettings() {
+      const list = document.getElementById('categorySettingsList');
+      list.innerHTML = Object.entries(ws.eventCategories).map(([id, cat]) => `
+        <div class="flex items-center gap-2 bg-white p-2 border rounded">
+          <div class="w-6 h-6 rounded-full border shrink-0" style="background:${cat.bg}; border-color:${cat.border}"></div>
+          <input type="text" class="soft-input text-xs" value="${esc(cat.label)}" onchange="updateCategoryName('${id}', this.value)" />
+          ${['court','work','expert','term'].includes(id) ? '' : `<button class="text-red-500 font-bold px-2" data-action="delete-category" data-id="${id}">✕</button>`}
+        </div>
+      `).join('');
     }
-
-    function onProfileInput() {
-      ws.profile.org = document.getElementById('profOrg').value;
-      ws.profile.rank = document.getElementById('profRank').value;
-      ws.profile.fio = document.getElementById('profFio').value;
-      updateBlankDraft(); scheduleSync();
+    function updateCategoryName(id, newName) { if (!newName.trim()) return; ws.eventCategories[id].label = newName.trim(); scheduleSync(); renderCalendarSection(); }
+    function addCategory() {
+      const name = document.getElementById('newCatName').value.trim(); const color = document.getElementById('newCatColor').value;
+      if (!name) { showToast('Введите название'); return; }
+      const id = 'cat_' + Date.now();
+      ws.eventCategories[id] = { label: name, bg: color + '20', text: color, border: color };
+      document.getElementById('newCatName').value = ''; renderCategorySettings(); renderCalendarSection(); scheduleSync(); showToast('Цвет добавлен');
     }
+    function deleteCategory(id) { if (confirm('Удалить этот цвет?')) { delete ws.eventCategories[id]; renderCategorySettings(); renderCalendarSection(); scheduleSync(); } }
 
-    function setBlankGroup(grp) {
-      currentBlankGrp = grp;
-      ['Постановления', 'Протоколы', 'Иные документы'].forEach((g) => {
-        const b = document.getElementById('bGrp-' + g);
-        b.className = g === grp ? 'btn-soft-secondary text-xs py-2' : 'btn-soft-ghost text-xs py-2';
-      });
-      renderBlankSelect();
-    }
-
-    function renderBlankSelect() {
-      const q = (document.getElementById('blankSearch').value || '').toLowerCase();
-      let list = BLANKS_LIST.filter((b) => b.group === currentBlankGrp);
-      if (q) { const m = BLANKS_LIST.filter((b) => b.title.toLowerCase().includes(q)); if (m.length) list = m; }
-      document.getElementById('blankPicker').innerHTML = list.map((b) => `<option value="${b.id}">${esc(b.title)} (${esc(b.ref)})</option>`).join('');
-
-      const caseSel = document.getElementById('blankCaseSelect');
-      caseSel.innerHTML = ws.casesData.length ? ws.casesData.map((c) => `<option value="${c.id}">УД ${esc(c.number)} — ${esc((c.articles || []).join(', '))}</option>`).join('') : '<option value="">— Дела пока не добавлены —</option>';
-      updateBlankDraft();
-    }
-
-    function updateBlankDraft() {
-      const blank = BLANKS_LIST.find((b) => b.id === document.getElementById('blankPicker').value) || BLANKS_LIST[0];
-      const mode = (document.querySelector('input[name="bMode"]:checked') || {}).value || 'case';
-      const org = ws.profile.org || 'Следственный орган';
-      const rank = ws.profile.rank || 'следователь';
-      const fio = ws.profile.fio || '________________';
-      const editor = document.getElementById('blankEditor');
-
-      if (mode === 'empty') {
-        editor.value = `${blank.title.toUpperCase()}\n(${blank.ref})\n\n«___» __________ 2026 г.\n\nТекст документа:`;
-      } else if (mode === 'header') {
-        editor.value = `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\n(${blank.ref})\n\n«___» __________ 2026 г.\n\nТекст документа:`;
-      } else {
-        const kase = ws.casesData.find((c) => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
-        const kbRef = ws.kbMaterials.map((m) => `«${m.title}»`).join(', ');
-        if (!kase) {
-          editor.value = `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\nпо уголовному делу № ______________\n\nДобавьте дело во вкладке «Дела», чтобы подставить реквизиты и фабулу.`;
-          return;
-        }
-        editor.value = `${org}\n${rank} ${fio}\n\n${blank.title.toUpperCase()}\nпо уголовному делу ${kase.number} (${(kase.articles || []).join(', ')})\n\nСформировано по образцу с учётом материалов дела, расчёта сроков по УПК РФ (срок до ${kase.deadline}) и пособий из Базы знаний: ${kbRef}.\n\nФабула: ${kase.fabula}`;
-      }
-    }
-
-    function downloadBlankDocx() {
-      const txt = document.getElementById('blankEditor').value;
-      const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'></head><body><pre style="font-family:'Times New Roman',serif;font-size:14pt;white-space:pre-wrap;">${esc(txt)}</pre></body></html>`;
-      const blob = new Blob(['\ufeff', html], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ARM_Sledovatelya_Dokument.docx'; a.click();
-      showToast('Документ .DOCX скачан');
-    }
-
-    function attachBlankToCase() {
-      const kase = ws.casesData.find((c) => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
-      if (!kase) { showToast('Сначала добавьте дело'); return; }
-      const blank = BLANKS_LIST.find((b) => b.id === document.getElementById('blankPicker').value) || BLANKS_LIST[0];
-      kase.docs = kase.docs || [];
-      kase.docs.push({ name: `${blank.title} (${kase.number})`, kind: 'Создать' });
-      renderCasesList(); scheduleSync(); showToast(`Добавлено в документы дела ${kase.number}`);
-    }
-
+    // === БАЗА ЗНАНИЙ (ЛИЧНЫЕ) ===
     function renderKbSection() {
-      document.getElementById('kbCatChips').innerHTML = KB_CATEGORIES.map((c) => {
-        const act = kbSelectedCats.includes(c);
-        return `<button type="button" data-action="toggle-kb-cat" data-cat="${esc(c)}" class="px-2.5 py-1 rounded-full text-xs font-semibold border ${act ? 'bg-[#334e7b] text-white border-[#334e7b]' : 'bg-white text-slate-600 border-slate-200'}">${esc(c)}</button>`;
-      }).join('');
-
-      document.getElementById('kbMaterialList').innerHTML = ws.kbMaterials.map((m) => `
-        <div class="card">
-          <div class="text-sm font-bold text-[#243b61]">${esc(m.title)}</div>
-          <div class="flex flex-wrap gap-1 my-1.5">${(m.cats || []).map((c) => `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#eef3fb] text-[#334e7b]">${esc(c)}</span>`).join('')}</div>
-          <div class="text-xs text-slate-600">${esc(m.notes)}</div>
+      document.getElementById('kbCatChips').innerHTML = KB_CATEGORIES.map(c => { const act=kbSelectedCats.includes(c); return `<button data-action="toggle-kb-cat" data-cat="${esc(c)}" class="px-2 py-1 rounded text-[10px] font-bold border ${act?'bg-[#334e7b] text-white':'bg-white text-slate-600'}">${esc(c)}</button>`; }).join('');
+      const list = document.getElementById('kbMaterialList');
+      if (!ws.kbMaterials.length) { list.innerHTML = '<div class="text-xs text-slate-400">Пусто</div>'; return; }
+      
+      list.innerHTML = ws.kbMaterials.map(m => `
+        <div class="bg-white border rounded p-2 mb-2 relative group flex flex-col gap-1">
+          <div class="text-xs font-bold text-[#243b61] pr-6">${esc(m.title)}</div>
+          <div class="text-[10px] text-slate-500">${esc(m.notes)}</div>
+          ${m.fileUrl ? `<a href="${m.fileUrl}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1 mt-1">📎 Скачать файл</a>` : ''}
+          <button class="absolute top-2 right-2 text-red-400 opacity-50 hover:opacity-100" data-action="del-kb" data-id="${m.id}">✕</button>
         </div>
       `).join('');
     }
 
-    function toggleKbCat(c) {
-      if (kbSelectedCats.includes(c)) kbSelectedCats = kbSelectedCats.filter((x) => x !== c); else kbSelectedCats.push(c);
-      renderKbSection();
-    }
+    async function addKbMaterial() {
+      const title = document.getElementById('kbNewTitle').value.trim();
+      if (!title) { showToast('Введите название'); return; }
+      
+      const fileInput = document.getElementById('kbFileInput');
+      const file = fileInput.files[0];
+      let fileUrl = '';
+      
+      const btn = document.getElementById('btnAddKb');
+      btn.textContent = 'Загрузка...'; btn.disabled = true;
 
-    function addKbMaterial() {
-      const title = (document.getElementById('kbNewTitle').value || '').trim();
-      if (!title) return;
-      const notes = (document.getElementById('kbNewNotes').value || '').trim() || 'Подключено к генерации бланков и расчётам по УПК.';
-      ws.kbMaterials.unshift({ title, cats: [...kbSelectedCats], notes });
-      document.getElementById('kbNewTitle').value = ''; document.getElementById('kbNewNotes').value = '';
-      renderKbSection(); updateBlankDraft(); scheduleSync(); showToast('Добавлено в Базу знаний');
-    }
-
-    function renderAllActionsList() {
-      const sorted = [...ws.eventsData].sort((a, b) => (a.dt || '').localeCompare(b.dt || ''));
-      if (!sorted.length) { document.getElementById('allActionsContainer').innerHTML = '<div class="text-xs text-slate-400">Запланированных действий пока нет.</div>'; return; }
-
-      document.getElementById('allActionsContainer').innerHTML = sorted.map((ev) => {
-        const cat = EVENT_CATEGORIES[ev.color] || EVENT_CATEGORIES.work;
-        return `
-          <div class="p-3 rounded-xl border mb-2 flex items-center justify-between gap-2 ${cat.cls}">
-            <div>
-              <div class="text-xs font-bold">${esc(ev.title)} • ${esc(ev.caseNum)}</div>
-              <div class="text-[11px] opacity-80">${esc((ev.dt || '').replace('T', ' '))} (${esc(cat.label)})</div>
-            </div>
-            <button type="button" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700" data-action="open-event" data-id="${esc(ev.id)}">Изменить</button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderMetrics() {
-      const todayIso = getTodayIso();
-      document.getElementById('statCasesCount').textContent = String(ws.casesData.length);
-      document.getElementById('statUrgentCount').textContent = String(ws.casesData.filter((c) => daysUntil(c.deadline) <= (c.leadDays || 10)).length);
-      document.getElementById('statTodayCount').textContent = String(ws.eventsData.filter((e) => e.dt && e.dt.startsWith(todayIso)).length);
-    }
-
-    function renderAll() {
-      renderMetrics(); renderCalendarSection(); renderSvodkaDeadlines(); renderCasesList(); renderBlankSelect(); renderKbSection();
-    }
-
-    document.body.addEventListener('click', (e) => {
-      const el = e.target.closest('[data-action]');
-      if (!el) return;
-      const action = el.dataset.action;
-      const id = el.dataset.id;
-      const idx = el.dataset.idx !== undefined ? Number(el.dataset.idx) : undefined;
-      const key = el.dataset.key;
-      const grp = el.dataset.grp;
-      const cat = el.dataset.cat;
-      const kind = el.dataset.kind;
-      const target = el.dataset.target;
-      const delta = el.dataset.delta;
-      const tab = el.dataset.tab;
-      const modalId = el.dataset.modal;
-
-      if (action === 'overlay-close') {
-        if (e.target.id === modalId) document.getElementById(modalId).classList.add('hidden');
-        return;
+      if (file) {
+        if (!navigator.onLine) { showToast('Для загрузки файла нужен интернет'); btn.textContent = 'Добавить'; btn.disabled = false; return; }
+        try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const { data, error } = await supabaseClient.storage.from('kb-files').upload(fileName, file);
+          if (error) throw error;
+          const { data: urlData } = supabaseClient.storage.from('kb-files').getPublicUrl(fileName);
+          fileUrl = urlData.publicUrl;
+        } catch (err) {
+          console.error('Ошибка загрузки файла:', err);
+          showToast('Ошибка загрузки файла. Проверьте Storage в Supabase.');
+          btn.textContent = 'Добавить'; btn.disabled = false; return;
+        }
       }
 
-      switch (action) {
+      ws.kbMaterials.unshift({ id: 'kb_' + Date.now(), title, cats: [...kbSelectedCats], notes: document.getElementById('kbNewNotes').value.trim(), fileUrl });
+      document.getElementById('kbNewTitle').value = ''; document.getElementById('kbNewNotes').value = ''; fileInput.value = '';
+      
+      btn.textContent = 'Добавить'; btn.disabled = false;
+      renderKbSection(); scheduleSync(); showToast('Добавлено');
+    }
+
+    function delKb(id) { if (confirm('Удалить материал?')) { ws.kbMaterials = ws.kbMaterials.filter(m => m.id !== id); renderKbSection(); scheduleSync(); } }
+    function toggleKbCat(c) { if(kbSelectedCats.includes(c)) kbSelectedCats=kbSelectedCats.filter(x=>x!==c); else kbSelectedCats.push(c); renderKbSection(); }
+
+    // === АДМИН ПАНЕЛЬ ===
+    async function adminUploadBlank() {
+      const title = document.getElementById('adminTitle').value.trim();
+      const category = document.getElementById('adminCategory').value;
+      const file = document.getElementById('adminFileInput').files[0];
+      
+      if (!title || !file) { showToast('Введите название и выберите файл'); return; }
+      if (!navigator.onLine) { showToast('Нужен интернет'); return; }
+      
+      const btn = document.querySelector('[data-action="admin-upload-blank"]');
+      btn.textContent = 'Загрузка...'; btn.disabled = true;
+
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `admin_${Date.now()}.${fileExt}`;
+        const { data, error } = await supabaseClient.storage.from('global-blanks').upload(fileName, file);
+        if (error) throw error;
+        const { data: urlData } = supabaseClient.storage.from('global-blanks').getPublicUrl(fileName);
+        
+        const { error: dbErr } = await supabaseClient.from('global_blanks').insert([{ title, category, file_url: urlData.publicUrl }]);
+        if (dbErr) throw dbErr;
+
+        document.getElementById('adminTitle').value = '';
+        document.getElementById('adminFileInput').value = '';
+        await fetchGlobalBlanks();
+        renderAdminBlanks();
+        showToast('Бланк загружен для всех!');
+      } catch (err) {
+        console.error(err);
+        showToast('Ошибка загрузки');
+      } finally {
+        btn.textContent = 'Загрузить'; btn.disabled = false;
+      }
+    }
+
+    function renderAdminBlanks() {
+      const list = document.getElementById('adminBlanksList');
+      if (!globalBlanks.length) { list.innerHTML = '<div class="text-xs text-slate-400">Нет общих бланков</div>'; return; }
+      list.innerHTML = globalBlanks.map(b => `
+        <div class="bg-white border p-2 rounded flex justify-between items-center">
+          <div>
+            <div class="text-[11px] font-bold">${esc(b.title)}</div>
+            <div class="text-[9px] text-slate-500">${esc(b.category)}</div>
+          </div>
+          <button class="text-red-500 px-2 font-bold" data-action="admin-del-blank" data-id="${b.id}" data-file="${b.file_url}">✕</button>
+        </div>
+      `).join('');
+    }
+
+    async function adminDeleteBlank(id, fileUrl) {
+      if (!confirm('Удалить этот бланк у всех пользователей?')) return;
+      try {
+        // Удаляем из БД
+        await supabaseClient.from('global_blanks').delete().eq('id', id);
+        // Опционально: удалить и сам файл из Storage
+        const fileName = fileUrl.split('/').pop();
+        await supabaseClient.storage.from('global-blanks').remove([fileName]);
+        
+        await fetchGlobalBlanks();
+        renderAdminBlanks();
+        showToast('Бланк удален');
+      } catch (e) { showToast('Ошибка удаления'); }
+    }
+
+    // === ВКЛАДКА БЛАНКИ (ГЛОБАЛЬНЫЕ) ===
+    function setBlankGroup(grp) { 
+      currentBlankGrp=grp;
+      ['Постановления','Протоколы','Иные'].forEach(g=>document.getElementById('bGrp-'+g).className=g===grp?'btn-secondary text-[10px] py-1':'btn-ghost text-[10px] py-1');
+      renderBlankSelect(); 
+    }
+
+    function renderBlankSelect() {
+      const q=(document.getElementById('blankSearch').value||'').toLowerCase(); 
+      let list=globalBlanks.filter(b => b.category === currentBlankGrp);
+      if(q) list=globalBlanks.filter(b=>b.title.toLowerCase().includes(q));
+      
+      document.getElementById('blankPicker').innerHTML = list.map(b=>`<option value="${b.id}">${esc(b.title)}</option>`).join('') || '<option value="">— Нет бланков в этой категории —</option>';
+      document.getElementById('blankCaseSelect').innerHTML=ws.casesData.length?ws.casesData.map(c=>`<option value="${c.id}">УД ${esc(c.number)}</option>`).join(''):'<option value="">— нет дел —</option>';
+      updateBlankDraft();
+    }
+
+    function updateBlankDraft() {
+      const blank = globalBlanks.find(b => b.id === document.getElementById('blankPicker').value);
+      const mode = (document.querySelector('input[name="bMode"]:checked')||{}).value || 'case';
+      const org=ws.profile.org||'СО', rank=ws.profile.rank||'следователь', fio=ws.profile.fio||'___';
+      const editor=document.getElementById('blankEditor');
+      
+      if(!blank) { editor.value = 'Выберите бланк или добавьте его в админке.'; return; }
+      
+      const header = mode === 'empty' ? '' : `${org}\n${rank} ${fio}\n\n`;
+      const title = blank.title.toUpperCase();
+      
+      if(mode === 'case') {
+        const kase = ws.casesData.find(c => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
+        if (kase) {
+          editor.value = `${header}${title}\nпо УД № ${kase.number}\n\nСрок следствия до: ${kase.deadline}\nСтатьи: ${kase.articles.join(', ')}\n\nФабула:\n${kase.fabula}\n\n(Здесь будет основной текст документа, который вы загрузили в оригинале)`;
+        } else {
+          editor.value = `${header}${title}\n\n(Добавьте дело во вкладку «Дела», чтобы подставить данные)`;
+        }
+      } else {
+        editor.value = `${header}${title}\n\n(Здесь будет основной текст документа, который вы загрузили в оригинале)`;
+      }
+    }
+
+    function downloadBlankDocx() { 
+      const txt=document.getElementById('blankEditor').value; 
+      const html=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'></head><body><pre style="font-family:'Times New Roman',serif;font-size:14pt;white-space:pre-wrap;">${esc(txt)}</pre></body></html>`; 
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob(['\ufeff',html],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
+      a.download='Документ.docx';a.click();showToast('Скачано'); 
+    }
+
+    function downloadOriginalFile() {
+      const blank = globalBlanks.find(b => b.id === document.getElementById('blankPicker').value);
+      if (blank && blank.file_url) {
+        window.open(blank.file_url, '_blank');
+      } else {
+        showToast('У этого бланка нет прикрепленного файла');
+      }
+    }
+
+    function syncProfileInputs() { document.getElementById('profOrg').value=ws.profile.org||'';document.getElementById('profRank').value=ws.profile.rank||'';document.getElementById('profFio').value=ws.profile.fio||''; }
+    function onProfileInput() { ws.profile.org=document.getElementById('profOrg').value;ws.profile.rank=document.getElementById('profRank').value;ws.profile.fio=document.getElementById('profFio').value;updateBlankDraft();scheduleSync(); }
+
+    function renderAllActionsList() { const sorted=[...ws.eventsData].sort((a,b)=>(a.dt||'').localeCompare(b.dt||'')); if(!sorted.length){document.getElementById('allActionsContainer').innerHTML='<div class="text-xs text-slate-400">Нет действий</div>';return;} document.getElementById('allActionsContainer').innerHTML=sorted.map(ev=>{const cat=ws.eventCategories[ev.color]||{border:'#cbd5e1'};return `<div class="p-2 rounded border-l-4 mb-2 flex justify-between items-center bg-slate-50" style="border-left-color:${cat.border}"><div><div class="text-xs font-bold">${esc(ev.title)}</div><div class="text-[10px] text-slate-500">${esc((ev.dt||'').replace('T',' '))}</div></div><button class="btn-ghost text-[10px]" data-action="open-event" data-id="${esc(ev.id)}">Изм.</button></div>`;}).join(''); }
+
+    function renderMetrics() {
+      const todayIso=getTodayIso();
+      document.querySelector('#tileCases .metric-num').textContent=String(ws.casesData.length);
+      document.querySelector('#tileUrgent .metric-num').textContent=String(ws.casesData.filter(c=>daysUntil(c.deadline)<=(c.leadDays||10)).length);
+      document.querySelector('#tileToday .metric-num').textContent=String(ws.eventsData.filter(e=>e.dt&&e.dt.startsWith(todayIso)).length);
+    }
+
+    function renderAll() { renderMetrics(); renderCalendarSection(); renderSvodkaDeadlines(); renderCasesList(); renderBlankSelect(); if(!document.getElementById('view-profile').classList.contains('hidden')){renderCategorySettings();renderKbSection(); if(currentUser?.email === ADMIN_EMAIL) renderAdminBlanks();} }
+
+    document.body.addEventListener('click', (e) => {
+      const el=e.target.closest('[data-action]'); if(!el)return;
+      const action=el.dataset.action,id=el.dataset.id,idx=el.dataset.idx!==undefined?Number(el.dataset.idx):undefined;
+      const key=el.dataset.key,grp=el.dataset.grp,cat=el.dataset.cat,kind=el.dataset.kind,delta=el.dataset.delta,tab=el.dataset.tab,modalId=el.dataset.modal;
+      if(action==='overlay-close'){ if(e.target.id===modalId)document.getElementById(modalId).classList.add('hidden'); return; }
+      switch(action) {
+        case 'admin-upload-blank': adminUploadBlank(); break;
+        case 'admin-del-blank': adminDeleteBlank(id, el.dataset.file); break;
+        case 'download-original-file': downloadOriginalFile(); break;
         case 'pull-from-cloud': pullFromCloud(); break;
         case 'focus-metric': focusMetric(kind); break;
-        case 'toggle-accordion': toggleAccordion(target); break;
-        case 'shift-week': shiftWeek(Number(delta)); break;
+        case 'toggle-accordion': toggleAccordion(el.dataset.target); break;
+        case 'shift-month': shiftMonth(Number(delta)); break;
         case 'go-today': goToday(); break;
         case 'open-event-new': openEventModal(); break;
         case 'open-event': openEventModal(id); break;
@@ -1491,33 +846,33 @@
         case 'set-color-filter': setColorFilter(key); break;
         case 'select-day': selectDay(id); break;
         case 'pick-color': pickModalColor(key); break;
-        case 'remove-temp-art': tempArticles.splice(idx, 1); renderTempFormLists(); break;
-        case 'remove-temp-part': tempParticipants.splice(idx, 1); renderTempFormLists(); break;
-        case 'remove-temp-plan': tempPlans.splice(idx, 1); renderTempFormLists(); break;
         case 'new-case-open': toggleNewCaseForm(true); break;
         case 'new-case-close': toggleNewCaseForm(false); break;
         case 'save-new-case': saveNewCase(); break;
         case 'add-temp-art': addTempArticle(); break;
         case 'add-temp-part': addTempParticipant(); break;
         case 'add-temp-plan': addTempPlan(); break;
+        case 'remove-temp-art': tempArticles.splice(idx,1); renderTempFormLists(); break;
+        case 'remove-temp-part': tempParticipants.splice(idx,1); renderTempFormLists(); break;
+        case 'remove-temp-plan': tempPlans.splice(idx,1); renderTempFormLists(); break;
         case 'close-edit-case': closeEditCaseModal(); break;
         case 'open-edit-case': openEditCaseModal(id); break;
         case 'toggle-case': toggleCaseExpand(id); break;
-        case 'move-doc-up': moveCaseDoc(id, idx, -1); break;
-        case 'move-doc-down': moveCaseDoc(id, idx, 1); break;
         case 'delete-case': deleteCaseById(id); break;
         case 'add-edit-art': addEditArticle(); break;
         case 'add-edit-part': addEditParticipant(); break;
         case 'add-edit-plan': addEditPlan(); break;
-        case 'remove-edit-art': editArticles.splice(idx, 1); renderEditFormLists(); break;
-        case 'remove-edit-part': editParticipants.splice(idx, 1); renderEditFormLists(); break;
-        case 'remove-edit-plan': editPlans.splice(idx, 1); renderEditFormLists(); break;
+        case 'remove-edit-art': editArticles.splice(idx,1); renderEditFormLists(); break;
+        case 'remove-edit-part': editParticipants.splice(idx,1); renderEditFormLists(); break;
+        case 'remove-edit-plan': editPlans.splice(idx,1); renderEditFormLists(); break;
         case 'save-edited-case': saveEditedCase(); break;
         case 'set-blank-group': setBlankGroup(grp); break;
         case 'download-docx': downloadBlankDocx(); break;
-        case 'attach-blank': attachBlankToCase(); break;
-        case 'add-kb-material': addKbMaterial(); break;
         case 'toggle-kb-cat': toggleKbCat(cat); break;
+        case 'add-kb-material': addKbMaterial(); break;
+        case 'del-kb': delKb(id); break;
+        case 'add-category': addCategory(); break;
+        case 'delete-category': deleteCategory(id); break;
         case 'export-backup': exportBackupJson(); break;
         case 'logout': logoutUser(); break;
         case 'close-event': closeEventModal(); break;
@@ -1526,32 +881,11 @@
       }
     });
 
-    document.body.addEventListener('change', (e) => {
-      const el = e.target.closest('[data-action="quick-shift"]');
-      if (!el) return;
-      quickShiftDateEvent(el.dataset.id, el.value);
-    });
+    function exportBackupJson() { const blob=new Blob([JSON.stringify(ws,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`ARM_${getTodayIso()}.json`;a.click();URL.revokeObjectURL(url); }
+    async function logoutUser() { await supabaseClient.auth.signOut(); currentUser=null; document.getElementById('appShell').classList.add('hidden'); document.getElementById('authScreen').classList.remove('hidden'); showToast('Вы вышли'); }
 
-    function quickShiftDateEvent(id, newDt) {
-      const ev = ws.eventsData.find((x) => x.id === id);
-      if (!ev || !newDt) return;
-      ev.dt = newDt; selectedDay = newDt.split('T')[0]; renderAll(); scheduleSync(); showToast('Дата и время обновлены');
-    }
-
-    setNetIndicator();
-    window.addEventListener('online', () => { setNetIndicator(); showToast('Связь восстановлена'); pushToCloud(); });
-    window.addEventListener('offline', () => { setNetIndicator(); setCloudIndicator('warn', 'Офлайн'); });
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
-    }
-
-    (async function init() {
-      try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session && session.user) await enterApp(session.user);
-      } catch (err) { console.error(err); }
-    })();
+    setNetIndicator(); window.addEventListener('online',()=>{setNetIndicator();pushToCloud();}); window.addEventListener('offline',()=>setNetIndicator());
+    (async function init() { try { const { data: { session } } = await supabaseClient.auth.getSession(); if (session && session.user) await enterApp(session.user); } catch (err) {} })();
   </script>
 </body>
 </html>
