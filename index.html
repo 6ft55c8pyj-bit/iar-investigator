@@ -8,7 +8,7 @@
   <title>АРМ Следователя</title>
   <link rel="manifest" href="./manifest.json" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Библиотека для распаковки ZIP-архивов -->
+  <!-- Библиотека для распаковки ZIP -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -64,7 +64,6 @@
     .metric-tile.active { border-color: var(--accent); background: var(--primary-soft); }
     .metric-num { font-size: 22px; font-weight: 800; color: var(--primary); }
 
-    /* Календарь - строгие квадраты */
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .calendar-title { font-size: 16px; font-weight: 800; color: var(--primary); }
     .color-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
@@ -78,20 +77,7 @@
     .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .weekday { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); padding-bottom: 4px; }
     
-    /* Квадратные ячейки */
-    .day-cell { 
-      border: 1px solid var(--border); 
-      border-radius: 8px; 
-      aspect-ratio: 1 / 1; /* Делает ячейку квадратной */
-      padding: 4px; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      cursor: pointer; 
-      background: #fff;
-      position: relative;
-      overflow: hidden;
-    }
+    .day-cell { border: 1px solid var(--border); border-radius: 8px; aspect-ratio: 1 / 1; padding: 4px; display: flex; flex-direction: column; align-items: center; cursor: pointer; background: #fff; position: relative; overflow: hidden; }
     .day-cell.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--primary-soft); }
     .day-cell.other-month { opacity: 0.4; background: var(--bg); border-color: transparent; }
     .day-cell.today { border-color: #e06c6c; }
@@ -99,12 +85,8 @@
     .day-num { font-size: 11px; font-weight: 700; color: var(--text); align-self: flex-end; margin-bottom: 2px; }
     .day-cell.today .day-num { color: #fff; background: #e06c6c; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
     
-    /* Точки событий */
     .event-dots { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; width: 100%; }
 
-    .mini-event-txt { font-size: 8px; font-weight: 600; padding: 2px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: left; }
-
-    /* Кнопки */
     .btn-primary { background: var(--primary); color: #fff; border: none; border-radius: 12px; padding: 12px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
     .btn-secondary { background: var(--primary-soft); color: var(--primary); border: 1px solid #d7e3f7; border-radius: 12px; padding: 12px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn-ghost { background: #fff; color: var(--muted); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -180,7 +162,6 @@
             <button type="button" class="btn-ghost px-3 py-1.5" data-action="shift-date" data-delta="1">▶</button>
           </div>
 
-          <!-- ПЕРЕКЛЮЧАТЕЛЬ ВИДОВ -->
           <div class="view-toggles">
             <button class="view-btn active" id="btnViewMonth" data-action="set-cal-view" data-view="month">Месяц</button>
             <button class="view-btn" id="btnViewWeek" data-action="set-cal-view" data-view="week">Неделя</button>
@@ -193,8 +174,6 @@
           </div>
           
           <div class="color-filters" id="calendarColorFilterBar"></div>
-          
-          <!-- Сетка (наполняется из JS) -->
           <div id="calendarContainer"></div>
         </section>
 
@@ -329,7 +308,7 @@
           <div id="adminPanelBody" class="sub-body">
             <div class="bg-red-50 p-3 rounded-xl mb-4 border border-red-200">
               <label class="text-[11px] font-bold text-red-800 block mb-2">Загрузить папку с бланками (.ZIP)</label>
-              <p class="text-[10px] text-red-600 mb-2">Программа распакует архив, возьмет названия файлов (без расширения) как заголовки и загрузит их для всех.</p>
+              <p class="text-[10px] text-red-600 mb-2">Программа распакует архив и загрузит файлы.</p>
               <select id="adminCategory" class="soft-select mb-2 text-xs">
                 <option value="Постановления">Постановления</option>
                 <option value="Протоколы">Протоколы</option>
@@ -427,12 +406,7 @@
     }
 
     let currentUser = null; let authMode = 'login'; let syncTimer = null; let ws = defaultWorkspace();
-    
-    // Календарь: переменные вида
-    let calendarView = 'month'; // 'month', 'week', 'day'
-    let currentViewDate = new Date(); 
-    let selectedDay = getTodayIso(); 
-    
+    let calendarView = 'month'; let currentViewDate = new Date(); let selectedDay = getTodayIso(); 
     let activeColorFilter = 'all'; let modalPickedColor = 'work';
     let tempArticles = []; let tempParticipants = []; let tempPlans = []; let editArticles = []; let editParticipants = []; let editPlans = [];
     let currentBlankGrp = 'Постановления'; let kbSelectedCats = [];
@@ -452,7 +426,12 @@
       if (!navigator.onLine) return;
       try {
         const { data, error } = await supabaseClient.from('global_blanks').select('*').order('created_at', { ascending: false });
-        if (!error && data) { globalBlanks = data; renderBlankSelect(); if(currentUser?.email === ADMIN_EMAIL) renderAdminBlanks(); }
+        if (error) {
+          console.error('Fetch blanks error:', error);
+          alert('Ошибка загрузки общих бланков: ' + error.message + '\nПроверьте, создана ли таблица global_blanks.');
+          return;
+        }
+        if (data) { globalBlanks = data; renderBlankSelect(); if(currentUser?.email === ADMIN_EMAIL) renderAdminBlanks(); }
       } catch (e) { console.log('Global blanks fetch error:', e); }
     }
 
@@ -519,7 +498,6 @@
       else { document.getElementById('tileToday').classList.add('active'); goToday(); }
     }
 
-    // === ЛОГИКА КАЛЕНДАРЯ (МЕСЯЦ / НЕДЕЛЯ / ДЕНЬ) ===
     function setCalendarView(view) {
       calendarView = view;
       ['month', 'week', 'day'].forEach(v => document.getElementById('btnView' + v.charAt(0).toUpperCase() + v.slice(1)).classList.toggle('active', v === view));
@@ -565,7 +543,6 @@
           const isToday = dateStr === todayIso, isSel = dateStr === selectedDay;
           const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(dateStr)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter);
 
-          // Рисуем только цветные точки!
           let dotsHtml = dayEvs.slice(0, 4).map(ev => {
             const cat = cats[ev.color] || { border: '#cbd5e1' };
             return `<div class="w-2 h-2 rounded-full" style="background:${cat.border}"></div>`;
@@ -578,7 +555,6 @@
         container.innerHTML = gridHtml;
 
       } else if (calendarView === 'week') {
-        // Логика недели
         const monday = new Date(currentViewDate);
         monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
         titleEl.textContent = `Неделя ${monday.getDate()}-${new Date(monday.getTime() + 6*86400000).getDate()} ${months[monday.getMonth()]}`;
@@ -603,7 +579,6 @@
         container.innerHTML = gridHtml;
 
       } else if (calendarView === 'day') {
-        // Логика дня
         titleEl.textContent = `${selectedDay} (${['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][parseDate(selectedDay).getDay()]})`;
         
         const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(selectedDay)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a,b)=>a.dt.localeCompare(b.dt));
@@ -682,7 +657,6 @@
     }
     function deleteCalendarEvent() { ws.eventsData = ws.eventsData.filter(x => x.id !== document.getElementById('evEditId').value); closeEventModal(); renderAll(); scheduleSync(); showToast('Удалено'); }
 
-    // === ДЕЛА ===
     function renderCasesList() {
       const q = (document.getElementById('caseSearchInput')?.value || '').toLowerCase();
       const filter = document.getElementById('caseFilterSelect')?.value || 'all';
@@ -804,7 +778,6 @@
     function delKb(id) { if (confirm('Удалить материал?')) { ws.kbMaterials = ws.kbMaterials.filter(m => m.id !== id); renderKbSection(); scheduleSync(); } }
     function toggleKbCat(c) { if(kbSelectedCats.includes(c)) kbSelectedCats=kbSelectedCats.filter(x=>x!==c); else kbSelectedCats.push(c); renderKbSection(); }
 
-    // === ZIP UPLOAD ===
     async function adminUploadZip() {
       const fileInput = document.getElementById('adminZipInput');
       const file = fileInput.files[0];
@@ -812,7 +785,7 @@
       
       if (!file) { showToast('Выберите ZIP-архив'); return; }
       if (!navigator.onLine) { showToast('Нужен интернет'); return; }
-      if (typeof JSZip === 'undefined') { showToast('Ошибка: Библиотека JSZip не загрузилась'); return; }
+      if (typeof JSZip === 'undefined') { alert('Ошибка: Библиотека JSZip не загрузилась. Проверьте интернет.'); return; }
 
       const btn = document.getElementById('btnAdminZip');
       btn.textContent = 'Распаковка...'; btn.disabled = true;
@@ -820,7 +793,6 @@
       try {
         const zip = await JSZip.loadAsync(file);
         const fileNames = Object.keys(zip.files).filter(name => {
-          // Игнорируем папки и системные файлы
           return !zip.files[name].dir && !name.includes('__MACOSX') && !name.startsWith('.');
         });
 
@@ -831,18 +803,27 @@
           btn.textContent = `Загрузка ${uploadedCount + 1} из ${fileNames.length}...`;
           
           const fileData = await zip.files[fileName].async('blob');
-          const cleanTitle = fileName.split('/').pop().replace(/\.[^/.]+$/, "").replace(/_/g, ' '); // Убираем расширение и _
+          const cleanTitle = fileName.split('/').pop().replace(/\.[^/.]+$/, "").replace(/_/g, ' '); 
           const ext = fileName.split('.').pop();
           const newFileName = `admin_${Date.now()}_${Math.random().toString(36).substring(4)}.${ext}`;
 
           // Загружаем файл
           const { data, error } = await supabaseClient.storage.from('global-blanks').upload(newFileName, fileData);
-          if (error) { console.error('File upload error:', error); continue; }
+          if (error) { 
+            console.error('File upload error:', error); 
+            alert('Ошибка загрузки файла ' + fileName + ': ' + error.message);
+            continue; 
+          }
           
           const { data: urlData } = supabaseClient.storage.from('global-blanks').getPublicUrl(newFileName);
           
           // Записываем в БД
-          await supabaseClient.from('global_blanks').insert([{ title: cleanTitle, category: category, file_url: urlData.publicUrl }]);
+          const { error: dbErr } = await supabaseClient.from('global_blanks').insert([{ title: cleanTitle, category: category, file_url: urlData.publicUrl }]);
+          if (dbErr) {
+            console.error('DB Insert error:', dbErr);
+            alert('Ошибка сохранения в базу: ' + dbErr.message);
+            continue;
+          }
           uploadedCount++;
         }
 
@@ -852,7 +833,7 @@
         showToast(`Успешно загружено файлов: ${uploadedCount}`);
       } catch (err) {
         console.error(err);
-        showToast('Ошибка при распаковке архива');
+        alert('Критическая ошибка при распаковке архива: ' + err.message);
       } finally {
         btn.textContent = 'Загрузить архив'; btn.disabled = false;
       }
