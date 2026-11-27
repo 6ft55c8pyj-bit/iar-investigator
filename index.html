@@ -41,7 +41,7 @@
               async signUp() { return { error: { message: 'Требуется сеть' } }; },
               async signOut() { localStorage.removeItem(sessionKey); return { error: null }; }
             },
-            from() { return { select() { return { eq() { return { async maybeSingle() { return { data: null, error: { code: 'OFF' } }; } }; }, async order() { return { data: [], error: null }; } }; }, async upsert() { return { error: { code: 'OFF' } }; }, async insert() { return { error: { code: 'OFF' } }; }, async delete() { return { eq() { return { error: { code: 'OFF' } }; } }; } }; },
+            from() { return { select() { return { eq() { return { async maybeSingle() { return { data: null, error: { code: 'OFF' } }; } }; }, async order() { return { data: [], error: null }; } }; }, async upsert() { return { error: { code: 'OFF' } }; }, async insert() { return { error: { code: 'OFF' } }; }, async update() { return { eq() { return { error: { code: 'OFF' } }; } }; }, async delete() { return { eq() { return { error: { code: 'OFF' } }; } }; } }; },
             storage: { from() { return { async upload() { return { error: { message: 'Офлайн' } }; }, getPublicUrl() { return { data: { publicUrl: '' } }; }, async remove() { return { error: { code: 'OFF' } }; } }; } }
           };
         }
@@ -313,7 +313,7 @@
           <div id="adminPanelBody" class="sub-body">
             <div class="bg-red-50 p-3 rounded-xl mb-4 border border-red-200">
               <label class="text-[11px] font-bold text-red-800 block mb-2">Загрузить архив с бланками (.ZIP)</label>
-              <p class="text-[10px] text-red-600 mb-2">Архив распакуется автоматически, имена очистятся от битых символов, а разделы определятся по папкам/названиям (либо по выбранной категории по умолчанию).</p>
+              <p class="text-[10px] text-red-600 mb-2">Архив распакуется автоматически, кодировка CP866 и спецсимволы очистятся, а разделы определятся по папкам/названиям (или по выбранной категории по умолчанию).</p>
               <select id="adminCategory" class="soft-select mb-2 text-xs">
                 <option value="Постановления">По умолчанию: Постановления</option>
                 <option value="Протоколы">По умолчанию: Протоколы</option>
@@ -401,25 +401,41 @@
         .trim();
     }
 
+    // Попытка восстановить строки ZIP, сохранённые в CP866 и прочитанные как Latin1
+    function decodeZipNameSmart(rawName) {
+      const str = String(rawName || '');
+      try {
+        const bytes = new Uint8Array(str.length);
+        for (let i = 0; i < str.length; i++) {
+          bytes[i] = str.charCodeAt(i) & 0xff;
+        }
+        const cp866Decoded = new TextDecoder('ibm866', { fatal: false }).decode(bytes);
+        const cyrCount866 = (cp866Decoded.match(/[а-яА-ЯёЁ]/g) || []).length;
+        const cyrCountOrig = (str.match(/[а-яА-ЯёЁ]/g) || []).length;
+        if (cyrCount866 > cyrCountOrig) return cp866Decoded.replace(/\\/g, '/');
+      } catch (e) {}
+      return str.replace(/\\/g, '/');
+    }
+
     function detectCategoryFromPath(fullPath, fallbackCategory) {
       const low = String(fullPath || '').toLowerCase().replace(/\\/g, '/');
-      if (low.includes('постанов') || low.includes('postanov')) return 'Постановления';
-      if (low.includes('протокол') || low.includes('protokol')) return 'Протоколы';
-      if (low.includes('ины') || low.includes('other') || low.includes('уведомл') || low.includes('запрос') || low.includes('рапорт')) return 'Иные';
+      if (low.includes('постанов') || low.includes('postanov') || low.startsWith('pos')) return 'Постановления';
+      if (low.includes('протокол') || low.includes('protokol') || low.startsWith('protok')) return 'Протоколы';
+      if (low.includes('ины') || low.includes('other') || low.includes('sid') || low.includes('уведомл') || low.includes('запрос') || low.includes('рапорт')) return 'Иные';
       return fallbackCategory || 'Иные';
     }
 
     function cleanBlankTitle(rawPath) {
-      const normalized = String(rawPath || '').replace(/\\/g, '/');
-      const baseName = normalized.split('/').pop() || 'Документ';
+      const decoded = decodeZipNameSmart(rawPath);
+      const baseName = decoded.split('/').pop() || 'Документ';
       const withoutExt = baseName.replace(/\.[^./]+$/, '');
       const cleaned = sanitizeDbText(withoutExt.replace(/[_]+/g, ' '));
       return cleaned || 'Бланк без названия';
     }
 
     function buildSafeStorageName(rawPath, index) {
-      const normalized = String(rawPath || '').replace(/\\/g, '/');
-      const baseName = normalized.split('/').pop() || 'file.doc';
+      const decoded = decodeZipNameSmart(rawPath);
+      const baseName = decoded.split('/').pop() || 'file.doc';
       const extMatch = baseName.match(/\.([a-zA-Z0-9]{1,8})$/);
       const ext = extMatch ? extMatch[1].toLowerCase() : 'bin';
       return `blank_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -753,342 +769,4 @@
     function saveEditedCase() { const item=ws.casesData.find(c=>c.id===document.getElementById('ecId').value); if(!item)return; item.number=document.getElementById('ecNumber').value;item.opened=document.getElementById('ecOpened').value;item.deadline=document.getElementById('ecDeadline').value;item.leadDays=parseInt(document.getElementById('ecLeadDays').value)||10;item.fabula=document.getElementById('ecFabula').value;item.articles=[...editArticles];item.participants=[...editParticipants];item.plan=[...editPlans]; syncCaseDeadlineInCalendar(item); jumpToDate(item.deadline); closeEditCaseModal(); renderAll(); scheduleSync(); showToast('Обновлено'); }
     function toggleCaseExpand(id) { const item=ws.casesData.find(c=>c.id===id); if(item){item.expanded=!item.expanded;renderCasesList();} }
     function deleteCaseById(id) { ws.casesData=ws.casesData.filter(c=>c.id!==id); ws.eventsData=ws.eventsData.filter(e=>e.id!==`term_end_${id}`&&e.id!==`term_warn_${id}`); renderAll(); scheduleSync(); showToast('Удалено'); }
-    function syncCaseDeadlineInCalendar(kase) { if(!kase||!kase.id||!kase.deadline)return; const lbl=`УД № ${kase.number.replace(/^№\s*/,'')}`; const endId=`term_end_${kase.id}`, warnId=`term_warn_${kase.id}`; const wDate=shiftIsoDays(kase.deadline,-(kase.leadDays||10)); let endEv=ws.eventsData.find(e=>e.id===endId), warnEv=ws.eventsData.find(e=>e.id===warnId); if(endEv){endEv.title=`Срок • ${lbl}`;endEv.dt=`${kase.deadline}T18:00`;}else{ws.eventsData.push({id:endId,title:`Срок • ${lbl}`,dt:`${kase.deadline}T18:00`,color:'term',caseNum:lbl});} if(warnEv){warnEv.title=`Ходатайство (${kase.leadDays} дн.)`;warnEv.dt=`${wDate}T10:00`;}else{ws.eventsData.push({id:warnId,title:`Ходатайство (${kase.leadDays} дн.)`,dt:`${wDate}T10:00`,color:'term',caseNum:lbl});} }
-
-    function renderSvodkaDeadlines() {
-      const el = document.getElementById('svodkaDeadlinesList');
-      if (!ws.casesData.length) { el.innerHTML = '<div class="text-xs text-slate-400">Нет дел</div>'; return; }
-      el.innerHTML = ws.casesData.map(c => { const left=daysUntil(c.deadline),urg=left<=(c.leadDays||10); return `<div class="p-3 border rounded-xl mb-2 flex justify-between items-center ${urg?'bg-red-50 border-red-200':'bg-white border-slate-200'}"><div class="text-xs font-bold text-slate-700">УД ${esc(c.number)}</div><span class="text-[11px] font-bold px-2 py-1 rounded-lg ${urg?'bg-red-100 text-red-700':'bg-blue-50 text-blue-700'}">${left} дн.</span></div>`; }).join('');
-    }
-
-    function renderCategorySettings() {
-      const list = document.getElementById('categorySettingsList');
-      list.innerHTML = Object.entries(ws.eventCategories).map(([id, cat]) => `
-        <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200">
-          <div class="w-8 h-8 rounded-lg border shrink-0" style="background:${cat.bg}; border-color:${cat.border}"></div>
-          <input type="text" class="soft-input text-xs" value="${esc(cat.label)}" onchange="updateCategoryName('${id}', this.value)" />
-          ${['court','work','expert','term'].includes(id) ? '' : `<button type="button" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded" data-action="delete-category" data-id="${id}">✕</button>`}
-        </div>
-      `).join('');
-    }
-    function updateCategoryName(id, newName) { if (!newName.trim()) return; ws.eventCategories[id].label = sanitizeDbText(newName); scheduleSync(); renderCalendarSection(); }
-    function addCategory() {
-      const name = sanitizeDbText(document.getElementById('newCatName').value); const color = document.getElementById('newCatColor').value;
-      if (!name) { showToast('Введите название'); return; }
-      const id = 'cat_' + Date.now();
-      ws.eventCategories[id] = { label: name, bg: color + '20', text: color, border: color };
-      document.getElementById('newCatName').value = ''; renderCategorySettings(); renderCalendarSection(); scheduleSync(); showToast('Цвет добавлен');
-    }
-    function deleteCategory(id) { if (confirm('Удалить этот цвет?')) { delete ws.eventCategories[id]; renderCategorySettings(); renderCalendarSection(); scheduleSync(); } }
-
-    function renderKbSection() {
-      document.getElementById('kbCatChips').innerHTML = KB_CATEGORIES.map(c => { const act=kbSelectedCats.includes(c); return `<button type="button" data-action="toggle-kb-cat" data-cat="${esc(c)}" class="px-3 py-1.5 rounded-lg text-[11px] font-bold border ${act?'bg-[#334e7b] text-white border-[#334e7b]':'bg-white text-slate-600 border-slate-200'}">${esc(c)}</button>`; }).join('');
-      const list = document.getElementById('kbMaterialList');
-      if (!ws.kbMaterials.length) { list.innerHTML = '<div class="text-xs text-slate-400">Пусто</div>'; return; }
-      
-      list.innerHTML = ws.kbMaterials.map(m => `
-        <div class="bg-white border border-slate-200 rounded-xl p-3 mb-2 relative group flex flex-col gap-1">
-          <div class="text-[13px] font-bold text-[#243b61] pr-6">${esc(m.title)}</div>
-          <div class="text-[11px] text-slate-500">${esc(m.notes)}</div>
-          ${m.fileUrl ? `<a href="${esc(m.fileUrl)}" target="_blank" rel="noopener" class="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 mt-1">📎 Скачать файл</a>` : ''}
-          <button type="button" class="absolute top-3 right-3 text-red-400 opacity-60 hover:opacity-100 p-1" data-action="del-kb" data-id="${esc(m.id)}">✕</button>
-        </div>
-      `).join('');
-    }
-
-    async function addKbMaterial() {
-      const title = sanitizeDbText(document.getElementById('kbNewTitle').value);
-      if (!title) { showToast('Введите название'); return; }
-      
-      const fileInput = document.getElementById('kbFileInput');
-      const file = fileInput.files[0];
-      let fileUrl = '';
-      
-      const btn = document.getElementById('btnAddKb');
-      btn.textContent = 'Загрузка...'; btn.disabled = true;
-
-      if (file) {
-        if (!navigator.onLine) { showToast('Для загрузки файла нужен интернет'); btn.textContent = 'Добавить'; btn.disabled = false; return; }
-        try {
-          const safeName = buildSafeStorageName(file.name, 0);
-          const { error } = await supabaseClient.storage.from('kb-files').upload(safeName, file);
-          if (error) throw error;
-          const { data: urlData } = supabaseClient.storage.from('kb-files').getPublicUrl(safeName);
-          fileUrl = urlData.publicUrl;
-        } catch (err) {
-          console.error('Ошибка загрузки файла:', err);
-          showToast('Ошибка: ' + (err.message || 'проверьте Storage'));
-          btn.textContent = 'Добавить'; btn.disabled = false; return;
-        }
-      }
-
-      ws.kbMaterials.unshift({ id: 'kb_' + Date.now(), title, cats: [...kbSelectedCats], notes: sanitizeDbText(document.getElementById('kbNewNotes').value), fileUrl });
-      document.getElementById('kbNewTitle').value = ''; document.getElementById('kbNewNotes').value = ''; fileInput.value = '';
-      
-      btn.textContent = 'Добавить'; btn.disabled = false;
-      renderKbSection(); scheduleSync(); showToast('Добавлено');
-    }
-
-    function delKb(id) { if (confirm('Удалить материал?')) { ws.kbMaterials = ws.kbMaterials.filter(m => m.id !== id); renderKbSection(); scheduleSync(); } }
-    function toggleKbCat(c) { if(kbSelectedCats.includes(c)) kbSelectedCats=kbSelectedCats.filter(x=>x!==c); else kbSelectedCats.push(c); renderKbSection(); }
-
-    async function adminUploadZip() {
-      const fileInput = document.getElementById('adminZipInput');
-      const file = fileInput.files[0];
-      const fallbackCategory = document.getElementById('adminCategory').value;
-      const logEl = document.getElementById('adminZipLog');
-      
-      if (!file) { showToast('Выберите ZIP-архив'); return; }
-      if (!navigator.onLine) { showToast('Нужен интернет'); return; }
-      if (typeof JSZip === 'undefined') { showToast('Библиотека JSZip не загрузилась'); return; }
-
-      const btn = document.getElementById('btnAdminZip');
-      btn.textContent = 'Распаковка...'; btn.disabled = true;
-      logEl.textContent = '';
-
-      try {
-        const zip = await JSZip.loadAsync(file);
-        const fileNames = Object.keys(zip.files).filter(name => {
-          const norm = name.replace(/\\/g, '/');
-          return !zip.files[name].dir && !norm.includes('__MACOSX') && !norm.split('/').pop().startsWith('.');
-        });
-
-        if (fileNames.length === 0) {
-          showToast('В архиве нет файлов');
-          btn.textContent = 'Загрузить архив'; btn.disabled = false;
-          return;
-        }
-
-        let uploadedCount = 0;
-        const errors = [];
-
-        for (let i = 0; i < fileNames.length; i++) {
-          const rawEntryName = fileNames[i];
-          btn.textContent = `Загрузка ${i + 1} из ${fileNames.length}...`;
-
-          const cleanTitle = cleanBlankTitle(rawEntryName);
-          const category = detectCategoryFromPath(rawEntryName + ' ' + cleanTitle, fallbackCategory);
-          const safeStorageName = buildSafeStorageName(rawEntryName, i);
-
-          try {
-            const fileBlob = await zip.files[rawEntryName].async('blob');
-            const { error: upErr } = await supabaseClient.storage.from('global-blanks').upload(safeStorageName, fileBlob);
-            if (upErr) {
-              errors.push(`${cleanTitle}: ${upErr.message}`);
-              continue;
-            }
-
-            const { data: urlData } = supabaseClient.storage.from('global-blanks').getPublicUrl(safeStorageName);
-            const payload = {
-              title: sanitizeDbText(cleanTitle),
-              category: sanitizeDbText(category),
-              file_url: sanitizeDbText(urlData.publicUrl)
-            };
-
-            const { error: dbErr } = await supabaseClient.from('global_blanks').insert([payload]);
-            if (dbErr) {
-              errors.push(`${cleanTitle}: ${dbErr.message}`);
-              continue;
-            }
-            uploadedCount++;
-          } catch (entryErr) {
-            errors.push(`${cleanTitle}: ${entryErr.message || 'ошибка обработки'}`);
-          }
-        }
-
-        fileInput.value = '';
-        await fetchGlobalBlanks();
-        renderAdminBlanks();
-
-        if (errors.length) {
-          logEl.textContent = `Загружено: ${uploadedCount} из ${fileNames.length}. Ошибок: ${errors.length}\n` + errors.slice(0, 5).join('\n');
-          showToast(`Загружено ${uploadedCount} из ${fileNames.length} (были ошибки)`);
-        } else {
-          logEl.textContent = `Готово: загружено файлов — ${uploadedCount}.`;
-          showToast(`Успешно загружено бланков: ${uploadedCount}`);
-        }
-      } catch (err) {
-        console.error(err);
-        logEl.textContent = 'Ошибка чтения ZIP: ' + (err.message || err);
-        showToast('Ошибка при распаковке архива');
-      } finally {
-        btn.textContent = 'Загрузить архив'; btn.disabled = false;
-      }
-    }
-
-    function renderAdminBlanks() {
-      const list = document.getElementById('adminBlanksList');
-      if (!globalBlanks.length) { list.innerHTML = '<div class="text-xs text-slate-400">Нет общих бланков</div>'; return; }
-      list.innerHTML = globalBlanks.map(b => `
-        <div class="bg-white border p-3 rounded-xl flex justify-between items-center shadow-sm">
-          <div>
-            <div class="text-[12px] font-bold">${esc(b.title)}</div>
-            <div class="text-[10px] text-slate-500">${esc(b.category)}</div>
-          </div>
-          <button type="button" class="text-red-500 px-2 font-bold hover:bg-red-50 rounded" data-action="admin-del-blank" data-id="${esc(b.id)}" data-file="${esc(b.file_url)}">✕</button>
-        </div>
-      `).join('');
-    }
-
-    async function adminDeleteBlank(id, fileUrl) {
-      if (!confirm('Удалить этот бланк у всех пользователей?')) return;
-      try {
-        const { error: delErr } = await supabaseClient.from('global_blanks').delete().eq('id', id);
-        if (delErr) throw delErr;
-        if (fileUrl) {
-          const cleanUrl = String(fileUrl).split('?')[0];
-          const fileName = decodeURIComponent(cleanUrl.split('/').pop() || '');
-          if (fileName) await supabaseClient.storage.from('global-blanks').remove([fileName]);
-        }
-        await fetchGlobalBlanks();
-        renderAdminBlanks();
-        showToast('Бланк удален');
-      } catch (e) { showToast('Ошибка удаления: ' + (e.message || '')); }
-    }
-
-    function setBlankGroup(grp) { 
-      currentBlankGrp=grp;
-      ['Постановления','Протоколы','Иные'].forEach(g=>document.getElementById('bGrp-'+g).className=g===grp?'btn-secondary text-[11px] py-2':'btn-ghost text-[11px] py-2');
-      renderBlankSelect(); 
-    }
-
-    function renderBlankSelect() {
-      const q=(document.getElementById('blankSearch')?.value||'').toLowerCase(); 
-      let list=globalBlanks.filter(b => b.category === currentBlankGrp);
-      if(q) list=list.filter(b=>b.title.toLowerCase().includes(q));
-      
-      document.getElementById('blankPicker').innerHTML = list.map(b=>`<option value="${esc(b.id)}">${esc(b.title)}</option>`).join('') || '<option value="">— Нет бланков в этом разделе —</option>';
-      document.getElementById('blankCaseSelect').innerHTML=ws.casesData.length?ws.casesData.map(c=>`<option value="${esc(c.id)}">УД ${esc(c.number)}</option>`).join(''):'<option value="">— нет дел —</option>';
-      updateBlankDraft();
-    }
-
-    function updateBlankDraft() {
-      const blank = globalBlanks.find(b => b.id === document.getElementById('blankPicker').value);
-      const mode = (document.querySelector('input[name="bMode"]:checked')||{}).value || 'case';
-      const org=ws.profile.org||'СО', rank=ws.profile.rank||'следователь', fio=ws.profile.fio||'______________________';
-      const editor=document.getElementById('blankEditor');
-      
-      if(!blank) { editor.value = 'Выберите бланк в списке выше или загрузите архив в разделе «Профиль» -> «Управление общими бланками».'; return; }
-      
-      const title = blank.title.toUpperCase();
-      const headerBlock = `${org}\n${rank} ${fio}\n\n`;
-
-      if (mode === 'empty') {
-        editor.value = `${title}\n\n«___» ______________ 202__ г.\n\n(Пустой шаблон — отредактируйте текст при необходимости)`;
-        return;
-      }
-
-      if (mode === 'header') {
-        editor.value = `${headerBlock}${title}\n\n«___» ______________ 202__ г.\n\n`;
-        return;
-      }
-
-      const kase = ws.casesData.find(c => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
-      if (kase) {
-        const partsText = (kase.participants || []).map(p => `${p.role}: ${p.name}`).join('; ') || 'не указаны';
-        const planText = (kase.plan || []).map((pl, idx) => `${idx + 1}. ${pl}`).join('\n') || 'не указан';
-        editor.value = `${headerBlock}${title}\nпо уголовному делу № ${kase.number}\n\nДата возбуждения: ${kase.opened || '___'}\nСрок следствия до: ${kase.deadline || '___'}\nКвалификация: ${(kase.articles || []).join(', ') || '___'}\nУчастники: ${partsText}\n\nОбстоятельства дела (фабула):\n${kase.fabula || ''}\n\nПлан / поручения:\n${planText}`;
-      } else {
-        editor.value = `${headerBlock}${title}\n\n(Добавьте уголовное дело во вкладке «Дела», чтобы подставить реквизиты и фабулу автоматически)`;
-      }
-    }
-
-    function downloadBlankDocx() { 
-      const txt=document.getElementById('blankEditor').value; 
-      const html=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'></head><body><pre style="font-family:'Times New Roman',serif;font-size:14pt;white-space:pre-wrap;">${esc(txt)}</pre></body></html>`; 
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(new Blob(['\ufeff',html],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
-      a.download='Документ.docx';a.click();showToast('Скачано .DOCX'); 
-    }
-
-    function downloadOriginalFile() {
-      const blank = globalBlanks.find(b => b.id === document.getElementById('blankPicker').value);
-      if (blank && blank.file_url) {
-        window.open(blank.file_url, '_blank', 'noopener');
-      } else {
-        showToast('У этого бланка нет прикрепленного файла');
-      }
-    }
-
-    function syncProfileInputs() { document.getElementById('profOrg').value=ws.profile.org||'';document.getElementById('profRank').value=ws.profile.rank||'';document.getElementById('profFio').value=ws.profile.fio||''; }
-    function onProfileInput() { ws.profile.org=document.getElementById('profOrg').value;ws.profile.rank=document.getElementById('profRank').value;ws.profile.fio=document.getElementById('profFio').value;updateBlankDraft();scheduleSync(); }
-
-    function renderAllActionsList() { const sorted=[...ws.eventsData].sort((a,b)=>(a.dt||'').localeCompare(b.dt||'')); if(!sorted.length){document.getElementById('allActionsContainer').innerHTML='<div class="text-xs text-slate-400">Нет действий</div>';return;} document.getElementById('allActionsContainer').innerHTML=sorted.map(ev=>{const cat=ws.eventCategories[ev.color]||{border:'#cbd5e1'};return `<div class="p-3 rounded-xl border-l-4 mb-2 flex justify-between items-center bg-slate-50" style="border-left-color:${cat.border}"><div><div class="text-[13px] font-bold text-slate-800">${esc(ev.title)}</div><div class="text-[11px] text-slate-500 mt-0.5">${esc((ev.dt||'').replace('T',' '))}</div></div><button type="button" class="btn-ghost text-[10px] py-1 px-2" data-action="open-event" data-id="${esc(ev.id)}">Изм.</button></div>`;}).join(''); }
-
-    function renderMetrics() {
-      const todayIso=getTodayIso();
-      document.querySelector('#tileCases .metric-num').textContent=String(ws.casesData.length);
-      document.querySelector('#tileUrgent .metric-num').textContent=String(ws.casesData.filter(c=>daysUntil(c.deadline)<=(c.leadDays||10)).length);
-      document.querySelector('#tileToday .metric-num').textContent=String(ws.eventsData.filter(e=>e.dt&&e.dt.startsWith(todayIso)).length);
-    }
-
-    function renderAll() { renderMetrics(); renderCalendarSection(); renderSvodkaDeadlines(); renderCasesList(); renderBlankSelect(); if(!document.getElementById('view-profile').classList.contains('hidden')){renderCategorySettings();renderKbSection(); if(currentUser?.email === ADMIN_EMAIL) renderAdminBlanks();} }
-
-    document.body.addEventListener('click', (e) => {
-      const el=e.target.closest('[data-action]'); if(!el)return;
-      const action=el.dataset.action,id=el.dataset.id,idx=el.dataset.idx!==undefined?Number(el.dataset.idx):undefined;
-      const key=el.dataset.key,grp=el.dataset.grp,cat=el.dataset.cat,kind=el.dataset.kind,delta=el.dataset.delta,tab=el.dataset.tab,modalId=el.dataset.modal,view=el.dataset.view;
-      
-      if(action==='overlay-close'){ if(e.target.id===modalId)document.getElementById(modalId).classList.add('hidden'); return; }
-      
-      switch(action) {
-        case 'set-cal-view': setCalendarView(view); break;
-        case 'shift-date': shiftDate(Number(delta)); break;
-        case 'force-pull-cloud': pullFromCloud(true); break;
-        case 'admin-upload-zip': adminUploadZip(); break;
-        case 'admin-del-blank': adminDeleteBlank(id, el.dataset.file); break;
-        case 'download-original-file': downloadOriginalFile(); break;
-        case 'reset-blank-draft': updateBlankDraft(); showToast('Шаблон сброшен'); break;
-        case 'pull-from-cloud': pullFromCloud(); break;
-        case 'focus-metric': focusMetric(kind); break;
-        case 'toggle-accordion': toggleAccordion(el.dataset.target); break;
-        case 'go-today': goToday(); break;
-        case 'open-event-new': openEventModal(); break;
-        case 'open-event': openEventModal(id); break;
-        case 'switch-tab': switchTab(tab); break;
-        case 'set-color-filter': setColorFilter(key); break;
-        case 'select-day': selectDay(id); break;
-        case 'pick-color': pickModalColor(key); break;
-        case 'new-case-open': toggleNewCaseForm(true); break;
-        case 'new-case-close': toggleNewCaseForm(false); break;
-        case 'save-new-case': saveNewCase(); break;
-        case 'add-temp-art': addTempArticle(); break;
-        case 'add-temp-part': addTempParticipant(); break;
-        case 'add-temp-plan': addTempPlan(); break;
-        case 'remove-temp-art': tempArticles.splice(idx,1); renderTempFormLists(); break;
-        case 'remove-temp-part': tempParticipants.splice(idx,1); renderTempFormLists(); break;
-        case 'remove-temp-plan': tempPlans.splice(idx,1); renderTempFormLists(); break;
-        case 'close-edit-case': closeEditCaseModal(); break;
-        case 'open-edit-case': openEditCaseModal(id); break;
-        case 'toggle-case': toggleCaseExpand(id); break;
-        case 'delete-case': deleteCaseById(id); break;
-        case 'add-edit-art': addEditArticle(); break;
-        case 'add-edit-part': addEditParticipant(); break;
-        case 'add-edit-plan': addEditPlan(); break;
-        case 'remove-edit-art': editArticles.splice(idx,1); renderEditFormLists(); break;
-        case 'remove-edit-part': editParticipants.splice(idx,1); renderEditFormLists(); break;
-        case 'remove-edit-plan': editPlans.splice(idx,1); renderEditFormLists(); break;
-        case 'save-edited-case': saveEditedCase(); break;
-        case 'set-blank-group': setBlankGroup(grp); break;
-        case 'download-docx': downloadBlankDocx(); break;
-        case 'toggle-kb-cat': toggleKbCat(cat); break;
-        case 'add-kb-material': addKbMaterial(); break;
-        case 'del-kb': delKb(id); break;
-        case 'add-category': addCategory(); break;
-        case 'delete-category': deleteCategory(id); break;
-        case 'export-backup': exportBackupJson(); break;
-        case 'logout': logoutUser(); break;
-        case 'close-event': closeEventModal(); break;
-        case 'save-event': saveCalendarEvent(); break;
-        case 'delete-event': deleteCalendarEvent(); break;
-      }
-    });
-
-    function exportBackupJson() { const blob=new Blob([JSON.stringify(ws,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`ARM_${getTodayIso()}.json`;a.click();URL.revokeObjectURL(url); showToast('Бэкап .JSON сохранён'); }
-    async function logoutUser() { await supabaseClient.auth.signOut(); currentUser=null; document.getElementById('appShell').classList.add('hidden'); document.getElementById('authScreen').classList.remove('hidden'); showToast('Вы вышли'); }
-
-    setNetIndicator(); window.addEventListener('online',()=>{setNetIndicator();pushToCloud();}); window.addEventListener('offline',()=>setNetIndicator());
-    (async function init() { try { const { data: { session } } = await supabaseClient.auth.getSession(); if (session && session.user) await enterApp(session.user); } catch (err) {} })();
-  </script>
-</body>
-</html>
+    function syncCaseDeadlineInCalendar(kase) { if(!kase||!kase.
