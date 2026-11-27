@@ -8,7 +8,6 @@
   <title>АРМ Следователя</title>
   <link rel="manifest" href="./manifest.json" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Библиотека для распаковки ZIP -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -256,9 +255,9 @@
           <select id="blankPicker" class="soft-select mb-4" onchange="updateBlankDraft()"></select>
           
           <div class="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
-            <label class="flex items-center gap-2 text-xs font-bold mb-2 cursor-pointer"><input type="radio" name="bMode" value="empty" onchange="updateBlankDraft()" />Пустой бланк</label>
-            <label class="flex items-center gap-2 text-xs font-bold mb-2 cursor-pointer"><input type="radio" name="bMode" value="header" onchange="updateBlankDraft()" />С шапкой (из профиля)</label>
-            <label class="flex items-center gap-2 text-xs font-bold mb-3 cursor-pointer"><input type="radio" name="bMode" value="case" checked onchange="updateBlankDraft()" />Полностью по делу (с данными УД)</label>
+            <label class="flex items-center gap-2 text-xs font-bold mb-2 cursor-pointer"><input type="radio" name="bMode" value="empty" onchange="updateBlankDraft()" />Текст бланка (как в файле)</label>
+            <label class="flex items-center gap-2 text-xs font-bold mb-2 cursor-pointer"><input type="radio" name="bMode" value="header" onchange="updateBlankDraft()" />Текст бланка + шапка профиля</label>
+            <label class="flex items-center gap-2 text-xs font-bold mb-3 cursor-pointer"><input type="radio" name="bMode" value="case" checked onchange="updateBlankDraft()" />Текст бланка + данные дела</label>
             <select id="blankCaseSelect" class="soft-select text-xs" onchange="updateBlankDraft()"></select>
           </div>
 
@@ -269,10 +268,10 @@
         </div>
         <div class="card">
           <div class="flex justify-between items-center mb-2">
-            <span class="text-[11px] font-bold text-slate-600">Предпросмотр и редактирование перед выгрузкой</span>
+            <span class="text-[11px] font-bold text-slate-600">Текст выбранного бланка и поля для заполнения</span>
             <button type="button" class="text-[11px] font-bold text-[#334e7b] bg-[#eef3fb] px-2.5 py-1 rounded-lg" data-action="reset-blank-draft">Сбросить</button>
           </div>
-          <textarea id="blankEditor" class="soft-textarea" rows="14" style="font-family:'Times New Roman',serif; font-size:13px;"></textarea>
+          <textarea id="blankEditor" class="soft-textarea" rows="16" style="font-family:'Times New Roman',serif; font-size:13.5px; line-height:1.45;"></textarea>
         </div>
       </main>
 
@@ -346,7 +345,7 @@
           <div id="adminPanelBody" class="sub-body">
             <div class="bg-red-50 p-3 rounded-xl mb-4 border border-red-200">
               <label class="text-[11px] font-bold text-red-800 block mb-2">Загрузить архив с бланками (.ZIP)</label>
-              <p class="text-[10px] text-red-600 mb-2">Архив распакуется автоматически, кодировка CP866 и спецсимволы очистятся, а разделы определятся по папкам/названиям (либо по выбранной категории по умолчанию).</p>
+              <p class="text-[10px] text-red-600 mb-2">Сайт прочитает текст документов (.docx, .txt, .rtf и доступный текст .doc), определит название по шапке/заголовку и сохранит шаблон вместе с полями.</p>
               <select id="adminCategory" class="soft-select mb-2 text-xs">
                 <option value="Постановления">По умолчанию: Постановления</option>
                 <option value="Протоколы">По умолчанию: Протоколы</option>
@@ -429,8 +428,8 @@
     function sanitizeDbText(raw) {
       return String(raw || '')
         .replace(/\\/g, '/')
-        .replace(/[\u0000-\u001F\u007F-\u009F\u2500-\u257F\uFFFD]/g, ' ')
-        .replace(/\s+/g, ' ')
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u2500-\u257F\uFFFD]/g, ' ')
+        .replace(/[ \t]+/g, ' ')
         .trim();
     }
 
@@ -457,7 +456,78 @@
       return fallbackCategory || 'Иные';
     }
 
-    function cleanBlankTitle(rawPath, index = 0) {
+    async function extractTextFromZipEntry(zipEntry, rawName) {
+      const extMatch = decodeZipNameSmart(rawName).toLowerCase().match(/\.([a-z0-9]{1,8})$/);
+      const ext = extMatch ? extMatch[1] : '';
+      try {
+        if (ext === 'txt' || ext === 'html' || ext === 'htm') {
+          const buf = await zipEntry.async('arraybuffer');
+          const u8 = new Uint8Array(buf);
+          const utfText = new TextDecoder('utf-8', { fatal: false }).decode(u8);
+          if ((utfText.match(/[а-яА-ЯёЁ]/g) || []).length > 5) return utfText;
+          return new TextDecoder('windows-1251', { fatal: false }).decode(u8);
+        }
+        if (ext === 'rtf') {
+          const rawRtf = await zipEntry.async('string');
+          return rawRtf
+            .replace(/\\par[d]?/g, '\n')
+            .replace(/\\[a-z]+-?\d*\s?/gi, ' ')
+            .replace(/[{}]/g, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+        }
+        if (ext === 'docx') {
+          const buf = await zipEntry.async('arraybuffer');
+          const innerZip = await JSZip.loadAsync(buf);
+          const docXml = innerZip.file('word/document.xml');
+          if (!docXml) return '';
+          const xmlStr = await docXml.async('string');
+          const withBreaks = xmlStr
+            .replace(/<\/w:p>/g, '\n')
+            .replace(/<w:tab\/>/g, '    ')
+            .replace(/<[^>]+>/g, '');
+          const parser = new DOMParser();
+          const decodedEntities = parser.parseFromString(`<textarea>${withBreaks}</textarea>`, 'text/html').body.textContent || withBreaks;
+          return decodedEntities.replace(/\n{3,}/g, '\n\n').trim();
+        }
+        if (ext === 'doc') {
+          const buf = await zipEntry.async('arraybuffer');
+          const u8 = new Uint8Array(buf);
+          const dec1251 = new TextDecoder('windows-1251', { fatal: false }).decode(u8);
+          const matches = dec1251.match(/[А-Яа-яЁё№«»"().,\-–—_/:\s]{4,}/g) || [];
+          const lines = matches
+            .map(s => s.replace(/[ \t]+/g, ' ').trim())
+            .filter(s => s.length >= 4 && /[а-яА-ЯёЁ]{2,}/.test(s));
+          return lines.slice(0, 60).join('\n').trim();
+        }
+      } catch (e) {}
+      return '';
+    }
+
+    function detectTitleFromTextOrName(extractedText, rawPath, index = 0) {
+      const lines = String(extractedText || '')
+        .split(/\r?\n/)
+        .map(l => sanitizeDbText(l))
+        .filter(l => l.length >= 4);
+
+      const docKeywords = /(постановление|протокол|уведомление|запрос|рапорт|ходатайство|поручение|требование|справка|акт)\b/i;
+      for (let i = 0; i < Math.min(lines.length, 30); i++) {
+        const line = lines[i];
+        if (docKeywords.test(line) && line.length <= 150) {
+          const next = lines[i + 1];
+          if (/^(о|об|о том|в отношении|по факту|о производстве)\b/i.test(line) || /\b(о|об|о том|в отношении|о производстве)$/i.test(line)) {
+            if (next && next.length <= 130) return `${line} ${next}`.slice(0, 140);
+          }
+          return line.slice(0, 140);
+        }
+      }
+
+      for (let i = 0; i < Math.min(lines.length, 10); i++) {
+        if (/[а-яА-ЯёЁ]{3,}/.test(lines[i]) && lines[i].length <= 120) {
+          return lines[i].slice(0, 140);
+        }
+      }
+
       const decoded = decodeZipNameSmart(rawPath);
       const baseName = decoded.split('/').pop() || 'Документ';
       const withoutExt = baseName.replace(/\.[^./]+$/, '');
@@ -483,7 +553,7 @@
     }
 
     const defaultWorkspace = () => ({
-      eventsData: [], casesData: [], kbMaterials: [], 
+      eventsData: [], casesData: [], kbMaterials: [], blankTemplates: {},
       eventCategories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
       profile: { org: 'СО ОП № 4 СУ УМВД России', rank: 'следователь', fio: '' },
       updatedAt: new Date().toISOString()
@@ -495,6 +565,7 @@
         eventsData: Array.isArray(raw.eventsData) ? raw.eventsData : [],
         casesData: Array.isArray(raw.casesData) ? raw.casesData : [],
         kbMaterials: Array.isArray(raw.kbMaterials) ? raw.kbMaterials : [],
+        blankTemplates: (raw.blankTemplates && typeof raw.blankTemplates === 'object') ? raw.blankTemplates : {},
         eventCategories: raw.eventCategories ? raw.eventCategories : base.eventCategories,
         profile: raw.profile || base.profile,
         updatedAt: raw.updatedAt || base.updatedAt
@@ -956,39 +1027,47 @@
 
         for (let i = 0; i < fileNames.length; i++) {
           const rawEntryName = fileNames[i];
-          btn.textContent = `Загрузка ${i + 1} из ${fileNames.length}...`;
+          btn.textContent = `Обработка ${i + 1} из ${fileNames.length}...`;
 
+          const zipEntry = zip.files[rawEntryName];
           const decodedPath = decodeZipNameSmart(rawEntryName);
-          const cleanTitle = cleanBlankTitle(rawEntryName, i);
-          const category = detectCategoryFromPath(`${file.name}/${decodedPath} ${cleanTitle}`, fallbackCategory);
+          const extractedText = await extractTextFromZipEntry(zipEntry, rawEntryName);
+          const detectedTitle = detectTitleFromTextOrName(extractedText, rawEntryName, i);
+          const category = detectCategoryFromPath(`${file.name}/${decodedPath} ${detectedTitle}`, fallbackCategory);
           const safeStorageName = buildSafeStorageName(rawEntryName, i);
 
           try {
-            const fileBlob = await zip.files[rawEntryName].async('blob');
+            const fileBlob = await zipEntry.async('blob');
             const { error: upErr } = await supabaseClient.storage.from('global-blanks').upload(safeStorageName, fileBlob);
             if (upErr) {
-              errors.push(`${cleanTitle}: ${upErr.message}`);
+              errors.push(`${detectedTitle}: ${upErr.message}`);
               continue;
             }
 
             const { data: urlData } = supabaseClient.storage.from('global-blanks').getPublicUrl(safeStorageName);
             const payload = {
-              title: sanitizeDbText(cleanTitle),
+              title: sanitizeDbText(detectedTitle),
               category: sanitizeDbText(category),
               file_url: sanitizeDbText(urlData.publicUrl)
             };
 
-            const { error: dbErr } = await supabaseClient.from('global_blanks').insert([payload]);
+            const { data: insertedRows, error: dbErr } = await supabaseClient.from('global_blanks').insert([payload]).select();
             if (dbErr) {
-              errors.push(`${cleanTitle}: ${dbErr.message}`);
+              errors.push(`${detectedTitle}: ${dbErr.message}`);
               continue;
+            }
+
+            const createdId = insertedRows && insertedRows[0] ? insertedRows[0].id : null;
+            if (createdId && extractedText) {
+              ws.blankTemplates[createdId] = extractedText;
             }
             uploadedCount++;
           } catch (entryErr) {
-            errors.push(`${cleanTitle}: ${entryErr.message || 'ошибка обработки'}`);
+            errors.push(`${detectedTitle}: ${entryErr.message || 'ошибка обработки'}`);
           }
         }
 
+        scheduleSync();
         fileInput.value = '';
         await fetchGlobalBlanks();
         renderAdminBlanks();
@@ -1049,6 +1128,10 @@
       try {
         const { error: delErr } = await supabaseClient.from('global_blanks').delete().eq('id', id);
         if (delErr) throw delErr;
+        if (ws.blankTemplates && ws.blankTemplates[id]) {
+          delete ws.blankTemplates[id];
+          scheduleSync();
+        }
         if (fileUrl) {
           const cleanUrl = String(fileUrl).split('?')[0];
           const fileName = decodeURIComponent(cleanUrl.split('/').pop() || '');
@@ -1084,27 +1167,29 @@
       
       if(!blank) { editor.value = 'Выберите бланк в списке выше или загрузите архив в разделе «Профиль» -> «Управление общими бланками».'; return; }
       
-      const title = blank.title.toUpperCase();
+      const savedBody = (ws.blankTemplates && ws.blankTemplates[blank.id]) ? ws.blankTemplates[blank.id] : '';
+      const baseDocText = savedBody || `${blank.title.toUpperCase()}\n\n«___» ______________ 202__ г.\n\n_________________________________________\n\nСледователь: ________________ / ${fio} /`;
       const headerBlock = `${org}\n${rank} ${fio}\n\n`;
 
       if (mode === 'empty') {
-        editor.value = `${title}\n\n«___» ______________ 202__ г.\n\n`;
+        editor.value = baseDocText;
         return;
       }
 
       if (mode === 'header') {
-        editor.value = `${headerBlock}${title}\n\n«___» ______________ 202__ г.\n\n`;
+        editor.value = `${headerBlock}${baseDocText}`;
         return;
       }
 
       const kase = ws.casesData.find(c => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
       if (kase) {
         const num = cleanCaseNumber(kase.number);
-        const partsText = (kase.participants || []).map(p => `${p.role}: ${p.name}`).join('; ') || 'не указаны';
-        const planText = (kase.plan || []).map((pl, idx) => `${idx + 1}. ${pl}`).join('\n') || 'не указан';
-        editor.value = `${headerBlock}${title}\nпо уголовному делу № ${num}\n\nДата возбуждения: ${kase.opened || '___'}\nСрок следствия до: ${kase.deadline || '___'}\nКвалификация: ${(kase.articles || []).join(', ') || '___'}\nУчастники: ${partsText}\n\nОбстоятельства дела (фабула):\n${kase.fabula || ''}\n\nПлан / поручения:\n${planText}`;
+        const partsText = (kase.participants || []).map(p => `${p.role}: ${p.name}`).join('; ') || '______________________';
+        const planText = (kase.plan || []).map((pl, idx) => `${idx + 1}. ${pl}`).join('\n') || '______________________';
+        const caseMeta = `Уголовное дело № ${num} (возбуждено ${kase.opened || '___'}, срок следствия до ${kase.deadline || '___'})\nКвалификация: ${(kase.articles || []).join(', ') || '___'}\nУчастники: ${partsText}\nФабула: ${kase.fabula || '______________________'}\nПлан: ${planText}\n\n`;
+        editor.value = `${headerBlock}${caseMeta}${baseDocText}`;
       } else {
-        editor.value = `${headerBlock}${title}\n\n(Добавьте уголовное дело во вкладке «Дела», чтобы подставить реквизиты и фабулу автоматически)`;
+        editor.value = `${headerBlock}${baseDocText}`;
       }
     }
 
