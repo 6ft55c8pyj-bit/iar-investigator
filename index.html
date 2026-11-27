@@ -264,7 +264,7 @@
 
           <div class="flex flex-wrap gap-2">
             <button type="button" class="btn-primary flex-1 text-[11px]" data-action="download-docx">Скачать .DOCX</button>
-            <button type="button" class="btn-secondary flex-1 text-[11px]" data-action="download-original-file">Открыть оригинал</button>
+            <button type="button" class="btn-secondary flex-1 text-[11px]" data-action="download-original-file">Скачать оригинал</button>
           </div>
         </div>
         <div class="card">
@@ -424,11 +424,12 @@
     function parseDate(str) { if (!str) return new Date(); const [y, m, d] = str.split('-').map(Number); return new Date(y, m - 1, d); }
     function toIsoDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
     function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function cleanCaseNumber(raw) { return String(raw || '').replace(/^№\s*/i, '').trim(); }
 
     function sanitizeDbText(raw) {
       return String(raw || '')
         .replace(/\\/g, '/')
-        .replace(/[\u0000-\u001F\u007F-\u009F\uFFFD]/g, '')
+        .replace(/[\u0000-\u001F\u007F-\u009F\u2500-\u257F\uFFFD]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
     }
@@ -456,12 +457,15 @@
       return fallbackCategory || 'Иные';
     }
 
-    function cleanBlankTitle(rawPath) {
+    function cleanBlankTitle(rawPath, index = 0) {
       const decoded = decodeZipNameSmart(rawPath);
       const baseName = decoded.split('/').pop() || 'Документ';
       const withoutExt = baseName.replace(/\.[^./]+$/, '');
       const cleaned = sanitizeDbText(withoutExt.replace(/[_]+/g, ' '));
-      return cleaned || 'Бланк без названия';
+      if (!cleaned || cleaned.length < 3 || !/[а-яА-ЯёЁa-zA-Z]{2,}/.test(cleaned)) {
+        return `Бланк № ${index + 1}`;
+      }
+      return cleaned;
     }
 
     function buildSafeStorageName(rawPath, index) {
@@ -774,7 +778,7 @@
       } else {
         document.getElementById('evModalHeading').textContent = 'Новое событие';
         document.getElementById('evEditId').value = ''; document.getElementById('evTitleInput').value = '';
-        document.getElementById('evDtInput').value = `${selectedDay}T10:00`; document.getElementById('evCaseInput').value = ws.casesData[0] ? `УД ${ws.casesData[0].number}` : '';
+        document.getElementById('evDtInput').value = `${selectedDay}T10:00`; document.getElementById('evCaseInput').value = ws.casesData[0] ? `УД № ${cleanCaseNumber(ws.casesData[0].number)}` : '';
         modalPickedColor = Object.keys(ws.eventCategories)[0] || 'work'; delBtn.classList.add('hidden');
       }
       renderModalColorChoices(); modal.classList.remove('hidden');
@@ -814,7 +818,7 @@
       container.innerHTML = filtered.map(c => {
         const left = daysUntil(c.deadline), isUrgent = left <= (c.leadDays || 10);
         const badgeCls = isUrgent ? 'bg-red-50 text-red-700 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-200';
-        return `<div class="card mb-3 p-4"><div class="flex justify-between items-start cursor-pointer" data-action="toggle-case" data-id="${esc(c.id)}"><div><div class="text-sm font-extrabold text-[#243b61]">УД ${esc(c.number)}</div><div class="text-[11px] font-bold text-slate-500 mt-1">${esc(c.articles.join(', '))}</div></div><div class="text-right"><span class="text-[11px] font-bold px-2.5 py-1 rounded-lg border ${badgeCls}">${left} дн.</span></div></div>${c.expanded ? `<div class="mt-4 pt-4 border-t border-slate-100 text-xs"><div class="mb-2"><span class="font-bold text-slate-700">Фабула:</span> <span class="text-slate-600">${esc(c.fabula)}</span></div><div class="mb-2"><span class="font-bold text-slate-700">Участники:</span> <span class="text-slate-600">${c.participants.map(p => esc(p.name)).join(', ') || 'нет'}</span></div><div class="mb-4"><span class="font-bold text-slate-700">План:</span> <span class="text-slate-600">${c.plan.map(pl => esc(pl)).join('; ') || 'нет'}</span></div><div class="flex justify-between gap-2"><button type="button" class="btn-secondary text-[11px] px-3 py-2" data-action="open-edit-case" data-id="${esc(c.id)}">Изменить</button><button type="button" class="btn-ghost text-red-600 text-[11px] px-3 py-2" data-action="delete-case" data-id="${esc(c.id)}">Удалить</button></div></div>` : ''}</div>`;
+        return `<div class="card mb-3 p-4"><div class="flex justify-between items-start cursor-pointer" data-action="toggle-case" data-id="${esc(c.id)}"><div><div class="text-sm font-extrabold text-[#243b61]">УД № ${esc(cleanCaseNumber(c.number))}</div><div class="text-[11px] font-bold text-slate-500 mt-1">${esc(c.articles.join(', '))}</div></div><div class="text-right"><span class="text-[11px] font-bold px-2.5 py-1 rounded-lg border ${badgeCls}">${left} дн.</span></div></div>${c.expanded ? `<div class="mt-4 pt-4 border-t border-slate-100 text-xs"><div class="mb-2"><span class="font-bold text-slate-700">Фабула:</span> <span class="text-slate-600">${esc(c.fabula)}</span></div><div class="mb-2"><span class="font-bold text-slate-700">Участники:</span> <span class="text-slate-600">${c.participants.map(p => esc(p.name)).join(', ') || 'нет'}</span></div><div class="mb-4"><span class="font-bold text-slate-700">План:</span> <span class="text-slate-600">${c.plan.map(pl => esc(pl)).join('; ') || 'нет'}</span></div><div class="flex justify-between gap-2"><button type="button" class="btn-secondary text-[11px] px-3 py-2" data-action="open-edit-case" data-id="${esc(c.id)}">Изменить</button><button type="button" class="btn-ghost text-red-600 text-[11px] px-3 py-2" data-action="delete-case" data-id="${esc(c.id)}">Удалить</button></div></div>` : ''}</div>`;
       }).join('');
     }
     function initCaseFormDates() { const t = getTodayIso(); document.getElementById('ncOpened').value = t; document.getElementById('ncDeadline').value = addMonthsIso(t, 2); }
@@ -828,25 +832,25 @@
       document.getElementById('tempPlanList').innerHTML=tempPlans.map((pl,i)=>`<div class="text-[11px] bg-slate-50 p-2 rounded-lg flex justify-between border border-slate-100"><span>• ${esc(pl)}</span><button type="button" data-action="remove-temp-plan" data-idx="${i}" class="text-slate-400 hover:text-red-500">×</button></div>`).join('');
     }
     function saveNewCase() {
-      const num=document.getElementById('ncNumber').value.trim(); if(!num){showToast('Введите номер');return;}
-      const newCase={id:'ud_'+Date.now(),number:num.startsWith('№')?num:'№ '+num,opened:document.getElementById('ncOpened').value,deadline:document.getElementById('ncDeadline').value,leadDays:parseInt(document.getElementById('ncLeadDays').value)||10,articles:tempArticles.length?[...tempArticles]:['ст. 158 УК РФ'],fabula:document.getElementById('ncFabula').value.trim()||'Фабула',participants:[...tempParticipants],plan:[...tempPlans],docs:[],expanded:true};
+      const num=cleanCaseNumber(document.getElementById('ncNumber').value); if(!num){showToast('Введите номер');return;}
+      const newCase={id:'ud_'+Date.now(),number:num,opened:document.getElementById('ncOpened').value,deadline:document.getElementById('ncDeadline').value,leadDays:parseInt(document.getElementById('ncLeadDays').value)||10,articles:tempArticles.length?[...tempArticles]:['ст. 158 УК РФ'],fabula:document.getElementById('ncFabula').value.trim()||'Фабула не заполнена.',participants:[...tempParticipants],plan:[...tempPlans],docs:[],expanded:true};
       ws.casesData.unshift(newCase); syncCaseDeadlineInCalendar(newCase); jumpToDate(newCase.deadline); document.getElementById('ncNumber').value=''; toggleNewCaseForm(false); renderAll(); scheduleSync(); showToast('Дело сохранено');
     }
-    function openEditCaseModal(id) { const item=ws.casesData.find(c=>c.id===id); if(!item)return; document.getElementById('ecId').value=item.id;document.getElementById('ecNumber').value=item.number;document.getElementById('ecOpened').value=item.opened;document.getElementById('ecDeadline').value=item.deadline;document.getElementById('ecLeadDays').value=item.leadDays;document.getElementById('ecFabula').value=item.fabula; editArticles=[...item.articles];editParticipants=item.participants.map(p=>({...p}));editPlans=[...item.plan]; renderEditFormLists(); document.getElementById('editCaseModal').classList.remove('hidden'); }
+    function openEditCaseModal(id) { const item=ws.casesData.find(c=>c.id===id); if(!item)return; document.getElementById('ecId').value=item.id;document.getElementById('ecNumber').value=cleanCaseNumber(item.number);document.getElementById('ecOpened').value=item.opened;document.getElementById('ecDeadline').value=item.deadline;document.getElementById('ecLeadDays').value=item.leadDays;document.getElementById('ecFabula').value=item.fabula; editArticles=[...item.articles];editParticipants=item.participants.map(p=>({...p}));editPlans=[...item.plan]; renderEditFormLists(); document.getElementById('editCaseModal').classList.remove('hidden'); }
     function closeEditCaseModal() { document.getElementById('editCaseModal').classList.add('hidden'); }
     function addEditArticle() { const v=document.getElementById('ecArticleInput').value.trim(); if(v){editArticles.push(v);document.getElementById('ecArticleInput').value='';renderEditFormLists();} }
     function addEditParticipant() { const n=document.getElementById('ecPartName').value.trim(); if(n){editParticipants.push({name:n,role:document.getElementById('ecPartRole').value});document.getElementById('ecPartName').value='';renderEditFormLists();} }
     function addEditPlan() { const v=document.getElementById('ecPlanInput').value.trim(); if(v){editPlans.push(v);document.getElementById('ecPlanInput').value='';renderEditFormLists();} }
     function renderEditFormLists() { document.getElementById('editArticlesList').innerHTML=editArticles.map((a,i)=>`<span class="px-2.5 py-1 rounded-lg bg-[#eef3fb] text-[#334e7b] text-[11px] font-bold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-edit-art" data-idx="${i}" class="text-slate-400">×</button></span>`).join(''); document.getElementById('editParticipantsList').innerHTML=editParticipants.map((p,i)=>`<div class="text-[11px] bg-slate-50 p-2 rounded-lg flex justify-between border border-slate-100"><span>${esc(p.name)}</span><button type="button" data-action="remove-edit-part" data-idx="${i}" class="text-slate-400">×</button></div>`).join(''); document.getElementById('editPlanList').innerHTML=editPlans.map((pl,i)=>`<div class="text-[11px] bg-slate-50 p-2 rounded-lg flex justify-between border border-slate-100"><span>• ${esc(pl)}</span><button type="button" data-action="remove-edit-plan" data-idx="${i}" class="text-slate-400">×</button></div>`).join(''); }
-    function saveEditedCase() { const item=ws.casesData.find(c=>c.id===document.getElementById('ecId').value); if(!item)return; item.number=document.getElementById('ecNumber').value;item.opened=document.getElementById('ecOpened').value;item.deadline=document.getElementById('ecDeadline').value;item.leadDays=parseInt(document.getElementById('ecLeadDays').value)||10;item.fabula=document.getElementById('ecFabula').value;item.articles=[...editArticles];item.participants=[...editParticipants];item.plan=[...editPlans]; syncCaseDeadlineInCalendar(item); jumpToDate(item.deadline); closeEditCaseModal(); renderAll(); scheduleSync(); showToast('Обновлено'); }
+    function saveEditedCase() { const item=ws.casesData.find(c=>c.id===document.getElementById('ecId').value); if(!item)return; item.number=cleanCaseNumber(document.getElementById('ecNumber').value);item.opened=document.getElementById('ecOpened').value;item.deadline=document.getElementById('ecDeadline').value;item.leadDays=parseInt(document.getElementById('ecLeadDays').value)||10;item.fabula=document.getElementById('ecFabula').value;item.articles=[...editArticles];item.participants=[...editParticipants];item.plan=[...editPlans]; syncCaseDeadlineInCalendar(item); jumpToDate(item.deadline); closeEditCaseModal(); renderAll(); scheduleSync(); showToast('Обновлено'); }
     function toggleCaseExpand(id) { const item=ws.casesData.find(c=>c.id===id); if(item){item.expanded=!item.expanded;renderCasesList();} }
     function deleteCaseById(id) { ws.casesData=ws.casesData.filter(c=>c.id!==id); ws.eventsData=ws.eventsData.filter(e=>e.id!==`term_end_${id}`&&e.id!==`term_warn_${id}`); renderAll(); scheduleSync(); showToast('Удалено'); }
-    function syncCaseDeadlineInCalendar(kase) { if(!kase||!kase.id||!kase.deadline)return; const lbl=`УД № ${kase.number.replace(/^№\s*/,'')}`; const endId=`term_end_${kase.id}`, warnId=`term_warn_${kase.id}`; const wDate=shiftIsoDays(kase.deadline,-(kase.leadDays||10)); let endEv=ws.eventsData.find(e=>e.id===endId), warnEv=ws.eventsData.find(e=>e.id===warnId); if(endEv){endEv.title=`Срок • ${lbl}`;endEv.dt=`${kase.deadline}T18:00`;}else{ws.eventsData.push({id:endId,title:`Срок • ${lbl}`,dt:`${kase.deadline}T18:00`,color:'term',caseNum:lbl});} if(warnEv){warnEv.title=`Ходатайство (${kase.leadDays} дн.)`;warnEv.dt=`${wDate}T10:00`;}else{ws.eventsData.push({id:warnId,title:`Ходатайство (${kase.leadDays} дн.)`,dt:`${wDate}T10:00`,color:'term',caseNum:lbl});} }
+    function syncCaseDeadlineInCalendar(kase) { if(!kase||!kase.id||!kase.deadline)return; const lbl=`УД № ${cleanCaseNumber(kase.number)}`; const endId=`term_end_${kase.id}`, warnId=`term_warn_${kase.id}`; const wDate=shiftIsoDays(kase.deadline,-(kase.leadDays||10)); let endEv=ws.eventsData.find(e=>e.id===endId), warnEv=ws.eventsData.find(e=>e.id===warnId); if(endEv){endEv.title=`Срок • ${lbl}`;endEv.dt=`${kase.deadline}T18:00`;}else{ws.eventsData.push({id:endId,title:`Срок • ${lbl}`,dt:`${kase.deadline}T18:00`,color:'term',caseNum:lbl});} if(warnEv){warnEv.title=`Ходатайство (${kase.leadDays} дн.)`;warnEv.dt=`${wDate}T10:00`;}else{ws.eventsData.push({id:warnId,title:`Ходатайство (${kase.leadDays} дн.)`,dt:`${wDate}T10:00`,color:'term',caseNum:lbl});} }
 
     function renderSvodkaDeadlines() {
       const el = document.getElementById('svodkaDeadlinesList');
       if (!ws.casesData.length) { el.innerHTML = '<div class="text-xs text-slate-400">Нет дел</div>'; return; }
-      el.innerHTML = ws.casesData.map(c => { const left=daysUntil(c.deadline),urg=left<=(c.leadDays||10); return `<div class="p-3 border rounded-xl mb-2 flex justify-between items-center ${urg?'bg-red-50 border-red-200':'bg-white border-slate-200'}"><div class="text-xs font-bold text-slate-700">УД ${esc(c.number)}</div><span class="text-[11px] font-bold px-2 py-1 rounded-lg ${urg?'bg-red-100 text-red-700':'bg-blue-50 text-blue-700'}">${left} дн.</span></div>`; }).join('');
+      el.innerHTML = ws.casesData.map(c => { const left=daysUntil(c.deadline),urg=left<=(c.leadDays||10); return `<div class="p-3 border rounded-xl mb-2 flex justify-between items-center ${urg?'bg-red-50 border-red-200':'bg-white border-slate-200'}"><div class="text-xs font-bold text-slate-700">УД № ${esc(cleanCaseNumber(c.number))}</div><span class="text-[11px] font-bold px-2 py-1 rounded-lg ${urg?'bg-red-100 text-red-700':'bg-blue-50 text-blue-700'}">${left} дн.</span></div>`; }).join('');
     }
 
     function renderCategorySettings() {
@@ -955,7 +959,7 @@
           btn.textContent = `Загрузка ${i + 1} из ${fileNames.length}...`;
 
           const decodedPath = decodeZipNameSmart(rawEntryName);
-          const cleanTitle = cleanBlankTitle(rawEntryName);
+          const cleanTitle = cleanBlankTitle(rawEntryName, i);
           const category = detectCategoryFromPath(`${file.name}/${decodedPath} ${cleanTitle}`, fallbackCategory);
           const safeStorageName = buildSafeStorageName(rawEntryName, i);
 
@@ -1068,7 +1072,7 @@
       if(q) list=list.filter(b=>b.title.toLowerCase().includes(q));
       
       document.getElementById('blankPicker').innerHTML = list.map(b=>`<option value="${esc(b.id)}">${esc(b.title)}</option>`).join('') || '<option value="">— Нет бланков в этом разделе —</option>';
-      document.getElementById('blankCaseSelect').innerHTML=ws.casesData.length?ws.casesData.map(c=>`<option value="${esc(c.id)}">УД ${esc(c.number)}</option>`).join(''):'<option value="">— нет дел —</option>';
+      document.getElementById('blankCaseSelect').innerHTML=ws.casesData.length?ws.casesData.map(c=>`<option value="${esc(c.id)}">УД № ${esc(cleanCaseNumber(c.number))}</option>`).join(''):'<option value="">— нет дел —</option>';
       updateBlankDraft();
     }
 
@@ -1084,7 +1088,7 @@
       const headerBlock = `${org}\n${rank} ${fio}\n\n`;
 
       if (mode === 'empty') {
-        editor.value = `${title}\n\n«___» ______________ 202__ г.\n\n(Пустой шаблон — отредактируйте текст при необходимости)`;
+        editor.value = `${title}\n\n«___» ______________ 202__ г.\n\n`;
         return;
       }
 
@@ -1095,9 +1099,10 @@
 
       const kase = ws.casesData.find(c => c.id === document.getElementById('blankCaseSelect').value) || ws.casesData[0];
       if (kase) {
+        const num = cleanCaseNumber(kase.number);
         const partsText = (kase.participants || []).map(p => `${p.role}: ${p.name}`).join('; ') || 'не указаны';
         const planText = (kase.plan || []).map((pl, idx) => `${idx + 1}. ${pl}`).join('\n') || 'не указан';
-        editor.value = `${headerBlock}${title}\nпо уголовному делу № ${kase.number}\n\nДата возбуждения: ${kase.opened || '___'}\nСрок следствия до: ${kase.deadline || '___'}\nКвалификация: ${(kase.articles || []).join(', ') || '___'}\nУчастники: ${partsText}\n\nОбстоятельства дела (фабула):\n${kase.fabula || ''}\n\nПлан / поручения:\n${planText}`;
+        editor.value = `${headerBlock}${title}\nпо уголовному делу № ${num}\n\nДата возбуждения: ${kase.opened || '___'}\nСрок следствия до: ${kase.deadline || '___'}\nКвалификация: ${(kase.articles || []).join(', ') || '___'}\nУчастники: ${partsText}\n\nОбстоятельства дела (фабула):\n${kase.fabula || ''}\n\nПлан / поручения:\n${planText}`;
       } else {
         editor.value = `${headerBlock}${title}\n\n(Добавьте уголовное дело во вкладке «Дела», чтобы подставить реквизиты и фабулу автоматически)`;
       }
@@ -1105,18 +1110,39 @@
 
     function downloadBlankDocx() { 
       const txt=document.getElementById('blankEditor').value; 
+      const blank = globalBlanks.find(b => b.id === document.getElementById('blankPicker').value);
+      const safeFileName = (blank ? blank.title : 'Документ').replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || 'Документ';
       const html=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'></head><body><pre style="font-family:'Times New Roman',serif;font-size:14pt;white-space:pre-wrap;">${esc(txt)}</pre></body></html>`; 
       const a=document.createElement('a');
       a.href=URL.createObjectURL(new Blob(['\ufeff',html],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
-      a.download='Документ.docx';a.click();showToast('Скачано .DOCX'); 
+      a.download=`${safeFileName}.docx`;a.click();showToast('Скачано .DOCX'); 
     }
 
-    function downloadOriginalFile() {
+    async function downloadOriginalFile() {
       const blank = globalBlanks.find(b => b.id === document.getElementById('blankPicker').value);
-      if (blank && blank.file_url) {
-        window.open(blank.file_url, '_blank', 'noopener');
-      } else {
+      if (!blank || !blank.file_url) {
         showToast('У этого бланка нет прикрепленного файла');
+        return;
+      }
+      try {
+        const resp = await fetch(blank.file_url);
+        if (!resp.ok) throw new Error('Файл недоступен по ссылке');
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const cleanUrl = String(blank.file_url).split('?')[0];
+        const extMatch = cleanUrl.match(/\.([a-zA-Z0-9]{1,8})$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : 'doc';
+        const safeName = (blank.title || 'blank').replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || 'blank';
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeName}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        showToast('Оригинал скачивается');
+      } catch (e) {
+        window.open(blank.file_url, '_blank', 'noopener');
       }
     }
 
