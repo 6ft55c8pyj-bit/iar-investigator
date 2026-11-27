@@ -8,6 +8,8 @@
   <title>АРМ Следователя</title>
   <link rel="manifest" href="./manifest.json" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Библиотека для распаковки ZIP-архивов -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -52,41 +54,58 @@
     body { margin: 0; font-family: "Inter", sans-serif; background: var(--bg); color: var(--text); padding-bottom: 96px; }
     
     .app-container { max-width: 820px; margin: 0 auto; padding: 12px 14px 28px; }
-    
-    /* Мягкая шапка */
     .top-header { background: #fff; border-radius: 20px; padding: 20px 15px; margin-bottom: 16px; text-align: center; box-shadow: 0 4px 20px rgba(51, 78, 123, 0.05); border: 1px solid var(--border); }
     .brand-emblem { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 16px; background: #0d1b3e; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 16px rgba(13, 27, 62, 0.15); }
-    .top-status { font-size: 11.5px; font-weight: 600; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; }
     
-    /* Мягкие карточки */
     .card { background: #fff; border: 1px solid var(--border); border-radius: 18px; padding: 16px; box-shadow: 0 4px 20px rgba(51, 78, 123, 0.04); margin-bottom: 16px; }
     .card-title { font-size: 14px; font-weight: 800; color: var(--primary); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
 
-    /* Метрики */
     .metric-tile { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 12px 6px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: 0 2px 10px rgba(51, 78, 123, 0.03); transition: all 0.15s ease; }
     .metric-tile.active { border-color: var(--accent); background: var(--primary-soft); }
     .metric-num { font-size: 22px; font-weight: 800; color: var(--primary); }
-    .metric-tile.active .metric-num { color: #2c5282; }
 
-    /* Календарь */
+    /* Календарь - строгие квадраты */
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .calendar-title { font-size: 16px; font-weight: 800; color: var(--primary); }
     .color-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-    .color-chip { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 6px; background: #fff; color: var(--text); }
-    .color-chip.active { border-color: var(--accent); background: var(--primary-soft); color: var(--primary); }
+    .color-chip { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 6px; background: #fff; }
+    .color-chip.active { border-color: var(--accent); background: var(--primary-soft); }
     
+    .view-toggles { display: flex; gap: 4px; background: var(--bg); padding: 4px; border-radius: 10px; margin-bottom: 12px; }
+    .view-btn { flex: 1; padding: 6px; text-align: center; font-size: 11px; font-weight: 700; border-radius: 8px; cursor: pointer; color: var(--muted); border: none; background: transparent; }
+    .view-btn.active { background: #fff; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
     .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .weekday { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); padding-bottom: 4px; }
-    .day-cell { border: 1px solid var(--border); border-radius: 8px; min-height: 70px; padding: 4px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; background: #fff; }
+    
+    /* Квадратные ячейки */
+    .day-cell { 
+      border: 1px solid var(--border); 
+      border-radius: 8px; 
+      aspect-ratio: 1 / 1; /* Делает ячейку квадратной */
+      padding: 4px; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      cursor: pointer; 
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+    }
     .day-cell.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--primary-soft); }
     .day-cell.other-month { opacity: 0.4; background: var(--bg); border-color: transparent; }
-    .day-num { font-size: 11px; font-weight: 700; text-align: right; color: var(--text); }
-    .day-cell.today .day-num { color: #fff; background: #e06c6c; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-left: auto; }
-    .mini-event { font-size: 9px; font-weight: 600; padding: 3px; border-radius: 4px; border-left: 3px solid; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .day-cell.today { border-color: #e06c6c; }
+    
+    .day-num { font-size: 11px; font-weight: 700; color: var(--text); align-self: flex-end; margin-bottom: 2px; }
+    .day-cell.today .day-num { color: #fff; background: #e06c6c; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+    
+    /* Точки событий */
+    .event-dots { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; width: 100%; }
+
+    .mini-event-txt { font-size: 8px; font-weight: 600; padding: 2px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: left; }
 
     /* Кнопки */
     .btn-primary { background: var(--primary); color: #fff; border: none; border-radius: 12px; padding: 12px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-    .btn-primary:active { opacity: 0.8; }
     .btn-secondary { background: var(--primary-soft); color: var(--primary); border: 1px solid #d7e3f7; border-radius: 12px; padding: 12px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn-ghost { background: #fff; color: var(--muted); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
     
@@ -116,7 +135,6 @@
       <div class="text-center mb-6">
         <div class="brand-emblem"><svg width="32" height="32" viewBox="0 0 120 120"><path d="M60 12 L100 28 V60 C100 86 82 103 60 111 C38 103 20 86 20 60 V28 Z" fill="none" stroke="#fff" stroke-width="6"/><path d="M36 66 L54 48 L65 58 L84 39" fill="none" stroke="#38bdf8" stroke-width="7.5"/></svg></div>
         <h1 class="text-base font-extrabold text-[#1e3a6e] uppercase m-0">АРМ Следователя</h1>
-        <p class="text-xs text-slate-500 mt-1">Вход в рабочее место</p>
       </div>
       <div class="auth-tabs grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-xl mb-4">
         <button type="button" id="tabLogin" class="py-2 text-sm font-bold text-[#334e7b] bg-white shadow-sm rounded-lg">Вход</button>
@@ -135,7 +153,6 @@
   <div id="appShell" class="hidden">
     <div class="app-container">
       
-      <!-- Мягкая шапка -->
       <div class="top-header">
         <div class="flex justify-between items-center mb-4">
           <span id="userEmailSub" class="text-xs font-medium text-slate-400 truncate">почта</span>
@@ -158,19 +175,27 @@
 
         <section class="card">
           <div class="calendar-header">
-            <button type="button" class="btn-ghost px-3 py-1.5" data-action="shift-month" data-delta="-1">◀</button>
-            <div id="calendarMonthTitle" class="calendar-title">Ноябрь 2026</div>
-            <button type="button" class="btn-ghost px-3 py-1.5" data-action="shift-month" data-delta="1">▶</button>
+            <button type="button" class="btn-ghost px-3 py-1.5" data-action="shift-date" data-delta="-1">◀</button>
+            <div id="calendarMonthTitle" class="calendar-title text-center">Ноябрь 2026</div>
+            <button type="button" class="btn-ghost px-3 py-1.5" data-action="shift-date" data-delta="1">▶</button>
           </div>
+
+          <!-- ПЕРЕКЛЮЧАТЕЛЬ ВИДОВ -->
+          <div class="view-toggles">
+            <button class="view-btn active" id="btnViewMonth" data-action="set-cal-view" data-view="month">Месяц</button>
+            <button class="view-btn" id="btnViewWeek" data-action="set-cal-view" data-view="week">Неделя</button>
+            <button class="view-btn" id="btnViewDay" data-action="set-cal-view" data-view="day">День</button>
+          </div>
+
           <div class="flex justify-between items-center mb-3">
             <button type="button" class="btn-secondary text-[11px] py-1.5 px-4" data-action="go-today">Сегодня</button>
             <button type="button" class="btn-primary text-[11px] py-1.5 px-4" data-action="open-event-new">+ Событие</button>
           </div>
+          
           <div class="color-filters" id="calendarColorFilterBar"></div>
-          <div class="month-grid">
-            <div class="weekday">Пн</div><div class="weekday">Вт</div><div class="weekday">Ср</div><div class="weekday">Чт</div><div class="weekday">Пт</div><div class="weekday">Сб</div><div class="weekday">Вс</div>
-          </div>
-          <div id="calendarMonthGrid" class="month-grid mt-1"></div>
+          
+          <!-- Сетка (наполняется из JS) -->
+          <div id="calendarContainer"></div>
         </section>
 
         <div class="card">
@@ -243,17 +268,15 @@
       <!-- ВКЛАДКА 5: ПРОФИЛЬ -->
       <main id="view-profile" class="hidden">
         
-        <!-- СИНХРОНИЗАЦИЯ И ВОССТАНОВЛЕНИЕ -->
         <div class="sub-block">
           <div class="sub-header" data-action="toggle-accordion" data-target="profSyncBody"><span>Синхронизация</span><span id="chev-profSyncBody">▼</span></div>
           <div id="profSyncBody" class="sub-body">
             <div class="text-xs mb-4 text-slate-600">Аккаунт: <span id="settingsEmail"></span><br>Последняя синхр: <span id="lastSyncTime">-</span></div>
             <div class="flex flex-col gap-2">
-              <button type="button" class="btn-primary text-xs w-full bg-blue-600" data-action="force-pull-cloud">Принудительно скачать из облака (Восстановление)</button>
+              <button type="button" class="btn-primary text-xs w-full bg-blue-600" data-action="force-pull-cloud">Принудительно скачать из облака</button>
               <div class="flex gap-2">
                 <button type="button" class="btn-secondary text-xs flex-1" data-action="pull-from-cloud">Обновить</button>
-                <button type="button" class="btn-ghost text-xs flex-1" data-action="export-backup">Экспорт .JSON</button>
-                <button type="button" class="btn-ghost text-xs text-red-600 flex-1" data-action="logout">Выйти</button>
+                <button type="button" class="btn-ghost text-xs flex-1" data-action="logout">Выйти</button>
               </div>
             </div>
           </div>
@@ -282,7 +305,7 @@
           </div>
         </div>
 
-        <!-- БАЗА ЗНАНИЙ -->
+        <!-- БАЗА ЗНАНИЙ (ЛИЧНЫЕ) -->
         <div class="sub-block">
           <div class="sub-header" data-action="toggle-accordion" data-target="profKbBody"><span>Моя база знаний</span><span id="chev-profKbBody">▼</span></div>
           <div id="profKbBody" class="sub-body">
@@ -298,22 +321,22 @@
           </div>
         </div>
 
-        <!-- АДМИН-ПАНЕЛЬ -->
+        <!-- АДМИН-ПАНЕЛЬ (ZIP) -->
         <div id="adminPanelBlock" class="sub-block hidden border-2 border-red-200">
           <div class="sub-header bg-red-50 text-red-800" data-action="toggle-accordion" data-target="adminPanelBody">
             <span>Управление общими бланками</span><span id="chev-adminPanelBody">▼</span>
           </div>
           <div id="adminPanelBody" class="sub-body">
             <div class="bg-red-50 p-3 rounded-xl mb-4 border border-red-200">
-              <label class="text-[11px] font-bold text-red-800 block mb-2">Загрузить общий бланк для всех</label>
-              <input type="text" id="adminTitle" class="soft-input mb-2 text-xs" placeholder="Название" />
+              <label class="text-[11px] font-bold text-red-800 block mb-2">Загрузить папку с бланками (.ZIP)</label>
+              <p class="text-[10px] text-red-600 mb-2">Программа распакует архив, возьмет названия файлов (без расширения) как заголовки и загрузит их для всех.</p>
               <select id="adminCategory" class="soft-select mb-2 text-xs">
                 <option value="Постановления">Постановления</option>
                 <option value="Протоколы">Протоколы</option>
                 <option value="Иные">Иные документы</option>
               </select>
-              <input type="file" id="adminFileInput" class="text-xs w-full mb-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-red-600 file:text-white cursor-pointer" />
-              <button type="button" class="btn-primary w-full text-xs bg-red-600 py-3" data-action="admin-upload-blank">Загрузить</button>
+              <input type="file" id="adminZipInput" accept=".zip" class="text-xs w-full mb-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-red-600 file:text-white cursor-pointer" />
+              <button type="button" class="btn-primary w-full text-xs bg-red-600 py-3" data-action="admin-upload-zip" id="btnAdminZip">Загрузить архив</button>
             </div>
             <div id="adminBlanksList" class="space-y-2"></div>
           </div>
@@ -331,7 +354,7 @@
     </nav>
   </div>
 
-  <!-- МОДАЛКИ (оставил как было) -->
+  <!-- МОДАЛКИ -->
   <div id="editCaseModal" class="modal-overlay hidden" data-action="overlay-close" data-modal="editCaseModal">
     <div class="modal-sheet">
       <div class="flex justify-between items-center mb-4"><h3 class="text-sm font-extrabold text-[#243b61] m-0">Редактирование УД</h3><button type="button" class="text-slate-400 font-bold" data-action="close-edit-case">✕</button></div>
@@ -404,11 +427,17 @@
     }
 
     let currentUser = null; let authMode = 'login'; let syncTimer = null; let ws = defaultWorkspace();
-    let currentViewDate = new Date(); let selectedDay = getTodayIso(); let activeColorFilter = 'all'; let modalPickedColor = 'work';
+    
+    // Календарь: переменные вида
+    let calendarView = 'month'; // 'month', 'week', 'day'
+    let currentViewDate = new Date(); 
+    let selectedDay = getTodayIso(); 
+    
+    let activeColorFilter = 'all'; let modalPickedColor = 'work';
     let tempArticles = []; let tempParticipants = []; let tempPlans = []; let editArticles = []; let editParticipants = []; let editPlans = [];
     let currentBlankGrp = 'Постановления'; let kbSelectedCats = [];
 
-    function showToast(msg) { const bar = document.getElementById('toastBar'); bar.textContent = msg; bar.classList.add('show'); clearTimeout(bar._t); bar._t = setTimeout(() => bar.classList.remove('show'), 3000); }
+    function showToast(msg) { const bar = document.getElementById('toastBar'); bar.textContent = msg; bar.classList.add('show'); clearTimeout(bar._t); bar._t = setTimeout(() => bar.classList.remove('show'), 4000); }
     function daysUntil(deadlineIso) { if (!deadlineIso) return 999; return Math.ceil((parseDate(deadlineIso) - parseDate(getTodayIso())) / (1000 * 60 * 60 * 24)); }
 
     function setNetIndicator() { const online = navigator.onLine; document.getElementById('netDot').className = `w-2 h-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-amber-400'}`; document.getElementById('netText').innerHTML = `<span class="w-2 h-2 rounded-full ${online?'bg-emerald-400':'bg-amber-400'}"></span> ${online ? 'Онлайн' : 'Офлайн'}`; }
@@ -423,11 +452,10 @@
       if (!navigator.onLine) return;
       try {
         const { data, error } = await supabaseClient.from('global_blanks').select('*').order('created_at', { ascending: false });
-        if (!error && data) { globalBlanks = data; renderBlankSelect(); }
+        if (!error && data) { globalBlanks = data; renderBlankSelect(); if(currentUser?.email === ADMIN_EMAIL) renderAdminBlanks(); }
       } catch (e) { console.log('Global blanks fetch error:', e); }
     }
 
-    // Логика защиты от перезаписи пустыми данными
     async function pullFromCloud(isForce = false) {
       if (!currentUser || !navigator.onLine) { setCloudIndicator('warn', 'Офлайн'); return; }
       setCloudIndicator('sync', 'Загрузка...');
@@ -436,19 +464,13 @@
         if (error) throw error;
         if (data && data.workspace_data) {
           const cloudWs = normalizeWorkspacePayload(data.workspace_data);
-          
           const cloudTs = new Date(data.updated_at || 0).getTime();
           const localTs = new Date(ws.updatedAt || 0).getTime();
           
-          // Если принудительно или облако новее или локально пусто - берем из облака
           if (isForce || cloudTs >= localTs || (!ws.casesData.length && cloudWs.casesData.length)) {
-            ws = cloudWs; 
-            ws.casesData.forEach(c => syncCaseDeadlineInCalendar(c)); 
-            saveLocal();
-            if(isForce) showToast('Данные успешно восстановлены из облака!');
-          } else {
-            await pushToCloud();
-          }
+            ws = cloudWs; ws.casesData.forEach(c => syncCaseDeadlineInCalendar(c)); saveLocal();
+            if(isForce) showToast('Данные восстановлены из облака!');
+          } else { await pushToCloud(); }
         } else { await pushToCloud(); }
         syncProfileInputs(); renderAll(); setCloudIndicator('ok', 'Облако'); document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
       } catch (err) { setCloudIndicator('warn', 'Сеть'); }
@@ -497,9 +519,21 @@
       else { document.getElementById('tileToday').classList.add('active'); goToday(); }
     }
 
-    function shiftMonth(delta) { currentViewDate.setMonth(currentViewDate.getMonth() + delta); renderCalendarSection(); }
+    // === ЛОГИКА КАЛЕНДАРЯ (МЕСЯЦ / НЕДЕЛЯ / ДЕНЬ) ===
+    function setCalendarView(view) {
+      calendarView = view;
+      ['month', 'week', 'day'].forEach(v => document.getElementById('btnView' + v.charAt(0).toUpperCase() + v.slice(1)).classList.toggle('active', v === view));
+      renderCalendarSection();
+    }
+
+    function shiftDate(delta) {
+      if (calendarView === 'month') currentViewDate.setMonth(currentViewDate.getMonth() + delta);
+      else if (calendarView === 'week') currentViewDate.setDate(currentViewDate.getDate() + (delta * 7));
+      else currentViewDate.setDate(currentViewDate.getDate() + delta);
+      renderCalendarSection();
+    }
+
     function goToday() { currentViewDate = new Date(); selectedDay = getTodayIso(); renderCalendarSection(); }
-    function jumpToDate(iso) { if(!iso) return; currentViewDate = parseDate(iso); selectedDay = iso; }
     function selectDay(iso) { selectedDay = iso; renderCalendarSection(); }
     function setColorFilter(key) { activeColorFilter = key; renderCalendarSection(); }
 
@@ -511,28 +545,88 @@
       }).join('');
 
       const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-      document.getElementById('calendarMonthTitle').textContent = `${months[currentViewDate.getMonth()]} ${currentViewDate.getFullYear()}`;
+      const titleEl = document.getElementById('calendarMonthTitle');
+      const container = document.getElementById('calendarContainer');
 
-      const year = currentViewDate.getFullYear(), month = currentViewDate.getMonth();
-      const firstDay = new Date(year, month, 1), lastDay = new Date(year, month + 1, 0);
-      const startDayOfWeek = (firstDay.getDay() + 6) % 7, daysInMonth = lastDay.getDate();
-      const todayIso = getTodayIso(); let gridHtml = '';
-
-      for (let i = 0; i < startDayOfWeek; i++) gridHtml += `<div class="day-cell other-month"></div>`;
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const isToday = dateStr === todayIso, isSel = dateStr === selectedDay;
-        const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(dateStr)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a, b) => a.dt.localeCompare(b.dt));
+      if (calendarView === 'month') {
+        titleEl.textContent = `${months[currentViewDate.getMonth()]} ${currentViewDate.getFullYear()}`;
         
-        let evHtml = dayEvs.slice(0, 3).map(ev => {
-          const cat = cats[ev.color] || { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
-          return `<div class="mini-event" style="background:${cat.bg}; color:${cat.text}; border-left-color:${cat.border};" data-action="open-event" data-id="${esc(ev.id)}">${esc(ev.title)}</div>`;
-        }).join('');
-        if (dayEvs.length > 3) evHtml += `<div class="text-[9px] font-bold text-center text-slate-400 mt-0.5">+${dayEvs.length - 3}</div>`;
+        const year = currentViewDate.getFullYear(), month = currentViewDate.getMonth();
+        const firstDay = new Date(year, month, 1), lastDay = new Date(year, month + 1, 0);
+        const startDayOfWeek = (firstDay.getDay() + 6) % 7, daysInMonth = lastDay.getDate();
+        const todayIso = getTodayIso(); let gridHtml = '';
 
-        gridHtml += `<div class="day-cell ${isSel ? 'selected' : ''} ${isToday ? 'today' : ''}" data-action="select-day" data-id="${dateStr}"><div class="day-num">${d}</div><div class="flex-1 flex flex-col gap-0.5 overflow-hidden mt-1">${evHtml}</div></div>`;
+        gridHtml += `<div class="month-grid mb-1"><div class="weekday">Пн</div><div class="weekday">Вт</div><div class="weekday">Ср</div><div class="weekday">Чт</div><div class="weekday">Пт</div><div class="weekday">Сб</div><div class="weekday">Вс</div></div>`;
+        gridHtml += `<div class="month-grid">`;
+
+        for (let i = 0; i < startDayOfWeek; i++) gridHtml += `<div class="day-cell other-month"></div>`;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const isToday = dateStr === todayIso, isSel = dateStr === selectedDay;
+          const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(dateStr)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter);
+
+          // Рисуем только цветные точки!
+          let dotsHtml = dayEvs.slice(0, 4).map(ev => {
+            const cat = cats[ev.color] || { border: '#cbd5e1' };
+            return `<div class="w-2 h-2 rounded-full" style="background:${cat.border}"></div>`;
+          }).join('');
+          if (dayEvs.length > 4) dotsHtml += `<div class="text-[8px] font-bold text-slate-400">+</div>`;
+
+          gridHtml += `<div class="day-cell ${isSel ? 'selected' : ''} ${isToday ? 'today' : ''}" data-action="select-day" data-id="${dateStr}"><div class="day-num">${d}</div><div class="event-dots">${dotsHtml}</div></div>`;
+        }
+        gridHtml += `</div>`;
+        container.innerHTML = gridHtml;
+
+      } else if (calendarView === 'week') {
+        // Логика недели
+        const monday = new Date(currentViewDate);
+        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+        titleEl.textContent = `Неделя ${monday.getDate()}-${new Date(monday.getTime() + 6*86400000).getDate()} ${months[monday.getMonth()]}`;
+        
+        let gridHtml = `<div class="month-grid mb-1"><div class="weekday">Пн</div><div class="weekday">Вт</div><div class="weekday">Ср</div><div class="weekday">Чт</div><div class="weekday">Пт</div><div class="weekday">Сб</div><div class="weekday">Вс</div></div><div class="month-grid">`;
+        const todayIso = getTodayIso();
+        
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(monday); d.setDate(monday.getDate() + i);
+          const dateStr = toIsoDate(d);
+          const isToday = dateStr === todayIso, isSel = dateStr === selectedDay;
+          const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(dateStr)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter);
+          
+          let dotsHtml = dayEvs.map(ev => {
+            const cat = cats[ev.color] || { border: '#cbd5e1' };
+            return `<div class="w-2 h-2 rounded-full" style="background:${cat.border}"></div>`;
+          }).join('');
+
+          gridHtml += `<div class="day-cell ${isSel ? 'selected' : ''} ${isToday ? 'today' : ''}" data-action="select-day" data-id="${dateStr}"><div class="day-num">${d.getDate()}</div><div class="event-dots">${dotsHtml}</div></div>`;
+        }
+        gridHtml += `</div>`;
+        container.innerHTML = gridHtml;
+
+      } else if (calendarView === 'day') {
+        // Логика дня
+        titleEl.textContent = `${selectedDay} (${['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][parseDate(selectedDay).getDay()]})`;
+        
+        const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(selectedDay)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a,b)=>a.dt.localeCompare(b.dt));
+        
+        let html = `<div class="p-4 border rounded-xl bg-slate-50 min-h-[200px]">`;
+        if(!dayEvs.length) html += `<div class="text-center text-slate-400 text-sm py-10">На этот день событий нет</div>`;
+        else {
+          html += dayEvs.map(ev => {
+            const cat = cats[ev.color] || { border: '#cbd5e1', bg: '#f1f5f9' };
+            const time = (ev.dt.split('T')[1]||'').slice(0,5);
+            return `<div class="flex gap-3 mb-3 cursor-pointer" data-action="open-event" data-id="${esc(ev.id)}">
+              <div class="text-xs font-bold text-slate-600 w-10 pt-1 text-right">${time}</div>
+              <div class="flex-1 p-2 rounded-lg border-l-4" style="background:${cat.bg}; border-color:${cat.border}">
+                <div class="text-sm font-bold text-slate-800">${esc(ev.title)}</div>
+                <div class="text-[11px] text-slate-500">${esc(ev.caseNum)}</div>
+              </div>
+            </div>`;
+          }).join('');
+        }
+        html += `</div>`;
+        container.innerHTML = html;
       }
-      document.getElementById('calendarMonthGrid').innerHTML = gridHtml;
+
       renderSelectedDayEvents();
     }
 
@@ -588,6 +682,7 @@
     }
     function deleteCalendarEvent() { ws.eventsData = ws.eventsData.filter(x => x.id !== document.getElementById('evEditId').value); closeEventModal(); renderAll(); scheduleSync(); showToast('Удалено'); }
 
+    // === ДЕЛА ===
     function renderCasesList() {
       const q = (document.getElementById('caseSearchInput')?.value || '').toLowerCase();
       const filter = document.getElementById('caseFilterSelect')?.value || 'all';
@@ -709,37 +804,57 @@
     function delKb(id) { if (confirm('Удалить материал?')) { ws.kbMaterials = ws.kbMaterials.filter(m => m.id !== id); renderKbSection(); scheduleSync(); } }
     function toggleKbCat(c) { if(kbSelectedCats.includes(c)) kbSelectedCats=kbSelectedCats.filter(x=>x!==c); else kbSelectedCats.push(c); renderKbSection(); }
 
-    async function adminUploadBlank() {
-      const title = document.getElementById('adminTitle').value.trim();
+    // === ZIP UPLOAD ===
+    async function adminUploadZip() {
+      const fileInput = document.getElementById('adminZipInput');
+      const file = fileInput.files[0];
       const category = document.getElementById('adminCategory').value;
-      const file = document.getElementById('adminFileInput').files[0];
       
-      if (!title || !file) { showToast('Введите название и выберите файл'); return; }
+      if (!file) { showToast('Выберите ZIP-архив'); return; }
       if (!navigator.onLine) { showToast('Нужен интернет'); return; }
-      
-      const btn = document.querySelector('[data-action="admin-upload-blank"]');
-      btn.textContent = 'Загрузка...'; btn.disabled = true;
+      if (typeof JSZip === 'undefined') { showToast('Ошибка: Библиотека JSZip не загрузилась'); return; }
+
+      const btn = document.getElementById('btnAdminZip');
+      btn.textContent = 'Распаковка...'; btn.disabled = true;
 
       try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `admin_${Date.now()}.${fileExt}`;
-        const { data, error } = await supabaseClient.storage.from('global-blanks').upload(fileName, file);
-        if (error) throw error;
-        const { data: urlData } = supabaseClient.storage.from('global-blanks').getPublicUrl(fileName);
-        
-        const { error: dbErr } = await supabaseClient.from('global_blanks').insert([{ title, category, file_url: urlData.publicUrl }]);
-        if (dbErr) throw dbErr;
+        const zip = await JSZip.loadAsync(file);
+        const fileNames = Object.keys(zip.files).filter(name => {
+          // Игнорируем папки и системные файлы
+          return !zip.files[name].dir && !name.includes('__MACOSX') && !name.startsWith('.');
+        });
 
-        document.getElementById('adminTitle').value = '';
-        document.getElementById('adminFileInput').value = '';
+        if (fileNames.length === 0) { showToast('Архив пуст'); btn.textContent = 'Загрузить архив'; btn.disabled = false; return; }
+
+        let uploadedCount = 0;
+        for (const fileName of fileNames) {
+          btn.textContent = `Загрузка ${uploadedCount + 1} из ${fileNames.length}...`;
+          
+          const fileData = await zip.files[fileName].async('blob');
+          const cleanTitle = fileName.split('/').pop().replace(/\.[^/.]+$/, "").replace(/_/g, ' '); // Убираем расширение и _
+          const ext = fileName.split('.').pop();
+          const newFileName = `admin_${Date.now()}_${Math.random().toString(36).substring(4)}.${ext}`;
+
+          // Загружаем файл
+          const { data, error } = await supabaseClient.storage.from('global-blanks').upload(newFileName, fileData);
+          if (error) { console.error('File upload error:', error); continue; }
+          
+          const { data: urlData } = supabaseClient.storage.from('global-blanks').getPublicUrl(newFileName);
+          
+          // Записываем в БД
+          await supabaseClient.from('global_blanks').insert([{ title: cleanTitle, category: category, file_url: urlData.publicUrl }]);
+          uploadedCount++;
+        }
+
+        fileInput.value = '';
         await fetchGlobalBlanks();
         renderAdminBlanks();
-        showToast('Бланк загружен для всех!');
+        showToast(`Успешно загружено файлов: ${uploadedCount}`);
       } catch (err) {
         console.error(err);
-        showToast('Ошибка: ' + (err.message || 'Проверьте политики Supabase'));
+        showToast('Ошибка при распаковке архива');
       } finally {
-        btn.textContent = 'Загрузить'; btn.disabled = false;
+        btn.textContent = 'Загрузить архив'; btn.disabled = false;
       }
     }
 
@@ -842,17 +957,20 @@
     document.body.addEventListener('click', (e) => {
       const el=e.target.closest('[data-action]'); if(!el)return;
       const action=el.dataset.action,id=el.dataset.id,idx=el.dataset.idx!==undefined?Number(el.dataset.idx):undefined;
-      const key=el.dataset.key,grp=el.dataset.grp,cat=el.dataset.cat,kind=el.dataset.kind,delta=el.dataset.delta,tab=el.dataset.tab,modalId=el.dataset.modal;
+      const key=el.dataset.key,grp=el.dataset.grp,cat=el.dataset.cat,kind=el.dataset.kind,delta=el.dataset.delta,tab=el.dataset.tab,modalId=el.dataset.modal,view=el.dataset.view;
+      
       if(action==='overlay-close'){ if(e.target.id===modalId)document.getElementById(modalId).classList.add('hidden'); return; }
+      
       switch(action) {
+        case 'set-cal-view': setCalendarView(view); break;
+        case 'shift-date': shiftDate(Number(delta)); break;
         case 'force-pull-cloud': pullFromCloud(true); break;
-        case 'admin-upload-blank': adminUploadBlank(); break;
+        case 'admin-upload-zip': adminUploadZip(); break;
         case 'admin-del-blank': adminDeleteBlank(id, el.dataset.file); break;
         case 'download-original-file': downloadOriginalFile(); break;
         case 'pull-from-cloud': pullFromCloud(); break;
         case 'focus-metric': focusMetric(kind); break;
         case 'toggle-accordion': toggleAccordion(el.dataset.target); break;
-        case 'shift-month': shiftMonth(Number(delta)); break;
         case 'go-today': goToday(); break;
         case 'open-event-new': openEventModal(); break;
         case 'open-event': openEventModal(id); break;
