@@ -16,7 +16,7 @@
       const msg = document.getElementById('authMsg');
       if (msg && document.getElementById('authScreen') && !document.getElementById('authScreen').classList.contains('hidden')) {
         msg.textContent = 'Ошибка страницы: ' + (e.message || 'неизвестная ошибка');
-        msg.className = 'text-xs p-2 rounded mb-3 bg-red-100 text-red-700 block';
+        msg.className = 'text-xs p-2.5 rounded-xl mb-3 bg-red-100 text-red-700 block';
       }
     });
 
@@ -26,58 +26,76 @@
       return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
     }
 
-    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-      window.supabase = {
-        createClient: function(url) {
-          const sessionKey = 'sb-' + ((url || '').replace(/^https?:\/\//, '').split('.')[0] || 'local') + '-auth-token';
-          function readSession() { try { const raw = localStorage.getItem(sessionKey); if (!raw) return null; const p = JSON.parse(raw); const s = p.currentSession ? p.currentSession : p; return (s && s.user) ? s : null; } catch (e) { return null; } }
-          function writeSession(user) { const s = { access_token: 'offline', user }; try { localStorage.setItem(sessionKey, JSON.stringify(s)); } catch (e) {} return s; }
+    function createFallbackSupabase(url) {
+      const sessionKey = 'sb-' + ((url || '').replace(/^https?:\/\//, '').split('.')[0] || 'local') + '-auth-token';
+      function readSession() {
+        try {
+          const raw = localStorage.getItem(sessionKey);
+          if (!raw) return null;
+          const p = JSON.parse(raw);
+          const s = p.currentSession ? p.currentSession : p;
+          return (s && s.user) ? s : null;
+        } catch (e) { return null; }
+      }
+      function writeSession(user) {
+        const s = { access_token: 'offline', user };
+        try { localStorage.setItem(sessionKey, JSON.stringify(s)); } catch (e) {}
+        return s;
+      }
+      return {
+        _isFallback: true,
+        auth: {
+          async getSession() { return { data: { session: readSession() }, error: null }; },
+          async signInWithPassword({ email, password }) {
+            if (!password || password.length < 6) return { error: { message: 'Пароль должен быть не короче 6 символов' } };
+            const passKey = 'iar_pass_' + email.toLowerCase();
+            const stored = localStorage.getItem(passKey);
+            const curr = await sha256Hex(email.toLowerCase() + ':' + password);
+            if (stored && stored !== curr) return { error: { message: 'Неверный пароль для этого аккаунта' } };
+            if (!stored) localStorage.setItem(passKey, curr);
+            let user = readSession()?.user;
+            if (!user || user.email.toLowerCase() !== email.toLowerCase()) {
+              user = { id: 'off_' + btoa(unescape(encodeURIComponent(email.toLowerCase()))).slice(0, 12), email };
+            }
+            const s = writeSession(user);
+            return { data: { session: s, user }, error: null };
+          },
+          async signUp({ email, password }) {
+            return this.signInWithPassword({ email, password });
+          },
+          async signOut() {
+            localStorage.removeItem(sessionKey);
+            return { error: null };
+          }
+        },
+        from() {
           return {
-            auth: {
-              async getSession() { return { data: { session: readSession() }, error: null }; },
-              async signInWithPassword({ email, password }) {
-                if (!password || password.length < 6) return { error: { message: 'Пароль от 6 символов' } };
-                const passKey = 'iar_pass_' + email;
-                const stored = localStorage.getItem(passKey);
-                const curr = await sha256Hex(email + ':' + password);
-                if (stored && stored !== curr) return { error: { message: 'Неверный пароль' } };
-                if (!stored) localStorage.setItem(passKey, curr);
-                let user = readSession()?.user;
-                if (!user || user.email !== email) user = { id: 'off_' + btoa(unescape(encodeURIComponent(email))).slice(0, 12), email };
-                const s = writeSession(user);
-                return { data: { session: s, user }, error: null };
-              },
-              async signUp({ email, password }) {
-                return this.signInWithPassword({ email, password });
-              },
-              async signOut() { localStorage.removeItem(sessionKey); return { error: null }; }
-            },
-            from() {
+            select() {
               return {
-                select() {
-                  return {
-                    eq() { return { async maybeSingle() { return { data: null, error: { code: 'OFF' } }; } }; },
-                    async order() { return { data: [], error: null }; }
-                  };
-                },
-                async upsert() { return { error: { code: 'OFF' } }; },
-                async insert() { return { error: { code: 'OFF' } }; },
-                update() { return { async eq() { return { error: { code: 'OFF' } }; } }; },
-                delete() { return { async eq() { return { error: { code: 'OFF' } }; } }; }
+                eq() { return { async maybeSingle() { return { data: null, error: { code: 'OFF' } }; } }; },
+                async order() { return { data: [], error: null }; }
               };
             },
-            storage: {
-              from() {
-                return {
-                  async upload() { return { error: { message: 'Офлайн-режим: загрузка в облако недоступна' } }; },
-                  getPublicUrl() { return { data: { publicUrl: '' } }; },
-                  async remove() { return { error: { code: 'OFF' } }; }
-                };
-              }
-            }
+            async upsert() { return { error: { code: 'OFF' } }; },
+            async insert() { return { error: { code: 'OFF' } }; },
+            update() { return { async eq() { return { error: { code: 'OFF' } }; } }; },
+            delete() { return { async eq() { return { error: { code: 'OFF' } }; } }; }
           };
+        },
+        storage: {
+          from() {
+            return {
+              async upload() { return { error: { message: 'Офлайн-режим: загрузка в облако недоступна' } }; },
+              getPublicUrl() { return { data: { publicUrl: '' } }; },
+              async remove() { return { error: { code: 'OFF' } }; }
+            };
+          }
         }
       };
+    }
+
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      window.supabase = { createClient: createFallbackSupabase };
     }
   </script>
   <style>
@@ -155,12 +173,15 @@
         <button type="button" id="tabLogin" class="py-2 text-sm font-bold text-[#334e7b] bg-white shadow-sm rounded-lg">Вход</button>
         <button type="button" id="tabRegister" class="py-2 text-sm font-bold text-gray-500 rounded-lg">Регистрация</button>
       </div>
-      <div id="authMsg" class="text-xs p-2 rounded mb-3 hidden"></div>
+      <div id="authMsg" class="text-xs p-2.5 rounded-xl mb-3 hidden"></div>
       <form id="authForm" class="space-y-3">
-        <div><label class="text-xs font-bold text-gray-600">Почта</label><input type="email" id="authEmail" class="soft-input" required /></div>
-        <div><label class="text-xs font-bold text-gray-600">Пароль</label><input type="password" id="authPassword" class="soft-input" minlength="6" required /></div>
+        <div><label class="text-xs font-bold text-gray-600">Почта</label><input type="email" id="authEmail" class="soft-input" autocomplete="email" required /></div>
+        <div><label class="text-xs font-bold text-gray-600">Пароль</label><input type="password" id="authPassword" class="soft-input" autocomplete="current-password" minlength="6" required /></div>
         <button type="submit" id="authSubmitBtn" class="btn-primary w-full py-3 mt-2">Войти</button>
       </form>
+      <div id="offlineEnterWrap" class="mt-3 hidden">
+        <button type="button" id="offlineEnterBtn" class="btn-secondary w-full py-2.5 text-xs">Войти в локальный режим без облака</button>
+      </div>
     </div>
   </div>
 
@@ -495,4 +516,1180 @@
       69: 'Постановление о выплате процессуальных издержек',
       70: 'Постановление о производстве выплат в возмещение реабилитированному имущественного вреда',
       71: 'Постановление о производстве выплат в возмещение имущественного вреда юридическому лицу',
-      72: 'Постановление о
+      72: 'Постановление о возвращении вещественных доказательств',
+      73: 'Постановление о передаче вещественных доказательств для реализации',
+      74: 'Постановление о непредъявлении несовершеннолетнему обвиняемому для ознакомления тех материалов уголовного дела, которые могут оказать на него отрицательное воздействие',
+      75: 'Постановление о (об отказе в) восстановлении пропущенного срока',
+      76: 'Постановление (об удовлетворении ходатайства либо о полном или частичном отказе в его удовлетворении)',
+      77: 'Постановление о возбуждении перед судом ходатайства об избрании меры пресечения в виде залога (от имени следователя)',
+      78: 'Постановление об оставлении осужденного в следственном изоляторе для производства следственных и иных процессуальных действий (от имени следователя)',
+      79: 'Постановление о переводе осужденного из исправительного учреждения в следственный изолятор для производства следственных и иных процессуальных действий (от имени следователя)',
+      80: 'Постановление о рассмотрении заявления об отводе',
+      81: 'Постановление о рассмотрении заявления о самоотводе',
+      82: 'Постановление о принятии мер попечения о детях, иждивенцах подозреваемого или обвиняемого, задержанного или заключенного под стражу',
+      83: 'Постановление о принятии мер по обеспечению сохранности имущества и жилища подозреваемого или обвиняемого, задержанного или заключенного под стражу',
+      84: 'Постановление о признании невозможным предъявления вещественных доказательств',
+      85: 'Постановление о возбуждении перед судом ходатайства об установлении определенного срока для ознакомления обвиняемого и (или) его защитника с материалами уголовного дела (от имени следователя)',
+      86: 'Постановление об окончании производства ознакомления обвиняемого и (или) его защитника с материалами уголовного дела',
+      87: 'Постановление об избрании меры пресечения в виде присмотра за несовершеннолетним обвиняемым (подозреваемым)',
+      88: 'Постановление об избрании меры пресечения в виде личного поручительства'
+    };
+
+    const PROTOKOLY_REGISTRY = {
+      1: 'Протокол принятия устного заявления о преступлении',
+      2: 'Протокол явки с повинной',
+      3: 'Протокол осмотра места происшествия',
+      4: 'Протокол осмотра трупа',
+      5: 'Протокол задержания подозреваемого',
+      6: 'Протокол личного обыска',
+      7: 'Протокол допроса подозреваемого',
+      8: 'Протокол эксгумации и осмотра трупа',
+      9: 'Протокол осмотра предметов (документов)',
+      10: 'Протокол допроса потерпевшего',
+      11: 'Протокол допроса свидетеля',
+      12: 'Протокол допроса свидетеля (потерпевшего) с участием переводчика',
+      13: 'Протокол очной ставки',
+      14: 'Протокол предъявления лица для опознания',
+      15: 'Протокол предъявления лица для опознания в условиях, исключающих визуальное наблюдение им опознающего',
+      16: 'Протокол предъявления для опознания по фотографии',
+      17: 'Протокол предъявления трупа для опознания',
+      18: 'Протокол предъявления предмета для опознания',
+      19: 'Протокол освидетельствования',
+      20: 'Протокол наложения ареста на имущество',
+      21: 'Протокол наложения ареста на ценные бумаги',
+      22: 'Протокол наложения ареста на денежные средства и иные ценности, находящиеся на счете, во вкладе или на хранении в банках и иных кредитных организациях',
+      23: 'Протокол обыска (выемки)',
+      24: 'Протокол осмотра местности, жилища, иного помещения',
+      25: 'Протокол осмотра и прослушивания фонограммы',
+      26: 'Постановление о привлечении в качестве обвиняемого',
+      27: 'Протокол допроса обвиняемого',
+      28: 'Протокол дополнительного допроса обвиняемого',
+      29: 'Протокол о принятии залога',
+      30: 'Протокол о нарушении участниками уголовного судопроизводства процессуальных обязанностей и (или) невыполнении обязательств, связанных с внесенным залогом',
+      31: 'Протокол следственного эксперимента',
+      32: 'Протокол проверки показаний на месте',
+      33: 'Протокол допроса несовершеннолетнего подозреваемого',
+      34: 'Протокол допроса несовершеннолетнего обвиняемого',
+      35: 'Протокол допроса несовершеннолетнего потерпевшего (свидетеля)',
+      36: 'Протокол получения образцов для сравнительного исследования',
+      37: 'Протокол ознакомления (потерпевшего и (или) его представителя) с постановлением о назначении судебной экспертизы',
+      38: 'Протокол ознакомления (обвиняемого, подозреваемого, защитника) с постановлением о назначении судебной экспертизы',
+      39: 'Протокол ознакомления (кого именно) с заключением эксперта',
+      40: 'Протокол допроса эксперта',
+      41: 'Протокол предъявления для ознакомления защитнику материалов уголовного дела в ходе предварительного расследования',
+      42: 'Протокол уничтожения вещественных доказательств',
+      43: 'Протокол уведомления об окончании следственных действий',
+      44: 'Протокол ознакомления (потерпевшего, гражданского истца, гражданского ответчика, их представителей) с материалами уголовного дела',
+      45: 'Протокол ознакомления обвиняемого и (или) его защитника с материалами уголовного дела',
+      46: 'Протокол ознакомления законного представителя и (или) защитника лица, в отношении которого осуществляется производство о применении принудительных мер медицинского характера, с материалами уголовного дела',
+      47: 'Протокол разъяснения подозреваемому прав, предусмотренных ст. 46 УПК РФ',
+      48: 'Протокол разъяснения подозреваемому права на уведомление родственников о задержании',
+      49: 'Протокол ознакомления с сообщением эксперта о невозможности дать заключение',
+      50: 'Протокол ознакомления (потерпевшего, гражданского истца, гражданского ответчика, их представителей) с дополнительными материалами уголовного дела',
+      51: 'Протокол передачи средством массовой информации материалов и документов, подтверждающих сообщение о преступлении, а также данных о лице, предоставившем информацию',
+      52: 'Протокол осмотра и выемки почтово-телеграфной корреспонденции',
+      53: 'Протокол разъяснения подозреваемому права пользоваться помощью защитника'
+    };
+
+    function matchRegistryTitle(hintText, categoryHint = '') {
+      const txt = String(hintText || '');
+      const low = txt.toLowerCase();
+      const numMatch = txt.match(/(?:бланк|форма|№|n)\s*[\s._-]*(\d{1,2})\b/i);
+      const isProtokol = categoryHint === 'Протоколы' || /\bпротокол\b/i.test(low);
+      const isPostanovlenie = categoryHint === 'Постановления' || /\bпостановлени|\bуведомлени/i.test(low);
+
+      if (numMatch) {
+        const n = Number(numMatch[1]);
+        if (isProtokol && !isPostanovlenie && PROTOKOLY_REGISTRY[n]) return PROTOKOLY_REGISTRY[n];
+        if (isPostanovlenie && !isProtokol && POSTANOVLENIYA_REGISTRY[n]) return POSTANOVLENIYA_REGISTRY[n];
+        if (POSTANOVLENIYA_REGISTRY[n] && !isProtokol) return POSTANOVLENIYA_REGISTRY[n];
+        if (PROTOKOLY_REGISTRY[n]) return PROTOKOLY_REGISTRY[n];
+      }
+
+      const pools = isProtokol ? [PROTOKOLY_REGISTRY, POSTANOVLENIYA_REGISTRY] : [POSTANOVLENIYA_REGISTRY, PROTOKOLY_REGISTRY];
+      for (const pool of pools) {
+        for (const [, officialTitle] of Object.entries(pool)) {
+          const clean = officialTitle.toLowerCase().replace(/^(постановление|протокол|уведомление)\s+/, '');
+          const keyWords = clean.split(/[^а-яёa-z0-9]+/).filter(w => w.length >= 5).slice(0, 3);
+          if (keyWords.length >= 2 && keyWords.every(kw => low.includes(kw))) {
+            return officialTitle;
+          }
+        }
+      }
+      return '';
+    }
+
+    let globalBlanks = [];
+    const DEFAULT_CATEGORIES = {
+      court: { label: 'Суд / Прокурор', bg: '#fdf2f2', text: '#9b3b3b', border: '#d97777' },
+      work: { label: 'Следствие', bg: '#eff6ff', text: '#2c5282', border: '#5b7bb2' },
+      expert: { label: 'Экспертиза', bg: '#f0f9f4', text: '#276749', border: '#489c73' },
+      term: { label: 'Контроль', bg: '#fffbeb', text: '#8c5a19', border: '#d69e2e' }
+    };
+    const KB_CATEGORIES = ['УПК', 'Учебники', 'Запросы', 'Личное'];
+
+    function getTodayIso() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
+    function addMonthsIso(isoStr, months) { const [y, m, d] = isoStr.split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1 + months, d)); return dt.toISOString().slice(0, 10); }
+    function shiftIsoDays(isoStr, days) { const [y, m, d] = isoStr.split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d + days)); return dt.toISOString().slice(0, 10); }
+    function parseDate(str) { if (!str) return new Date(); const [y, m, d] = str.split('-').map(Number); return new Date(y, m - 1, d); }
+    function toIsoDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+    function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function cleanCaseNumber(raw) { return String(raw || '').replace(/^№\s*/i, '').trim(); }
+
+    function sanitizeDbText(raw) {
+      return String(raw || '')
+        .replace(/\\/g, '/')
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u2500-\u257F\uFFFD]/g, ' ')
+        .replace(/[ \t]+/g, ' ')
+        .trim();
+    }
+
+    function decodeZipNameSmart(rawName) {
+      const str = String(rawName || '');
+      try {
+        const bytes = new Uint8Array(str.length);
+        for (let i = 0; i < str.length; i++) {
+          bytes[i] = str.charCodeAt(i) & 0xff;
+        }
+        const cp866Decoded = new TextDecoder('ibm866', { fatal: false }).decode(bytes);
+        const cyrCount866 = (cp866Decoded.match(/[а-яА-ЯёЁ]/g) || []).length;
+        const cyrCountOrig = (str.match(/[а-яА-ЯёЁ]/g) || []).length;
+        if (cyrCount866 > cyrCountOrig) return cp866Decoded.replace(/\\/g, '/');
+      } catch (e) {}
+      return str.replace(/\\/g, '/');
+    }
+
+    function detectCategoryFromPath(fullPath, fallbackCategory) {
+      const low = String(fullPath || '').toLowerCase().replace(/\\/g, '/');
+      if (low.includes('протокол') || low.includes('protokol') || low.startsWith('protok')) return 'Протоколы';
+      if (low.includes('постанов') || low.includes('postanov') || low.startsWith('pos')) return 'Постановления';
+      if (low.includes('ины') || low.includes('other') || low.includes('sid') || low.includes('уведомл') || low.includes('запрос') || low.includes('рапорт')) return 'Иные';
+      return fallbackCategory || 'Иные';
+    }
+
+    async function extractTextFromZipEntry(zipEntry, rawName) {
+      const extMatch = decodeZipNameSmart(rawName).toLowerCase().match(/\.([a-z0-9]{1,8})$/);
+      const ext = extMatch ? extMatch[1] : '';
+      try {
+        if (ext === 'txt' || ext === 'html' || ext === 'htm') {
+          const buf = await zipEntry.async('arraybuffer');
+          const u8 = new Uint8Array(buf);
+          const utfText = new TextDecoder('utf-8', { fatal: false }).decode(u8);
+          if ((utfText.match(/[а-яА-ЯёЁ]/g) || []).length > 5) return utfText;
+          return new TextDecoder('windows-1251', { fatal: false }).decode(u8);
+        }
+        if (ext === 'rtf') {
+          const rawRtf = await zipEntry.async('string');
+          return rawRtf
+            .replace(/\\par[d]?/g, '\n')
+            .replace(/\\[a-z]+-?\d*\s?/gi, ' ')
+            .replace(/[{}]/g, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+        }
+        if (ext === 'docx') {
+          const buf = await zipEntry.async('arraybuffer');
+          const innerZip = await JSZip.loadAsync(buf);
+          const docXml = innerZip.file('word/document.xml');
+          if (!docXml) return '';
+          const xmlStr = await docXml.async('string');
+          const withBreaks = xmlStr
+            .replace(/<\/w:p>/g, '\n')
+            .replace(/<w:tab\/>/g, '    ')
+            .replace(/<[^>]+>/g, '');
+          const parser = new DOMParser();
+          const decodedEntities = parser.parseFromString(`<textarea>${withBreaks}</textarea>`, 'text/html').body.textContent || withBreaks;
+          return decodedEntities.replace(/\n{3,}/g, '\n\n').trim();
+        }
+        if (ext === 'doc') {
+          const buf = await zipEntry.async('arraybuffer');
+          const u8 = new Uint8Array(buf);
+          const dec1251 = new TextDecoder('windows-1251', { fatal: false }).decode(u8);
+          const matches = dec1251.match(/[А-Яа-яЁё№«»"().,\-–—_/:\s]{4,}/g) || [];
+          const lines = matches
+            .map(s => s.replace(/[ \t]+/g, ' ').trim())
+            .filter(s => s.length >= 4 && /[а-яА-ЯёЁ]{2,}/.test(s));
+          return lines.slice(0, 80).join('\n').trim();
+        }
+      } catch (e) {}
+      return '';
+    }
+
+    function detectTitleFromTextOrName(extractedText, rawPath, index = 0, categoryHint = '') {
+      const matched = matchRegistryTitle(`${rawPath}\n${extractedText}`, categoryHint);
+      if (matched) return matched;
+
+      const lines = String(extractedText || '')
+        .split(/\r?\n/)
+        .map(l => sanitizeDbText(l))
+        .filter(l => l.length >= 4);
+
+      const docKeywords = /(постановление|протокол|уведомление|запрос|рапорт|ходатайство|поручение|требование|справка|акт)\b/i;
+      for (let i = 0; i < Math.min(lines.length, 30); i++) {
+        const line = lines[i];
+        if (docKeywords.test(line) && line.length <= 150) {
+          const next = lines[i + 1];
+          if (/^(о|об|о том|в отношении|по факту|о производстве)\b/i.test(line) || /\b(о|об|о том|в отношении|о производстве)$/i.test(line)) {
+            if (next && next.length <= 130) return `${line} ${next}`.slice(0, 140);
+          }
+          return line.slice(0, 140);
+        }
+      }
+
+      for (let i = 0; i < Math.min(lines.length, 10); i++) {
+        if (/[а-яА-ЯёЁ]{3,}/.test(lines[i]) && lines[i].length <= 120) {
+          return lines[i].slice(0, 140);
+        }
+      }
+
+      const decoded = decodeZipNameSmart(rawPath);
+      const baseName = decoded.split('/').pop() || 'Документ';
+      const withoutExt = baseName.replace(/\.[^./]+$/, '');
+      const cleaned = sanitizeDbText(withoutExt.replace(/[_]+/g, ' '));
+      if (!cleaned || cleaned.length < 3 || !/[а-яА-ЯёЁa-zA-Z]{2,}/.test(cleaned)) {
+        return `Бланк № ${index + 1}`;
+      }
+      return cleaned;
+    }
+
+    function buildSafeStorageName(rawPath, index) {
+      const decoded = decodeZipNameSmart(rawPath);
+      const baseName = decoded.split('/').pop() || 'file.doc';
+      const extMatch = baseName.match(/\.([a-zA-Z0-9]{1,8})$/);
+      const ext = extMatch ? extMatch[1].toLowerCase() : 'bin';
+      return `blank_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    }
+
+    function jumpToDate(isoDate) {
+      if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return;
+      selectedDay = isoDate;
+      currentViewDate = parseDate(isoDate);
+    }
+
+    const defaultWorkspace = () => ({
+      eventsData: [], casesData: [], kbMaterials: [], blankTemplates: {},
+      eventCategories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
+      profile: { org: 'СО ОП № 4 СУ УМВД России', rank: 'следователь', fio: '' },
+      updatedAt: new Date().toISOString()
+    });
+
+    function normalizeWorkspacePayload(raw) {
+      const base = defaultWorkspace(); if (!raw || typeof raw !== 'object') return base;
+      return {
+        eventsData: Array.isArray(raw.eventsData) ? raw.eventsData : [],
+        casesData: Array.isArray(raw.casesData) ? raw.casesData : [],
+        kbMaterials: Array.isArray(raw.kbMaterials) ? raw.kbMaterials : [],
+        blankTemplates: (raw.blankTemplates && typeof raw.blankTemplates === 'object') ? raw.blankTemplates : {},
+        eventCategories: raw.eventCategories ? raw.eventCategories : base.eventCategories,
+        profile: raw.profile || base.profile,
+        updatedAt: raw.updatedAt || base.updatedAt
+      };
+    }
+
+    let currentUser = null; let authMode = 'login'; let syncTimer = null; let ws = defaultWorkspace();
+    let calendarView = 'month'; let currentViewDate = new Date(); let selectedDay = getTodayIso(); 
+    let activeColorFilter = 'all'; let modalPickedColor = 'work';
+    let tempArticles = []; let tempParticipants = []; let tempPlans = []; let editArticles = []; let editParticipants = []; let editPlans = [];
+    let currentBlankGrp = 'Постановления'; let kbSelectedCats = [];
+
+    function showToast(msg) { const bar = document.getElementById('toastBar'); bar.textContent = msg; bar.classList.add('show'); clearTimeout(bar._t); bar._t = setTimeout(() => bar.classList.remove('show'), 4000); }
+    function daysUntil(deadlineIso) { if (!deadlineIso) return 999; return Math.ceil((parseDate(deadlineIso) - parseDate(getTodayIso())) / (1000 * 60 * 60 * 24)); }
+
+    function setNetIndicator() { const online = navigator.onLine; document.getElementById('netDot').className = `w-2 h-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-amber-400'}`; document.getElementById('netText').innerHTML = `<span class="w-2 h-2 rounded-full ${online?'bg-emerald-400':'bg-amber-400'}"></span> ${online ? 'Онлайн' : 'Офлайн'}`; }
+    function setCloudIndicator(mode, label) { document.getElementById('cloudDot').className = `w-2 h-2 rounded-full ${mode==='ok'?'bg-emerald-400':mode==='sync'?'bg-sky-400':'bg-amber-400'}`; document.getElementById('cloudText').innerHTML = `<span class="w-2 h-2 rounded-full ${mode==='ok'?'bg-emerald-400':mode==='sync'?'bg-sky-400':'bg-amber-400'}"></span> ${label}`; }
+    
+    function saveLocal() { try { localStorage.setItem(currentUser ? `iar_ws_${currentUser.id}` : 'iar_ws_guest', JSON.stringify(ws)); } catch (e) {} }
+    function loadLocal() {
+      try { const raw = localStorage.getItem(currentUser ? `iar_ws_${currentUser.id}` : 'iar_ws_guest'); if (raw) ws = normalizeWorkspacePayload(JSON.parse(raw)); ws.casesData.forEach(c => syncCaseDeadlineInCalendar(c)); } catch (e) {}
+    }
+
+    async function fetchGlobalBlanks() {
+      if (!navigator.onLine || supabaseClient._isFallback) return;
+      try {
+        const { data, error } = await supabaseClient.from('global_blanks').select('*').order('created_at', { ascending: false });
+        if (error) {
+          console.error('Fetch blanks error:', error);
+          return;
+        }
+        if (data) {
+          globalBlanks = data.map(item => ({
+            ...item,
+            title: sanitizeDbText(item.title),
+            category: sanitizeDbText(item.category) || 'Иные'
+          }));
+          renderBlankSelect();
+          if (currentUser?.email === ADMIN_EMAIL) renderAdminBlanks();
+        }
+      } catch (e) { console.log('Global blanks fetch error:', e); }
+    }
+
+    async function pullFromCloud(isForce = false) {
+      if (!currentUser || !navigator.onLine || supabaseClient._isFallback) { setCloudIndicator('warn', 'Локально'); return; }
+      setCloudIndicator('sync', 'Загрузка...');
+      try {
+        const { data, error } = await supabaseClient.from('iar_user_workspaces').select('workspace_data, updated_at').eq('user_id', currentUser.id).maybeSingle();
+        if (error) throw error;
+        if (data && data.workspace_data) {
+          const cloudWs = normalizeWorkspacePayload(data.workspace_data);
+          const cloudTs = new Date(data.updated_at || 0).getTime();
+          const localTs = new Date(ws.updatedAt || 0).getTime();
+          
+          if (isForce || cloudTs >= localTs || (!ws.casesData.length && cloudWs.casesData.length)) {
+            ws = cloudWs; ws.casesData.forEach(c => syncCaseDeadlineInCalendar(c)); saveLocal();
+            if(isForce) showToast('Данные восстановлены из облака!');
+          } else { await pushToCloud(); }
+        } else { await pushToCloud(); }
+        syncProfileInputs(); renderAll(); setCloudIndicator('ok', 'Облако'); document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU');
+      } catch (err) { setCloudIndicator('warn', 'Сеть'); }
+    }
+
+    async function pushToCloud() {
+      if (!currentUser) return; ws.updatedAt = new Date().toISOString(); saveLocal();
+      if (!navigator.onLine || supabaseClient._isFallback) { setCloudIndicator('warn', 'Локально'); return; }
+      setCloudIndicator('sync', 'Сохр...');
+      try { await supabaseClient.from('iar_user_workspaces').upsert({ user_id: currentUser.id, workspace_data: ws, updated_at: ws.updatedAt }); setCloudIndicator('ok', 'Облако'); document.getElementById('lastSyncTime').textContent = new Date().toLocaleTimeString('ru-RU'); }
+      catch (err) { setCloudIndicator('warn', 'Сеть'); }
+    }
+    function scheduleSync() { saveLocal(); clearTimeout(syncTimer); syncTimer = setTimeout(() => pushToCloud(), 450); }
+
+    function showAuthError(text) {
+      const msg = document.getElementById('authMsg');
+      msg.textContent = text;
+      msg.className = 'text-xs p-2.5 rounded-xl mb-3 bg-red-100 text-red-700 block';
+      document.getElementById('offlineEnterWrap').classList.remove('hidden');
+    }
+
+    function setAuthTab(mode) {
+      authMode = mode;
+      const loginBtn = document.getElementById('tabLogin');
+      const regBtn = document.getElementById('tabRegister');
+      const submitBtn = document.getElementById('authSubmitBtn');
+      const msg = document.getElementById('authMsg');
+      msg.className = 'text-xs p-2.5 rounded-xl mb-3 hidden';
+      if (mode === 'login') {
+        loginBtn.className = 'py-2 text-sm font-bold text-[#334e7b] bg-white shadow-sm rounded-lg';
+        regBtn.className = 'py-2 text-sm font-bold text-gray-500 rounded-lg';
+        submitBtn.textContent = 'Войти';
+      } else {
+        regBtn.className = 'py-2 text-sm font-bold text-[#334e7b] bg-white shadow-sm rounded-lg';
+        loginBtn.className = 'py-2 text-sm font-bold text-gray-500 rounded-lg';
+        submitBtn.textContent = 'Зарегистрироваться';
+      }
+    }
+
+    document.getElementById('tabLogin').addEventListener('click', () => setAuthTab('login'));
+    document.getElementById('tabRegister').addEventListener('click', () => setAuthTab('register'));
+
+    document.getElementById('offlineEnterBtn').addEventListener('click', async () => {
+      const email = (document.getElementById('authEmail').value || '').trim() || ADMIN_EMAIL;
+      const localUser = { id: 'off_' + btoa(unescape(encodeURIComponent(email.toLowerCase()))).slice(0, 12), email };
+      await enterApp(localUser);
+      showToast('Открыт локальный режим');
+    });
+
+    document.getElementById('authForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const btn = document.getElementById('authSubmitBtn');
+      const msg = document.getElementById('authMsg');
+      btn.disabled = true;
+      btn.textContent = authMode === 'login' ? 'Входим...' : 'Регистрируем...';
+      msg.className = 'text-xs p-2.5 rounded-xl mb-3 hidden';
+
+      try {
+        if (authMode === 'login') {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) {
+            const rawErr = (error.message || '').toLowerCase();
+            if (rawErr.includes('invalid login credentials')) {
+              throw new Error('Неверная почта или пароль');
+            }
+            if (rawErr.includes('email not confirmed')) {
+              throw new Error('Почта не подтверждена. Проверьте папку «Входящие» или «Спам»');
+            }
+            throw new Error(error.message || 'Не удалось войти');
+          }
+          if (!data || !data.user) throw new Error('Сервер не вернул данные пользователя');
+          await enterApp(data.user);
+        } else {
+          const { data, error } = await supabaseClient.auth.signUp({ email, password });
+          if (error) throw new Error(error.message || 'Ошибка регистрации');
+          if (data && data.session && data.user) {
+            await enterApp(data.user);
+          } else {
+            msg.textContent = 'Аккаунт создан. Проверьте почту для подтверждения входа.';
+            msg.className = 'text-xs p-2.5 rounded-xl mb-3 bg-green-100 text-green-700 block';
+          }
+        }
+      } catch (err) {
+        const isNetFail = /failed to fetch|networkerror|load failed|network request failed/i.test(err.message || '');
+        if (isNetFail) {
+          showAuthError('Нет связи с сервером авторизации (проверьте сеть или нажмите «Войти в локальный режим без облака»).');
+        } else {
+          showAuthError((err && err.message) ? err.message : 'Ошибка входа');
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = authMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+      }
+    });
+
+    async function enterApp(user) {
+      currentUser = user;
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appShell').classList.remove('hidden');
+      document.getElementById('userEmailSub').textContent = user.email;
+      document.getElementById('settingsEmail').textContent = user.email;
+      if (user.email === ADMIN_EMAIL) document.getElementById('adminPanelBlock').classList.remove('hidden');
+      ws = defaultWorkspace();
+      loadLocal();
+      initCaseFormDates();
+      syncProfileInputs();
+      renderAll();
+      if (navigator.onLine && !supabaseClient._isFallback) {
+        await fetchGlobalBlanks();
+        await pullFromCloud();
+      } else {
+        setCloudIndicator('warn', 'Локально');
+      }
+    }
+
+    function switchTab(tab) {
+      ['svodka', 'cases', 'blanks', 'actions', 'profile'].forEach(t => { document.getElementById('view-' + t).classList.toggle('hidden', t !== tab); document.getElementById('tab-' + t).classList.toggle('active', t === tab); });
+      if (tab === 'profile') { syncProfileInputs(); renderCategorySettings(); renderKbSection(); if(currentUser?.email === ADMIN_EMAIL) renderAdminBlanks(); }
+      if (tab === 'actions') renderAllActionsList();
+      if (tab === 'blanks') renderBlankSelect();
+    }
+    function toggleAccordion(id) { const el = document.getElementById(id); el.classList.toggle('hidden'); const chev = document.getElementById('chev-' + id); if (chev) chev.textContent = el.classList.contains('hidden') ? '▼' : '▲'; }
+    function focusMetric(kind) {
+      ['tileCases', 'tileUrgent', 'tileToday'].forEach(id => document.getElementById(id).classList.remove('active'));
+      if (kind === 'cases') { document.getElementById('tileCases').classList.add('active'); switchTab('cases'); }
+      else if (kind === 'urgent') { document.getElementById('tileUrgent').classList.add('active'); document.getElementById('accDeadlines').classList.remove('hidden'); document.getElementById('accDeadlines').scrollIntoView({behavior:'smooth'}); }
+      else { document.getElementById('tileToday').classList.add('active'); goToday(); }
+    }
+
+    function setCalendarView(view) {
+      calendarView = view;
+      ['month', 'week', 'day'].forEach(v => document.getElementById('btnView' + v.charAt(0).toUpperCase() + v.slice(1)).classList.toggle('active', v === view));
+      renderCalendarSection();
+    }
+
+    function shiftDate(delta) {
+      if (calendarView === 'month') currentViewDate.setMonth(currentViewDate.getMonth() + delta);
+      else if (calendarView === 'week') currentViewDate.setDate(currentViewDate.getDate() + (delta * 7));
+      else currentViewDate.setDate(currentViewDate.getDate() + delta);
+      renderCalendarSection();
+    }
+
+    function goToday() { currentViewDate = new Date(); selectedDay = getTodayIso(); renderCalendarSection(); }
+    function selectDay(iso) { selectedDay = iso; renderCalendarSection(); }
+    function setColorFilter(key) { activeColorFilter = key; renderCalendarSection(); }
+
+    function renderCalendarSection() {
+      const cats = ws.eventCategories;
+      document.getElementById('calendarColorFilterBar').innerHTML = [{ key: 'all', label: 'Все цвета', border: '#64748b' }, ...Object.entries(cats).map(([k, v]) => ({ key: k, label: v.label, border: v.border }))].map(f => {
+        const active = activeColorFilter === f.key;
+        return `<button type="button" data-action="set-color-filter" data-key="${f.key}" class="color-chip ${active ? 'active' : ''}"><span class="w-2 h-2 rounded-full" style="background:${f.border}"></span>${esc(f.label)}</button>`;
+      }).join('');
+
+      const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+      const titleEl = document.getElementById('calendarMonthTitle');
+      const container = document.getElementById('calendarContainer');
+
+      if (calendarView === 'month') {
+        titleEl.textContent = `${months[currentViewDate.getMonth()]} ${currentViewDate.getFullYear()}`;
+        const year = currentViewDate.getFullYear(), month = currentViewDate.getMonth();
+        const firstDay = new Date(year, month, 1), lastDay = new Date(year, month + 1, 0);
+        const startDayOfWeek = (firstDay.getDay() + 6) % 7, daysInMonth = lastDay.getDate();
+        const todayIso = getTodayIso(); let gridHtml = '';
+
+        gridHtml += `<div class="month-grid mb-1"><div class="weekday">Пн</div><div class="weekday">Вт</div><div class="weekday">Ср</div><div class="weekday">Чт</div><div class="weekday">Пт</div><div class="weekday">Сб</div><div class="weekday">Вс</div></div>`;
+        gridHtml += `<div class="month-grid">`;
+
+        for (let i = 0; i < startDayOfWeek; i++) gridHtml += `<div class="day-cell other-month"></div>`;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const isToday = dateStr === todayIso, isSel = dateStr === selectedDay;
+          const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(dateStr)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter);
+
+          let dotsHtml = dayEvs.slice(0, 4).map(ev => {
+            const cat = cats[ev.color] || { border: '#cbd5e1' };
+            return `<div class="w-2 h-2 rounded-full" style="background:${cat.border}"></div>`;
+          }).join('');
+          if (dayEvs.length > 4) dotsHtml += `<div class="text-[8px] font-bold text-slate-400">+</div>`;
+
+          gridHtml += `<div class="day-cell ${isSel ? 'selected' : ''} ${isToday ? 'today' : ''}" data-action="select-day" data-id="${dateStr}"><div class="day-num">${d}</div><div class="event-dots">${dotsHtml}</div></div>`;
+        }
+        gridHtml += `</div>`;
+        container.innerHTML = gridHtml;
+
+      } else if (calendarView === 'week') {
+        const monday = new Date(currentViewDate);
+        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+        titleEl.textContent = `Неделя ${monday.getDate()}-${new Date(monday.getTime() + 6*86400000).getDate()} ${months[monday.getMonth()]}`;
+        let gridHtml = `<div class="month-grid mb-1"><div class="weekday">Пн</div><div class="weekday">Вт</div><div class="weekday">Ср</div><div class="weekday">Чт</div><div class="weekday">Пт</div><div class="weekday">Сб</div><div class="weekday">Вс</div></div><div class="month-grid">`;
+        const todayIso = getTodayIso();
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(monday); d.setDate(monday.getDate() + i);
+          const dateStr = toIsoDate(d);
+          const isToday = dateStr === todayIso, isSel = dateStr === selectedDay;
+          const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(dateStr)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter);
+          let dotsHtml = dayEvs.map(ev => {
+            const cat = cats[ev.color] || { border: '#cbd5e1' };
+            return `<div class="w-2 h-2 rounded-full" style="background:${cat.border}"></div>`;
+          }).join('');
+          gridHtml += `<div class="day-cell ${isSel ? 'selected' : ''} ${isToday ? 'today' : ''}" data-action="select-day" data-id="${dateStr}"><div class="day-num">${d.getDate()}</div><div class="event-dots">${dotsHtml}</div></div>`;
+        }
+        gridHtml += `</div>`;
+        container.innerHTML = gridHtml;
+
+      } else if (calendarView === 'day') {
+        titleEl.textContent = `${selectedDay} (${['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][parseDate(selectedDay).getDay()]})`;
+        const dayEvs = ws.eventsData.filter(e => e.dt && e.dt.startsWith(selectedDay)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a,b)=>a.dt.localeCompare(b.dt));
+        let html = `<div class="p-4 border rounded-xl bg-slate-50 min-h-[200px]">`;
+        if(!dayEvs.length) html += `<div class="text-center text-slate-400 text-sm py-10">На этот день событий нет</div>`;
+        else {
+          html += dayEvs.map(ev => {
+            const cat = cats[ev.color] || { border: '#cbd5e1', bg: '#f1f5f9' };
+            const time = (ev.dt.split('T')[1]||'').slice(0,5);
+            return `<div class="flex gap-3 mb-3 cursor-pointer" data-action="open-event" data-id="${esc(ev.id)}">
+              <div class="text-xs font-bold text-slate-600 w-10 pt-1 text-right">${time}</div>
+              <div class="flex-1 p-2 rounded-lg border-l-4" style="background:${cat.bg}; border-color:${cat.border}">
+                <div class="text-sm font-bold text-slate-800">${esc(ev.title)}</div>
+                <div class="text-[11px] text-slate-500">${esc(ev.caseNum)}</div>
+              </div>
+            </div>`;
+          }).join('');
+        }
+        html += `</div>`;
+        container.innerHTML = html;
+      }
+
+      renderSelectedDayEvents();
+    }
+
+    function renderSelectedDayEvents() {
+      const dObj = parseDate(selectedDay);
+      const wdFull = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      const monthsGen = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+      document.getElementById('selectedDaySubtitle').textContent = `${wdFull[dObj.getDay()]}, ${dObj.getDate()} ${monthsGen[dObj.getMonth()]}`;
+
+      const listEl = document.getElementById('selectedDayEventsList');
+      const items = ws.eventsData.filter(e => e.dt && e.dt.startsWith(selectedDay)).filter(e => activeColorFilter === 'all' || e.color === activeColorFilter).sort((a, b) => a.dt.localeCompare(b.dt));
+      if (!items.length) { listEl.innerHTML = '<div class="text-xs text-slate-400 py-2 text-center">Нет событий</div>'; return; }
+
+      listEl.innerHTML = items.map(ev => {
+        const cat = ws.eventCategories[ev.color] || { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+        return `<div class="p-3 rounded-xl border-l-4 mb-2 flex items-center justify-between bg-slate-50" style="border-left-color:${cat.border}"><div><div class="text-[13px] font-bold text-slate-800">${esc(ev.title)}</div><div class="text-[11px] text-slate-500 mt-0.5">${esc(ev.caseNum)}</div></div><div class="flex gap-2 items-center"><span class="text-[11px] font-bold text-slate-600 bg-white px-2 py-1 rounded-md border">${esc((ev.dt.split('T')[1]||'').slice(0,5))}</span><button type="button" class="text-[11px] bg-white border px-2 py-1 rounded-md font-semibold" data-action="open-event" data-id="${esc(ev.id)}">Изм.</button></div></div>`;
+      }).join('');
+    }
+
+    function openEventModal(eventId) {
+      const modal = document.getElementById('eventModal'), delBtn = document.getElementById('evDeleteBtn');
+      if (eventId) {
+        const ev = ws.eventsData.find(x => x.id === eventId); if (!ev) return;
+        document.getElementById('evModalHeading').textContent = 'Настройка';
+        document.getElementById('evEditId').value = ev.id; document.getElementById('evTitleInput').value = ev.title;
+        document.getElementById('evDtInput').value = ev.dt; document.getElementById('evCaseInput').value = ev.caseNum || '';
+        modalPickedColor = ev.color || 'work'; delBtn.classList.remove('hidden');
+      } else {
+        document.getElementById('evModalHeading').textContent = 'Новое событие';
+        document.getElementById('evEditId').value = ''; document.getElementById('evTitleInput').value = '';
+        document.getElementById('evDtInput').value = `${selectedDay}T10:00`; document.getElementById('evCaseInput').value = ws.casesData[0] ? `УД № ${cleanCaseNumber(ws.casesData[0].number)}` : '';
+        modalPickedColor = Object.keys(ws.eventCategories)[0] || 'work'; delBtn.classList.add('hidden');
+      }
+      renderModalColorChoices(); modal.classList.remove('hidden');
+    }
+
+    function renderModalColorChoices() {
+      document.getElementById('evColorChoices').innerHTML = Object.entries(ws.eventCategories).map(([key, cfg]) => {
+        const active = modalPickedColor === key;
+        return `<button type="button" data-action="pick-color" data-key="${key}" class="p-3 rounded-xl border text-left text-[11px] font-bold flex items-center gap-2 ${active ? 'ring-2 ring-primary bg-slate-50 border-transparent' : 'bg-white border-slate-200'}"><span class="w-3 h-3 rounded-full shrink-0" style="background:${cfg.border}"></span><span class="truncate">${esc(cfg.label)}</span></button>`;
+      }).join('');
+    }
+
+    function pickModalColor(key) { modalPickedColor = key; renderModalColorChoices(); }
+    function closeEventModal() { document.getElementById('eventModal').classList.add('hidden'); }
+    function saveCalendarEvent() {
+      const id = document.getElementById('evEditId').value, title = document.getElementById('evTitleInput').value.trim();
+      const dt = document.getElementById('evDtInput').value, caseNum = document.getElementById('evCaseInput').value.trim();
+      if (!title) { showToast('Укажите название'); return; }
+      if (id) { const ev = ws.eventsData.find(x => x.id === id); if (ev) { ev.title = title; ev.dt = dt; ev.caseNum = caseNum; ev.color = modalPickedColor; } }
+      else { ws.eventsData.push({ id: 'e_' + Date.now(), title, dt, caseNum, color: modalPickedColor }); }
+      if (dt && dt.includes('T')) jumpToDate(dt.split('T')[0]);
+      closeEventModal(); renderAll(); scheduleSync(); showToast('Сохранено');
+    }
+    function deleteCalendarEvent() { ws.eventsData = ws.eventsData.filter(x => x.id !== document.getElementById('evEditId').value); closeEventModal(); renderAll(); scheduleSync(); showToast('Удалено'); }
+
+    function renderCasesList() {
+      const q = (document.getElementById('caseSearchInput')?.value || '').toLowerCase();
+      const filter = document.getElementById('caseFilterSelect')?.value || 'all';
+      let filtered = ws.casesData.filter(c => {
+        const matchQ = c.number.toLowerCase().includes(q) || c.fabula.toLowerCase().includes(q) || c.articles.join(' ').toLowerCase().includes(q);
+        const left = daysUntil(c.deadline);
+        const matchF = filter === 'all' || (filter === 'urgent' && left <= (c.leadDays || 10));
+        return matchQ && matchF;
+      });
+      const container = document.getElementById('casesCardsContainer');
+      if (!filtered.length) { container.innerHTML = '<div class="text-xs text-slate-400 p-4 text-center">Ничего не найдено</div>'; return; }
+      container.innerHTML = filtered.map(c => {
+        const left = daysUntil(c.deadline), isUrgent = left <= (c.leadDays || 10);
+        const badgeCls = isUrgent ? 'bg-red-50 text-red-700 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-200';
+        return `<div class="card mb-3 p-4"><div class="flex justify-between items-start cursor-pointer" data-action="toggle-case" data-id="${esc(c.id)}"><div><div class="text-sm font-extrabold text-[#243b61]">УД № ${esc(cleanCaseNumber(c.number))}</div><div class="text-[11px] font-bold text-slate-500 mt-1">${esc(c.articles.join(', '))}</div></div><div class="text-right"><span class="text-[11px] font-bold px-2.5 py-1 rounded-lg border ${badgeCls}">${left} дн.</span></div></div>${c.expanded ? `<div class="mt-4 pt-4 border-t border-slate-100 text-xs"><div class="mb-2"><span class="font-bold text-slate-700">Фабула:</span> <span class="text-slate-600">${esc(c.fabula)}</span></div><div class="mb-2"><span class="font-bold text-slate-700">Участники:</span> <span class="text-slate-600">${c.participants.map(p => esc(p.name)).join(', ') || 'нет'}</span></div><div class="mb-4"><span class="font-bold text-slate-700">План:</span> <span class="text-slate-600">${c.plan.map(pl => esc(pl)).join('; ') || 'нет'}</span></div><div class="flex justify-between gap-2"><button type="button" class="btn-secondary text-[11px] px-3 py-2" data-action="open-edit-case" data-id="${esc(c.id)}">Изменить</button><button type="button" class="btn-ghost text-red-600 text-[11px] px-3 py-2" data-action="delete-case" data-id="${esc(c.id)}">Удалить</button></div></div>` : ''}</div>`;
+      }).join('');
+    }
+    function initCaseFormDates() { const t = getTodayIso(); document.getElementById('ncOpened').value = t; document.getElementById('ncDeadline').value = addMonthsIso(t, 2); }
+    function toggleNewCaseForm(show) { const card = document.getElementById('newCaseFormCard'); const btn = document.getElementById('addCaseTriggerWrap'); if(show){tempArticles=[];tempParticipants=[];tempPlans=[];initCaseFormDates();renderTempFormLists();card.classList.remove('hidden');btn.classList.add('hidden');card.scrollIntoView({behavior:'smooth'});}else{card.classList.add('hidden');btn.classList.remove('hidden');} }
+    function addTempArticle() { const v=document.getElementById('ncArticleInput').value.trim(); if(v){tempArticles.push(v);document.getElementById('ncArticleInput').value='';renderTempFormLists();} }
+    function addTempParticipant() { const n=document.getElementById('ncPartName').value.trim(); if(n){tempParticipants.push({name:n,role:document.getElementById('ncPartRole').value});document.getElementById('ncPartName').value='';renderTempFormLists();} }
+    function addTempPlan() { const v=document.getElementById('ncPlanInput').value.trim(); if(v){tempPlans.push(v);document.getElementById('ncPlanInput').value='';renderTempFormLists();} }
+    function renderTempFormLists() {
+      document.getElementById('tempArticlesList').innerHTML=tempArticles.map((a,i)=>`<span class="px-2.5 py-1 rounded-lg bg-[#eef3fb] text-[#334e7b] text-[11px] font-bold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-temp-art" data-idx="${i}" class="text-slate-400 hover:text-red-500">×</button></span>`).join('');
+      document.getElementById('tempParticipantsList').innerHTML=tempParticipants.map((p,i)=>`<div class="text-[11px] bg-slate-50 p-2 rounded-lg flex justify-between border border-slate-100"><span>${esc(p.name)} — ${esc(p.role)}</span><button type="button" data-action="remove-temp-part" data-idx="${i}" class="text-slate-400 hover:text-red-500">×</button></div>`).join('');
+      document.getElementById('tempPlanList').innerHTML=tempPlans.map((pl,i)=>`<div class="text-[11px] bg-slate-50 p-2 rounded-lg flex justify-between border border-slate-100"><span>• ${esc(pl)}</span><button type="button" data-action="remove-temp-plan" data-idx="${i}" class="text-slate-400 hover:text-red-500">×</button></div>`).join('');
+    }
+    function saveNewCase() {
+      const num=cleanCaseNumber(document.getElementById('ncNumber').value); if(!num){showToast('Введите номер');return;}
+      const newCase={id:'ud_'+Date.now(),number:num,opened:document.getElementById('ncOpened').value,deadline:document.getElementById('ncDeadline').value,leadDays:parseInt(document.getElementById('ncLeadDays').value)||10,articles:tempArticles.length?[...tempArticles]:['ст. 158 УК РФ'],fabula:document.getElementById('ncFabula').value.trim()||'Фабула не заполнена.',participants:[...tempParticipants],plan:[...tempPlans],docs:[],expanded:true};
+      ws.casesData.unshift(newCase); syncCaseDeadlineInCalendar(newCase); jumpToDate(newCase.deadline); document.getElementById('ncNumber').value=''; toggleNewCaseForm(false); renderAll(); scheduleSync(); showToast('Дело сохранено');
+    }
+    function openEditCaseModal(id) { const item=ws.casesData.find(c=>c.id===id); if(!item)return; document.getElementById('ecId').value=item.id;document.getElementById('ecNumber').value=cleanCaseNumber(item.number);document.getElementById('ecOpened').value=item.opened;document.getElementById('ecDeadline').value=item.deadline;document.getElementById('ecLeadDays').value=item.leadDays;document.getElementById('ecFabula').value=item.fabula; editArticles=[...item.articles];editParticipants=item.participants.map(p=>({...p}));editPlans=[...item.plan]; renderEditFormLists(); document.getElementById('editCaseModal').classList.remove('hidden'); }
+    function closeEditCaseModal() { document.getElementById('editCaseModal').classList.add('hidden'); }
+    function addEditArticle() { const v=document.getElementById('ecArticleInput').value.trim(); if(v){editArticles.push(v);document.getElementById('ecArticleInput').value='';renderEditFormLists();} }
+    function addEditParticipant() { const n=document.getElementById('ecPartName').value.trim(); if(n){editParticipants.push({name:n,role:document.getElementById('ecPartRole').value});document.getElementById('ecPartName').value='';renderEditFormLists();} }
+    function addEditPlan() { const v=document.getElementById('ecPlanInput').value.trim(); if(v){editPlans.push(v);document.getElementById('ecPlanInput').value='';renderEditFormLists();} }
+    function renderEditFormLists() { document.getElementById('editArticlesList').innerHTML=editArticles.map((a,i)=>`<span class="px-2.5 py-1 rounded-lg bg-[#eef3fb] text-[#334e7b] text-[11px] font-bold inline-flex items-center gap-1">${esc(a)} <button type="button" data-action="remove-edit-art" data-idx="${i}" class="text-slate-400">×</button></span>`).join(''); document.getElementById('editParticipantsList').innerHTML=editParticipants.map((p,i)=>`<div class="text-[11px] bg-slate-50 p-2 rounded-lg flex justify-between border border-slate-100"><span>${esc(p.name)}</span><button type="button" data-action="remove-edit-part" data-idx="${i}" class="text-slate-400">×</button></div>`).join(''); document.getElementById('editPlanList').innerHTML=editPlans.map((pl,i)=>`<div class="text-[11px] bg-slate-50 p-2 rounded-lg flex justify-between border border-slate-100"><span>• ${esc(pl)}</span><button type="button" data-action="remove-edit-plan" data-idx="${i}" class="text-slate-400">×</button></div>`).join(''); }
+    function saveEditedCase() { const item=ws.casesData.find(c=>c.id===document.getElementById('ecId').value); if(!item)return; item.number=cleanCaseNumber(document.getElementById('ecNumber').value);item.opened=document.getElementById('ecOpened').value;item.deadline=document.getElementById('ecDeadline').value;item.leadDays=parseInt(document.getElementById('ecLeadDays').value)||10;item.fabula=document.getElementById('ecFabula').value;item.articles=[...editArticles];item.participants=[...editParticipants];item.plan=[...editPlans]; syncCaseDeadlineInCalendar(item); jumpToDate(item.deadline); closeEditCaseModal(); renderAll(); scheduleSync(); showToast('Обновлено'); }
+    function toggleCaseExpand(id) { const item=ws.casesData.find(c=>c.id===id); if(item){item.expanded=!item.expanded;renderCasesList();} }
+    function deleteCaseById(id) { ws.casesData=ws.casesData.filter(c=>c.id!==id); ws.eventsData=ws.eventsData.filter(e=>e.id!==`term_end_${id}`&&e.id!==`term_warn_${id}`); renderAll(); scheduleSync(); showToast('Удалено'); }
+    function syncCaseDeadlineInCalendar(kase) { if(!kase||!kase.id||!kase.deadline)return; const lbl=`УД № ${cleanCaseNumber(kase.number)}`; const endId=`term_end_${kase.id}`, warnId=`term_warn_${kase.id}`; const wDate=shiftIsoDays(kase.deadline,-(kase.leadDays||10)); let endEv=ws.eventsData.find(e=>e.id===endId), warnEv=ws.eventsData.find(e=>e.id===warnId); if(endEv){endEv.title=`Срок • ${lbl}`;endEv.dt=`${kase.deadline}T18:00`;}else{ws.eventsData.push({id:endId,title:`Срок • ${lbl}`,dt:`${kase.deadline}T18:00`,color:'term',caseNum:lbl});} if(warnEv){warnEv.title=`Ходатайство (${kase.leadDays} дн.)`;warnEv.dt=`${wDate}T10:00`;}else{ws.eventsData.push({id:warnId,title:`Ходатайство (${kase.leadDays} дн.)`,dt:`${wDate}T10:00`,color:'term',caseNum:lbl});} }
+
+    function renderSvodkaDeadlines() {
+      const el = document.getElementById('svodkaDeadlinesList');
+      if (!ws.casesData.length) { el.innerHTML = '<div class="text-xs text-slate-400">Нет дел</div>'; return; }
+      el.innerHTML = ws.casesData.map(c => { const left=daysUntil(c.deadline),urg=left<=(c.leadDays||10); return `<div class="p-3 border rounded-xl mb-2 flex justify-between items-center ${urg?'bg-red-50 border-red-200':'bg-white border-slate-200'}"><div class="text-xs font-bold text-slate-700">УД № ${esc(cleanCaseNumber(c.number))}</div><span class="text-[11px] font-bold px-2 py-1 rounded-lg ${urg?'bg-red-100 text-red-700':'bg-blue-50 text-blue-700'}">${left} дн.</span></div>`; }).join('');
+    }
+
+    function renderCategorySettings() {
+      const list = document.getElementById('categorySettingsList');
+      list.innerHTML = Object.entries(ws.eventCategories).map(([id, cat]) => `
+        <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200">
+          <div class="w-8 h-8 rounded-lg border shrink-0" style="background:${cat.bg}; border-color:${cat.border}"></div>
+          <input type="text" class="soft-input text-xs" value="${esc(cat.label)}" onchange="updateCategoryName('${id}', this.value)" />
+          ${['court','work','expert','term'].includes(id) ? '' : `<button type="button" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded" data-action="delete-category" data-id="${id}">✕</button>`}
+        </div>
+      `).join('');
+    }
+    function updateCategoryName(id, newName) { if (!newName.trim()) return; ws.eventCategories[id].label = sanitizeDbText(newName); scheduleSync(); renderCalendarSection(); }
+    function addCategory() {
+      const name = sanitizeDbText(document.getElementById('newCatName').value); const color = document.getElementById('newCatColor').value;
+      if (!name) { showToast('Введите название'); return; }
+      const id = 'cat_' + Date.now();
+      ws.eventCategories[id] = { label: name, bg: color + '20', text: color, border: color };
+      document.getElementById('newCatName').value = ''; renderCategorySettings(); renderCalendarSection(); scheduleSync(); showToast('Цвет добавлен');
+    }
+    function deleteCategory(id) { if (confirm('Удалить этот цвет?')) { delete ws.eventCategories[id]; renderCategorySettings(); renderCalendarSection(); scheduleSync(); } }
+
+    function renderKbSection() {
+      document.getElementById('kbCatChips').innerHTML = KB_CATEGORIES.map(c => { const act=kbSelectedCats.includes(c); return `<button type="button" data-action="toggle-kb-cat" data-cat="${esc(c)}" class="px-3 py-1.5 rounded-lg text-[11px] font-bold border ${act?'bg-[#334e7b] text-white border-[#334e7b]':'bg-white text-slate-600 border-slate-200'}">${esc(c)}</button>`; }).join('');
+      const list = document.getElementById('kbMaterialList');
+      if (!ws.kbMaterials.length) { list.innerHTML = '<div class="text-xs text-slate-400">Пусто</div>'; return; }
+      
+      list.innerHTML = ws.kbMaterials.map((m, idx) => `
+        <div class="bg-white border border-slate-200 rounded-xl p-3 mb-2 relative group flex flex-col gap-1.5">
+          <div class="text-[13px] font-bold text-[#243b61] pr-6">${esc(m.title)}</div>
+          <div class="text-[11px] text-slate-500">${esc(m.notes)}</div>
+          ${m.fileUrl ? `<div class="flex flex-wrap gap-2 mt-1">
+            <button type="button" class="text-[11px] font-bold text-[#334e7b] bg-[#eef3fb] px-2.5 py-1 rounded-lg" data-action="kb-open-file" data-idx="${idx}">Открыть файл</button>
+            <button type="button" class="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg" data-action="kb-download-file" data-idx="${idx}">Скачать</button>
+          </div>` : ''}
+          <button type="button" class="absolute top-3 right-3 text-red-400 opacity-60 hover:opacity-100 p-1" data-action="del-kb" data-id="${esc(m.id)}">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function openKbFileByIdx(idx) {
+      const m = ws.kbMaterials[idx];
+      if (!m || !m.fileUrl) { showToast('Файл не прикреплён'); return; }
+      window.open(m.fileUrl, '_blank', 'noopener');
+    }
+
+    async function downloadKbFileByIdx(idx) {
+      const m = ws.kbMaterials[idx];
+      if (!m || !m.fileUrl) { showToast('Файл не прикреплён'); return; }
+      try {
+        const resp = await fetch(m.fileUrl);
+        if (!resp.ok) throw new Error('Файл недоступен');
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const cleanUrl = String(m.fileUrl).split('?')[0];
+        const extMatch = cleanUrl.match(/\.([a-zA-Z0-9]{1,8})$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : 'file';
+        const safeName = (m.title || 'material').replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || 'material';
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeName}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        showToast('Файл скачивается');
+      } catch (e) {
+        window.open(m.fileUrl, '_blank', 'noopener');
+      }
+    }
+
+    async function addKbMaterial() {
+      const title = sanitizeDbText(document.getElementById('kbNewTitle').value);
+      if (!title) { showToast('Введите название'); return; }
+      
+      const fileInput = document.getElementById('kbFileInput');
+      const file = fileInput.files[0];
+      let fileUrl = '';
+      
+      const btn = document.getElementById('btnAddKb');
+      btn.textContent = 'Загрузка...'; btn.disabled = true;
+
+      if (file) {
+        if (!navigator.onLine || supabaseClient._isFallback) { showToast('Для загрузки файла нужен интернет'); btn.textContent = 'Добавить'; btn.disabled = false; return; }
+        try {
+          const safeName = buildSafeStorageName(file.name, 0);
+          const { error } = await supabaseClient.storage.from('kb-files').upload(safeName, file);
+          if (error) throw error;
+          const { data: urlData } = supabaseClient.storage.from('kb-files').getPublicUrl(safeName);
+          fileUrl = urlData.publicUrl;
+        } catch (err) {
+          console.error('Ошибка загрузки файла:', err);
+          showToast('Ошибка: ' + (err.message || 'проверьте Storage'));
+          btn.textContent = 'Добавить'; btn.disabled = false; return;
+        }
+      }
+
+      ws.kbMaterials.unshift({ id: 'kb_' + Date.now(), title, cats: [...kbSelectedCats], notes: sanitizeDbText(document.getElementById('kbNewNotes').value), fileUrl });
+      document.getElementById('kbNewTitle').value = ''; document.getElementById('kbNewNotes').value = ''; fileInput.value = '';
+      
+      btn.textContent = 'Добавить'; btn.disabled = false;
+      renderKbSection(); scheduleSync(); showToast('Добавлено');
+    }
+
+    function delKb(id) { if (confirm('Удалить материал?')) { ws.kbMaterials = ws.kbMaterials.filter(m => m.id !== id); renderKbSection(); scheduleSync(); } }
+    function toggleKbCat(c) { if(kbSelectedCats.includes(c)) kbSelectedCats=kbSelectedCats.filter(x=>x!==c); else kbSelectedCats.push(c); renderKbSection(); }
+
+    async function adminUploadZip() {
+      const fileInput = document.getElementById('adminZipInput');
+      const file = fileInput.files[0];
+      const fallbackCategory = document.getElementById('adminCategory').value;
+      const logEl = document.getElementById('adminZipLog');
+      
+      if (!file) { showToast('Выберите ZIP-архив'); return; }
+      if (!navigator.onLine || supabaseClient._isFallback) { showToast('Нужен интернет'); return; }
+      if (typeof JSZip === 'undefined') { showToast('Библиотека JSZip не загрузилась'); return; }
+
+      const btn = document.getElementById('btnAdminZip');
+      btn.textContent = 'Распаковка...'; btn.disabled = true;
+      logEl.textContent = '';
+
+      try {
+        const zip = await JSZip.loadAsync(file);
+        const fileNames = Object.keys(zip.files).filter(name => {
+          const norm = decodeZipNameSmart(name);
+          return !zip.files[name].dir && !norm.includes('__MACOSX') && !norm.split('/').pop().startsWith('.');
+        });
+
+        if (fileNames.length === 0) {
+          showToast('В архиве нет файлов');
+          btn.textContent = 'Загрузить архив'; btn.disabled = false;
+          return;
+        }
+
+        let uploadedCount = 0;
+        const errors = [];
+
+        for (let i = 0; i < fileNames.length; i++) {
+          const rawEntryName = fileNames[i];
+          btn.textContent = `Обработка ${i + 1} из ${fileNames.length}...`;
+
+          const zipEntry = zip.files[rawEntryName];
+          const decodedPath = decodeZipNameSmart(rawEntryName);
+          const extractedText = await extractTextFromZipEntry(zipEntry, rawEntryName);
+          const category = detectCategoryFromPath(`${file.name}/${decodedPath} ${extractedText}`, fallbackCategory);
+          const detectedTitle = detectTitleFromTextOrName(extractedText, rawEntryName, i, category);
+          const safeStorageName = buildSafeStorageName(rawEntryName, i);
+
+          try {
+            const fileBlob = await zipEntry.async('blob');
+            const { error: upErr } = await supabaseClient.storage.from('global-blanks').upload(safeStorageName, fileBlob);
+            if (upErr) {
+              errors.push(`${detectedTitle}: ${upErr.message}`);
+              continue;
+            }
+
+            const { data: urlData } = supabaseClient.storage.from('global-blanks').getPublicUrl(safeStorageName);
+            const payload = {
+              title: sanitizeDbText(detectedTitle),
+              category: sanitizeDbText(category),
+              file_url: sanitizeDbText(urlData.publicUrl)
+            };
+
+            const { data: insertedRows, error: dbErr } = await supabaseClient.from('global_blanks').insert([payload]).select();
+            if (dbErr) {
+              errors.push(`${detectedTitle}: ${dbErr.message}`);
+              continue;
+            }
+
+            const createdId = insertedRows && insertedRows[0] ? insertedRows[0].id : null;
+            if (createdId && extractedText) {
+              ws.blankTemplates[createdId] = extractedText;
+            }
+            uploadedCount++;
+          } catch (entryErr) {
+            errors.push(`${detectedTitle}: ${entryErr.message || 'ошибка обработки'}`);
+          }
+        }
+
+        scheduleSync();
+        fileInput.value = '';
+        await fetchGlobalBlanks();
+        renderAdminBlanks();
+
+        if (errors.length) {
+          logEl.textContent = `Загружено: ${uploadedCount} из ${fileNames.length}. Ошибок: ${errors.length}\n` + errors.slice(0, 5).join('\n');
+          showToast(`Загружено ${uploadedCount} из ${fileNames.length} (были ошибки)`);
+        } else {
+          logEl.textContent = `Готово: загружено файлов — ${uploadedCount}.`;
+          showToast(`Успешно загружено бланков: ${uploadedCount}`);
+        }
+      } catch (err) {
+        console.error(err);
+        logEl.textContent = 'Ошибка чтения ZIP: ' + (err.message || err);
+        showToast('Ошибка при распаковке архива');
+      } finally {
+        btn.textContent = 'Загрузить архив'; btn.disabled = false;
+      }
+    }
+
+    async function adminAutoRenameByRegistry() {
+      if (!navigator.onLine || supabaseClient._isFallback) { showToast('Нужен интернет'); return; }
+      if (!globalBlanks.length) { showToast('Нет загруженных бланков'); return; }
+
+      const btn = document.getElementById('btnAdminAutoRename');
+      const logEl = document.getElementById('adminZipLog');
+      if (btn) { btn.textContent = 'Сверка с описью...'; btn.disabled = true; }
+
+      let updatedCount = 0;
+      const errors = [];
+
+      for (const b of globalBlanks) {
+        const savedText = (ws.blankTemplates && ws.blankTemplates[b.id]) ? ws.blankTemplates[b.id] : '';
+        const hint = `${b.title} ${b.file_url || ''} ${savedText.slice(0, 400)}`;
+        const matchedTitle = matchRegistryTitle(hint, b.category);
+        if (matchedTitle && sanitizeDbText(matchedTitle) !== sanitizeDbText(b.title)) {
+          try {
+            const cleanTitle = sanitizeDbText(matchedTitle);
+            const { error } = await supabaseClient.from('global_blanks').update({ title: cleanTitle }).eq('id', b.id);
+            if (error) {
+              errors.push(`${b.title}: ${error.message}`);
+            } else {
+              updatedCount++;
+            }
+          } catch (e) {
+            errors.push(`${b.title}: ${e.message || 'ошибка'}`);
+          }
+        }
+      }
+
+      await fetchGlobalBlanks();
+      renderAdminBlanks();
+
+      if (btn) { btn.textContent = 'Переименовать загруженные по описи'; btn.disabled = false; }
+      if (logEl) {
+        logEl.textContent = `Обновлено по описи: ${updatedCount}` + (errors.length ? `\nОшибок: ${errors.length}` : '');
+      }
+      showToast(updatedCount ? `Переименовано бланков: ${updatedCount}` : 'Совпадений для переименования не найдено');
+    }
+
+    async function adminRenameBlank(id, currentTitle) {
+      const nextTitleRaw = prompt('Введите новое название бланка (как на фото/документе):', currentTitle || '');
+      if (nextTitleRaw === null) return;
+      const nextTitle = sanitizeDbText(nextTitleRaw);
+      if (!nextTitle) { showToast('Название не может быть пустым'); return; }
+      if (!navigator.onLine || supabaseClient._isFallback) { showToast('Нужен интернет'); return; }
+
+      try {
+        const { error } = await supabaseClient.from('global_blanks').update({ title: nextTitle }).eq('id', id);
+        if (error) throw error;
+        await fetchGlobalBlanks();
+        renderAdminBlanks();
+        showToast('Название обновлено');
+      } catch (e) {
+        showToast('Ошибка переименования: ' + (e.message || ''));
+      }
+    }
+
+    function renderAdminBlanks() {
+      const list = document.getElementById('adminBlanksList');
+      if (!globalBlanks.length) { list.innerHTML = '<div class="text-xs text-slate-400">Нет общих бланков</div>'; return; }
+      list.innerHTML = globalBlanks.map(b => `
+        <div class="bg-white border p-3 rounded-xl flex justify-between items-center gap-2 shadow-sm">
+          <div class="min-w-0">
+            <div class="text-[12px] font-bold truncate">${esc(b.title)}</div>
+            <div class="text-[10px] text-slate-500">${esc(b.category)}</div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button type="button" class="text-xs font-semibold text-[#334e7b] bg-[#eef3fb] px-2.5 py-1 rounded-lg" data-action="admin-rename-blank" data-id="${esc(b.id)}" data-title="${esc(b.title)}">Переименовать</button>
+            <button type="button" class="text-red-500 px-2 py-1 font-bold hover:bg-red-50 rounded" data-action="admin-del-blank" data-id="${esc(b.id)}" data-file="${esc(b.file_url)}">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function adminDeleteBlank(id, fileUrl) {
+      if (!confirm('Удалить этот бланк у всех пользователей?')) return;
+      try {
+        const { error: delErr } = await supabaseClient.from('global_blanks').delete().eq('id', id);
+        if (delErr) throw delErr;
+        if (ws.blankTemplates && ws.blankTemplates[id]) {
+          delete ws.blankTemplates[id];
+          scheduleSync();
+        }
+        if (fileUrl) {
+          const cleanUrl = String(fileUrl).split('?')[0];
+          const fileName = decodeURIComponent(cleanUrl.split('/').pop() || '');
+          if (fileName) await supabaseClient.storage.from('global-blanks').remove([fileName]);
+        }
+        await fetchGlobalBlanks();
+        renderAdminBlanks();
+        showToast('Бланк удален');
+      } catch (e) { showToast('Ошибка удаления: ' + (e.message || '')); }
+    }
+
+    function setBlankGroup(grp) { 
+      currentBlankGrp=grp;
+      ['Постановления','Протоколы','Иные'].forEach(g=>document.getElementById('bGrp-'+g).className=g===grp?'btn-secondary text-[11px] py-2':'btn-ghost text-[11px] py-2');
+      renderBlankSelect(); 
+    }
+
+    function onBlankModeChange() {
+      const mode = (document.querySelector('input[name="bMode"]:checked')||{}).value || 'case';
+      const caseWrap = document.getElementById('blankCasePickerWrap');
+      if (caseWrap) caseWrap.classList.toggle('hidden', mode !== 'case');
+      updateBlankDraft();
+    }
+
+    function renderBlankSelect() {
+      const q=(document.getElementById('blankSearch')?.value||'').toLowerCase(); 
+      let list=globalBlanks.filter(b => b.category === currentBlankGrp);
+      if(q) list=list.filter(b=>b.title.toLowerCase().includes(q));
+      
+      document.getElementById('blankPicker').innerHTML = list.map(b=>`<option value="${esc(b.id)}">${esc(b.title)}</option>`).join('') || '<option value="">— Нет бланков в этом разделе —</option>';
+      document.getElementById('blankCaseSelect').innerHTML=ws.casesData.length?ws.casesData.map(c=>`<option value="${esc(c.id)}">УД № ${esc(cleanCaseNumber(c.number))}</option>`).join(''):'<option value="">— нет дел —</option>';
+      onBlankModeChange();
+    }
+
+    function buildStrictBlankTemplateText(blank) {
+      const savedBody = (ws.blankTemplates && ws.blankTemplates[blank.id]) ? ws.blankTemplates[blank.id] : '';
+      if (savedBody && savedBody.trim()) return savedBody;
+      const title = blank.title.toUpperCase();
+      return `${title}\n\n«___» ______________ 202__ г.          г. ______________________\n\nДолжностное лицо: __________________________________________\nУголовное дело № __________, возбужденное «___» ____________ 202__ г.\n\n_________________________________________________________________\n_________________________________________________________________\n_________________________________________________________________\n\nПодпись: ______________________ / ___________________________ /`;
+    }
+
+    function fillBlankStrictlyFromCase(templateText, kase, profile) {
+      const num = kase && cleanCaseNumber(kase.number) ? cleanCaseNumber(kase.number) : '______';
+      const opened = kase && kase.opened ? kase.opened : '«___» ____________ 202__ г.';
+      const deadline = kase && kase.deadline ? kase.deadline : '«___» ____________ 202__ г.';
+      const articles = kase && Array.isArray(kase.articles) && kase.articles.length ? kase.articles.join(', ') : '______';
+      const fabula = kase && kase.fabula && !/^фабула не заполнена\.?$/i.test(kase.fabula.trim()) ? kase.fabula.trim() : '_________________________________________________________________';
+      const partsList = kase && Array.isArray(kase.participants) && kase.participants.length
+        ? kase.participants.map(p => `${p.role || 'Участник'}: ${p.name || '______'}`).join('; ')
+        : '______________________';
+      const planList = kase && Array.isArray(kase.plan) && kase.plan.length
+        ? kase.plan.map((pl, i) => `${i + 1}. ${pl}`).join('\n')
+        : '______________________';
+      const rankFio = [profile?.rank, profile?.fio].map(s => (s || '').trim()).filter(Boolean).join(' ') || '______________________';
+
+      let result = templateText;
+
+      result = result.replace(/(уголовн\w*\s+дел\w*\s*(?:№\s*)?)[_.\s…—–-]{2,}/gi, `$1${num}`);
+      result = result.replace(/(№\s*)[_.\s…—–-]{2,}/g, `$1${num}`);
+      result = result.replace(/(возбужден\w*\s*(?:«___»\s*[_…]*\s*202__\s*г\.?|[_.\s…—–-]{2,}))/gi, `возбужденному ${opened}`);
+      result = result.replace(/(срок\s+(?:следствия|дознания)\s*(?:до\s*)?)[_.\s…—–-]{2,}/gi, `$1${deadline}`);
+      result = result.replace(/(ст\.\s*)[_.\s…—–-]{2,}/gi, `$1${articles}`);
+      result = result.replace(/(квалификац\w*[:\s]*)[_.\s…—–-]{2,}/gi, `$1${articles}`);
+      result = result.replace(/(фабул\w*[:\s]*)[_.\s…—–-]{2,}/gi, `$1${fabula}`);
+      result = result.replace(/(участник\w*[:\s]*)[_.\s…—–-]{2,}/gi, `$1${partsList}`);
+      result = result.replace(/(план[:\s]*)[_.\s…—–-]{2,}/gi, `$1${planList}`);
+      result = result.replace(/(следовател\w*[:\s]*)[_.\s…—–-]{2,}/gi, `$1${rankFio}`);
+
+      return result;
+    }
+
+    function updateBlankDraft() {
+      const blank = globalBlanks.find(b => b.id === document.getElementById('blankPicker').value);
+      const mode = (document.querySelector('input[name="bMode"]:checked')||{}).value || 'case';
+      const org = (ws.profile?.org || '').trim() || '______________________';
+      const rank = (ws.profile?.rank || '').trim() || '______________________';
+      const fio = (ws.profile?.fio || '').trim() || '______________________';
+      const editor = document.getElementById('blankEditor');
+      
+      if(!blank) { editor.value = 'Выберите бланк в списке выше или загрузите архив в разделе «Профиль» -> «Управление общими бланками».'; return; }
+      
+      const baseDocText = buildStrictBlankTemplateText(blank);
+      const headerBlock = `${org}\n${rank} ${fio}\n\n`;
+
+      if (mode === 'empty') {
+        editor.value = baseDocText;
+        return;
+      }
+
+      if (mode === 'header') {
+        editor.value = `${headerBlock}${baseDocText}`;
+        return;
+      }
+
+      const kase = ws.casesData.find(c => c.id === document.getElementById('blankCaseSelect').value) || null;
+      editor.value = `${headerBlock}${fillBlankStrictlyFromCase(baseDocText, kase, ws.profile)}`;
+    }
+
+    function downloadBlankDocx() { 
+      const txt=document.getElementById('blankEditor').value; 
+      const blank = globalBlanks.find(b => b.id === document.getElementById('blankPicker').value);
+      const safeFileName = (blank ? blank.title : 'Документ').replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || 'Документ';
+      const html=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset='utf-8'></head><body><pre style="font-family:'Times New Roman',serif;font-size:14pt;white-space:pre-wrap;">${esc(txt)}</pre></body></html>`; 
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob(['\ufeff',html],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
+      a.download=`${safeFileName}.docx`;a.click();showToast('Скачано .DOCX'); 
+    }
+
+    async function downloadOriginalFile() {
+      const blank = globalBlanks.find(b => b.id === document.getElementById('blankPicker').value);
+      if (!blank || !blank.file_url) {
+        showToast('У этого бланка нет прикрепленного файла');
+        return;
+      }
+      try {
+        const resp = await fetch(blank.file_url);
+        if (!resp.ok) throw new Error('Файл недоступен по ссылке');
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const cleanUrl = String(blank.file_url).split('?')[0];
+        const extMatch = cleanUrl.match(/\.([a-zA-Z0-9]{1,8})$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : 'doc';
+        const safeName = (blank.title || 'blank').replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || 'blank';
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeName}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        showToast('Оригинал скачивается');
+      } catch (e) {
+        window.open(blank.file_url, '_blank', 'noopener');
+      }
+    }
+
+    function syncProfileInputs() { document.getElementById('profOrg').value=ws.profile.org||'';document.getElementById('profRank').value=ws.profile.rank||'';document.getElementById('profFio').value=ws.profile.fio||''; }
+    function onProfileInput() { ws.profile.org=document.getElementById('profOrg').value;ws.profile.rank=document.getElementById('profRank').value;ws.profile.fio=document.getElementById('profFio').value;updateBlankDraft();scheduleSync(); }
+
+    function renderAllActionsList() { const sorted=[...ws.eventsData].sort((a,b)=>(a.dt||'').localeCompare(b.dt||'')); if(!sorted.length){document.getElementById('allActionsContainer').innerHTML='<div class="text-xs text-slate-400">Нет действий</div>';return;} document.getElementById('allActionsContainer').innerHTML=sorted.map(ev=>{const cat=ws.eventCategories[ev.color]||{border:'#cbd5e1'};return `<div class="p-3 rounded-xl border-l-4 mb-2 flex justify-between items-center bg-slate-50" style="border-left-color:${cat.border}"><div><div class="text-[13px] font-bold text-slate-800">${esc(ev.title)}</div><div class="text-[11px] text-slate-500 mt-0.5">${esc((ev.dt||'').replace('T',' '))}</div></div><button type="button" class="btn-ghost text-[10px] py-1 px-2" data-action="open-event" data-id="${esc(ev.id)}">Изм.</button></div>`;}).join(''); }
+
+    function renderMetrics() {
+      const todayIso=getTodayIso();
+      document.querySelector('#tileCases .metric-num').textContent=String(ws.casesData.length);
+      document.querySelector('#tileUrgent .metric-num').textContent=String(ws.casesData.filter(c=>daysUntil(c.deadline)<=(c.leadDays||10)).length);
+      document.querySelector('#tileToday .metric-num').textContent=String(ws.eventsData.filter(e=>e.dt&&e.dt.startsWith(todayIso)).length);
+    }
+
+    function renderAll() { renderMetrics(); renderCalendarSection(); renderSvodkaDeadlines(); renderCasesList(); renderBlankSelect(); if(!document.getElementById('view-profile').classList.contains('hidden')){renderCategorySettings();renderKbSection(); if(currentUser?.email === ADMIN_EMAIL) renderAdminBlanks();} }
+
+    document.body.addEventListener('click', (e) => {
+      const el=e.target.closest('[data-action]'); if(!el)return;
+      const action=el.dataset.action,id=el.dataset.id,idx=el.dataset.idx!==undefined?Number(el.dataset.idx):undefined;
+      const key=el.dataset.key,grp=el.dataset.grp,cat=el.dataset.cat,kind=el.dataset.kind,delta=el.dataset.delta,tab=el.dataset.tab,modalId=el.dataset.modal,view=el.dataset.view;
+      
+      if(action==='overlay-close'){ if(e.target.id===modalId)document.getElementById(modalId).classList.add('hidden'); return; }
+      
+      switch(action) {
+        case 'set-cal-view': setCalendarView(view); break;
+        case 'shift-date': shiftDate(Number(delta)); break;
+        case 'force-pull-cloud': pullFromCloud(true); break;
+        case 'admin-upload-zip': adminUploadZip(); break;
+        case 'admin-auto-rename': adminAutoRenameByRegistry(); break;
+        case 'admin-rename-blank': adminRenameBlank(id, el.dataset.title); break;
+        case 'admin-del-blank': adminDeleteBlank(id, el.dataset.file); break;
+        case 'download-original-file': downloadOriginalFile(); break;
+        case 'reset-blank-draft': updateBlankDraft(); showToast('Шаблон сброшен'); break;
+        case 'pull-from-cloud': pullFromCloud(); break;
+        case 'focus-metric': focusMetric(kind); break;
+        case 'toggle-accordion': toggleAccordion(el.dataset.target); break;
+        case 'go-today': goToday(); break;
+        case 'open-event-new': openEventModal(); break;
+        case 'open-event': openEventModal(id); break;
+        case 'switch-tab': switchTab(tab); break;
+        case 'set-color-filter': setColorFilter(key); break;
+        case 'select-day': selectDay(id); break;
+        case 'pick-color': pickModalColor(key); break;
+        case 'new-case-open': toggleNewCaseForm(true); break;
+        case 'new-case-close': toggleNewCaseForm(false); break;
+        case 'save-new-case': saveNewCase(); break;
+        case 'add-temp-art': addTempArticle(); break;
+        case 'add-temp-part': addTempParticipant(); break;
+        case 'add-temp-plan': addTempPlan(); break;
+        case 'remove-temp-art': tempArticles.splice(idx,1); renderTempFormLists(); break;
+        case 'remove-temp-part': tempParticipants.splice(idx,1); renderTempFormLists(); break;
+        case 'remove-temp-plan': tempPlans.splice(idx,1); renderTempFormLists(); break;
+        case 'close-edit-case': closeEditCaseModal(); break;
+        case 'open-edit-case': openEditCaseModal(id); break;
+        case 'toggle-case': toggleCaseExpand(id); break;
+        case 'delete-case': deleteCaseById(id); break;
+        case 'add-edit-art': addEditArticle(); break;
+        case 'add-edit-part': addEditParticipant(); break;
+        case 'add-edit-plan': addEditPlan(); break;
+        case 'remove-edit-art': editArticles.splice(idx,1); renderEditFormLists(); break;
+        case 'remove-edit-part': editParticipants.splice(idx,1); renderEditFormLists(); break;
+        case 'remove-edit-plan': editPlans.splice(idx,1); renderEditFormLists(); break;
+        case 'save-edited-case': saveEditedCase(); break;
+        case 'set-blank-group': setBlankGroup(grp); break;
+        case 'download-docx': downloadBlankDocx(); break;
+        case 'toggle-kb-cat': toggleKbCat(cat); break;
+        case 'add-kb-material': addKbMaterial(); break;
+        case 'kb-open-file': openKbFileByIdx(idx); break;
+        case 'kb-download-file': downloadKbFileByIdx(idx); break;
+        case 'del-kb': delKb(id); break;
+        case 'add-category': addCategory(); break;
+        case 'delete-category': deleteCategory(id); break;
+        case 'export-backup': exportBackupJson(); break;
+        case 'logout': logoutUser(); break;
+        case 'close-event': closeEventModal(); break;
+        case 'save-event': saveCalendarEvent(); break;
+        case 'delete-event': deleteCalendarEvent(); break;
+      }
+    });
+
+    function exportBackupJson() { const blob=new Blob([JSON.stringify(ws,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`ARM_${getTodayIso()}.json`;a.click();URL.revokeObjectURL(url); showToast('Бэкап .JSON сохранён'); }
+    async function logoutUser() {
+      try { await supabaseClient.auth.signOut(); } catch (e) {}
+      currentUser=null;
+      document.getElementById('appShell').classList.add('hidden');
+      document.getElementById('authScreen').classList.remove('hidden');
+      showToast('Вы вышли');
+    }
+
+    setNetIndicator();
+    window.addEventListener('online',()=>{ setNetIndicator(); if (currentUser) pushToCloud(); });
+    window.addEventListener('offline',()=> setNetIndicator());
+
+    (async function init() {
+      try {
+        const { data } = await supabaseClient.auth.getSession();
+        if (data && data.session && data.session.user) {
+          await enterApp(data.session.user);
+        }
+      } catch (err) {
+        console.warn('Session check error:', err);
+      }
+    })();
+  </script>
+</body>
+</html>
